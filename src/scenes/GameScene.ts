@@ -56,7 +56,8 @@ export class GameScene extends Phaser.Scene {
     this.acorns = this.physics.add.group();
     this.physics.add.overlap(this.player, this.acorns, () => this.hurt());
 
-    this.cameras.main.startFollow(this.player, true, 0.12, 0.12, -80, 42);
+    this.cameras.main.roundPixels = true;
+    this.cameras.main.startFollow(this.player, true, 1, 1, -80, 42);
     this.touchControls = new TouchControls(this);
     this.createHud();
     this.updateHud();

@@ -10,6 +10,6 @@ export class FallingAcorn extends Phaser.Physics.Arcade.Sprite {
     this.setCircle(72);
     this.setOffset(55, 50);
     this.setVelocity(Phaser.Math.Between(-18, 18), velocityY);
-    this.setAngularVelocity(Phaser.Math.Between(-220, 220));
+    this.setAngle(Phaser.Math.Between(-10, 10));
   }
 }

@@ -11,12 +11,12 @@ export class ForestMushroom extends Phaser.Physics.Arcade.Sprite {
     private maxX: number,
     private speed: number
   ) {
-    super(scene, x, y, 'mushroom-walk');
+    super(scene, x, y, 'mushroom-walk', 0);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
     this.setSize(21, 18);
-    this.setOffset(4, 9);
+    this.setOffset(5, 9);
     this.play('mushroom-walk');
   }
 

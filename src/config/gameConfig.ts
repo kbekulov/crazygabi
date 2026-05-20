@@ -13,9 +13,16 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   backgroundColor: '#101827',
   pixelArt: true,
   roundPixels: true,
+  render: {
+    antialias: false,
+    antialiasGL: false,
+    pixelArt: true,
+    roundPixels: true
+  },
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    autoRound: true,
     width: GAME_WIDTH,
     height: GAME_HEIGHT
   },
