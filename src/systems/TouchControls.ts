@@ -21,10 +21,10 @@ export class TouchControls {
 
   constructor(private scene: Phaser.Scene) {
     this.buttons = scene.add.group();
-    this.createButton(42, 224, '<', 'left');
-    this.createButton(92, 224, '>', 'right');
-    this.createButton(378, 224, 'J', 'jump');
-    this.createButton(432, 224, 'A', 'action');
+    this.createButton(58, 308, '<', 'left');
+    this.createButton(126, 308, '>', 'right');
+    this.createButton(506, 308, 'J', 'jump');
+    this.createButton(580, 308, 'A', 'action');
 
     scene.scale.on('resize', this.onResize, this);
   }
@@ -41,24 +41,24 @@ export class TouchControls {
   private createButton(x: number, y: number, label: string, key: ButtonKey): void {
     const pad = this.scene.add.container(x, y).setScrollFactor(0).setDepth(1000);
     const bg = this.scene.add
-      .rectangle(0, 0, 42, 42, 0x251f5d, 0.78)
-      .setStrokeStyle(2, 0xf6d36b, 0.88);
+      .rectangle(0, 0, 54, 54, 0x1f2d20, 0.68)
+      .setStrokeStyle(3, 0xf3d07a, 0.9);
     const text = this.scene.add
       .text(0, 1, label, {
         color: '#fff1ad',
         fontFamily: 'monospace',
-        fontSize: '20px',
+        fontSize: '24px',
         fontStyle: 'bold'
       })
       .setOrigin(0.5);
 
     pad.add([bg, text]);
-    pad.setSize(42, 42);
-    pad.setInteractive(new Phaser.Geom.Rectangle(-21, -21, 42, 42), Phaser.Geom.Rectangle.Contains);
+    pad.setSize(54, 54);
+    pad.setInteractive(new Phaser.Geom.Rectangle(-27, -27, 54, 54), Phaser.Geom.Rectangle.Contains);
 
     pad.on('pointerdown', () => {
       this.state[key] = true;
-      bg.setFillStyle(0x4e3fa5, 0.9);
+      bg.setFillStyle(0x4f7046, 0.86);
     });
     pad.on('pointerup', () => this.release(key, bg));
     pad.on('pointerout', () => this.release(key, bg));
@@ -69,7 +69,7 @@ export class TouchControls {
 
   private release(key: ButtonKey, bg: Phaser.GameObjects.Rectangle): void {
     this.state[key] = false;
-    bg.setFillStyle(0x251f5d, 0.78);
+    bg.setFillStyle(0x1f2d20, 0.68);
   }
 
   private onResize(): void {

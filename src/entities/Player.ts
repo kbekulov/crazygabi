@@ -2,13 +2,13 @@ import Phaser from 'phaser';
 import type { TouchControlState } from '../systems/TouchControls.ts';
 
 export class Player extends Phaser.Physics.Arcade.Sprite {
-  private readonly speed = 145;
-  private readonly jumpVelocity = -360;
+  private readonly speed = 185;
+  private readonly jumpVelocity = -455;
   private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
   private keys: Record<'left' | 'right' | 'jump' | 'action', Phaser.Input.Keyboard.Key>;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'gabi-idle');
+    super(scene, x, y, 'gabi');
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -20,10 +20,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       action: Phaser.Input.Keyboard.KeyCodes.K
     }) as Record<'left' | 'right' | 'jump' | 'action', Phaser.Input.Keyboard.Key>;
 
-    this.setSize(15, 22);
-    this.setOffset(4, 5);
-    this.setMaxVelocity(180, 520);
+    this.setScale(0.78);
+    this.setSize(18, 44);
+    this.setOffset(7, 16);
+    this.setMaxVelocity(210, 680);
     this.setDragX(900);
+    this.play('gabi-idle');
   }
 
   updateFromInput(touch: TouchControlState): void {
@@ -49,6 +51,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.setVelocityY(this.jumpVelocity);
     }
 
-    this.setTexture(this.body?.blocked.down ? 'gabi-idle' : 'gabi-jump');
+    if (!this.body?.blocked.down) {
+      this.play('gabi-jump', true);
+    } else if (moveLeft || moveRight) {
+      this.play('gabi-walk', true);
+    } else {
+      this.play('gabi-idle', true);
+    }
   }
 }
