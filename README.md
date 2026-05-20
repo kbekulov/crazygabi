@@ -64,6 +64,8 @@ The custom domain is included in `public/CNAME`, so Vite copies it into `dist/CN
 crazygabi.bekulov.com
 ```
 
+The build also copies the compiled game into the repository root. That fallback keeps the game playable if GitHub Pages is temporarily configured as **Deploy from branch / root** instead of **GitHub Actions**.
+
 ## Expansion Notes
 
 The current version includes one complete playable test level, generated placeholder pixel art, a menu, fail/restart flow, collectibles, hazards, one walking enemy type, and an exit portal. Future work can add:

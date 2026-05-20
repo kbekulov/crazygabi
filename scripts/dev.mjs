@@ -21,7 +21,7 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', `http://${request.headers.host}`);
 
     if (url.pathname === '/' || url.pathname === '/index.html') {
-      const html = await readFile(join(projectRoot, 'index.html'), 'utf8');
+      const html = await readFile(join(projectRoot, 'app.html'), 'utf8');
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       response.end(
         html.replace(

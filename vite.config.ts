@@ -11,6 +11,9 @@ export default defineConfig(({ command }) => ({
   },
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: 'app.html'
+    }
   }
 }));
