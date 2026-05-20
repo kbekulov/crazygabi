@@ -55,10 +55,14 @@ To deploy with GitHub Pages:
 1. Push the project to GitHub.
 2. In GitHub, open the repository settings.
 3. Go to **Pages**.
-4. Choose your deployment source.
-5. For a simple manual deployment, publish the generated `dist/` directory from `npm run build`.
+4. Set the source to **GitHub Actions**.
+5. The included workflow builds the game and publishes `dist/`.
 
-A common automated option is to add a GitHub Actions workflow later that runs `npm ci`, `npm run build`, and publishes `dist/`.
+The custom domain is included in `public/CNAME`, so Vite copies it into `dist/CNAME` during deployment:
+
+```text
+crazygabi.bekulov.com
+```
 
 ## Expansion Notes
 
