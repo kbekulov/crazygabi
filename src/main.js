@@ -3,17 +3,17 @@ const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const LEVEL = [
   "........................................................................",
-  "........................................................................",
+  "..................a.................a..............a....................",
   "........................................................................",
   "....................................cc..................................",
   ".............................###.............gg.........................",
   "..............gg...........................######.......................",
   ".........#########...................m..................................",
   "..........................gg.....#########......................k.......",
-  ".....................#########................................#####.....",
+  ".....................#########.............a..................#####.....",
   "....p.....gg.................................gg........................",
   "########.................m..............###########.....................",
-  ".................##############.........................................",
+  ".................##############..................a......................",
   ".............................................m...............d..........",
   ".......................gg...............###########################......",
   "...............################.........................................",
@@ -101,6 +101,14 @@ function makeTextures(scene) {
   g.generateTexture("mischief", 32, 32);
   g.clear();
 
+  g.fillStyle(0x5a3421).fillEllipse(16, 17, 20, 23);
+  g.fillStyle(0x8a5733).fillEllipse(16, 18, 15, 18);
+  g.fillStyle(0x2f2118).fillRoundedRect(6, 6, 20, 8, 3);
+  g.fillStyle(0x6f482d).fillRect(14, 2, 4, 8);
+  g.lineStyle(2, 0x3c271c, 1).strokeEllipse(16, 17, 20, 23);
+  g.generateTexture("acorn", 32, 32);
+  g.clear();
+
   g.fillStyle(0x4a4f62).fillRect(0, 0, 64, 64);
   g.fillStyle(0x596878).fillRect(0, 0, 64, 12);
   g.fillStyle(0x323746).fillRect(0, 50, 64, 14);
@@ -129,6 +137,7 @@ class PlayScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
+    this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.enemyDirection = new Map();
@@ -185,6 +194,25 @@ class PlayScene extends Phaser.Scene {
           enemy.body.setSize(24, 22).setOffset(4, 8);
           this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
         }
+        if (cell === "a") {
+          const acorn = this.acorns.create(x, y, "acorn");
+          acorn.setDepth(1);
+          acorn.setCircle(10, 6, 8);
+          acorn.body.allowGravity = false;
+          acorn.body.immovable = true;
+          acorn.setData("homeX", x);
+          acorn.setData("homeY", y);
+          acorn.setData("armed", true);
+          acorn.setData("nextDrop", 0);
+          this.tweens.add({
+            targets: acorn,
+            angle: { from: -4, to: 4 },
+            duration: 700 + columnIndex * 12,
+            yoyo: true,
+            repeat: -1,
+            ease: "Sine.inOut"
+          });
+        }
         if (cell === "k") {
           const key = this.keys.create(x, y, "key");
           key.setCircle(12, 4, 5);
@@ -217,9 +245,11 @@ class PlayScene extends Phaser.Scene {
   setupPhysics() {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.collider(this.acorns, this.platforms, this.resetAcorn, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
+    this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
     this.physics.add.overlap(this.player, this.doors, this.enterDoor, null, this);
   }
 
@@ -228,15 +258,17 @@ class PlayScene extends Phaser.Scene {
     hud.message.hidden = true;
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setVelocity(0, 0);
+    this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
   }
 
-  update() {
+  update(time = 0) {
     if (Phaser.Input.Keyboard.JustDown(this.keysInput.restart)) {
       this.scene.restart();
       return;
     }
 
     this.moveEnemies();
+    this.updateAcorns(time);
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -279,6 +311,25 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  updateAcorns(time) {
+    this.acorns.children.iterate((acorn) => {
+      if (!acorn || !acorn.active || !state.running || state.won) return;
+      if (!acorn.getData("armed") || time < acorn.getData("nextDrop")) return;
+
+      const horizontallyClose = Math.abs(this.player.x - acorn.x) < 170;
+      const playerBelow = this.player.y > acorn.y + 20;
+      const visibleAhead = acorn.x > this.cameras.main.scrollX - 48 && acorn.x < this.cameras.main.scrollX + VIEW_WIDTH + 48;
+
+      if (horizontallyClose && playerBelow && visibleAhead) {
+        acorn.setData("armed", false);
+        acorn.body.allowGravity = true;
+        acorn.body.immovable = false;
+        acorn.setVelocity(Phaser.Math.Between(-24, 24), 40);
+        acorn.setAngularVelocity(Phaser.Math.Between(-180, 180));
+      }
+    });
+  }
+
   collectGem(_player, gem) {
     gem.disableBody(true, true);
     state.gems += 1;
@@ -304,6 +355,24 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     this.loseLife();
+  }
+
+  hitAcorn(_player, acorn) {
+    if (!state.running || acorn.getData("armed")) return;
+    this.resetAcorn(acorn);
+    this.loseLife();
+  }
+
+  resetAcorn(acorn) {
+    if (!acorn || !acorn.active) return;
+    acorn.body.allowGravity = false;
+    acorn.body.immovable = true;
+    acorn.setVelocity(0, 0);
+    acorn.setAngularVelocity(0);
+    acorn.setAngle(0);
+    acorn.setPosition(acorn.getData("homeX"), acorn.getData("homeY"));
+    acorn.setData("armed", true);
+    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(900, 1700));
   }
 
   loseLife() {

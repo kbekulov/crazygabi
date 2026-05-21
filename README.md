@@ -1,6 +1,6 @@
 # Crazy Gabi
 
-A small original Phaser platformer prototype with a DOS-era collectible-platformer feel: jump across chunky tile platforms, gather gems, dodge or stomp wandering troublemakers, find the key, and reach the door.
+A small original Phaser platformer prototype with a DOS-era collectible-platformer feel: jump across chunky tile platforms, gather gems, dodge or stomp wandering troublemakers, avoid falling acorns, find the key, and reach the door.
 
 ## Run
 
