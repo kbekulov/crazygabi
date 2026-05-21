@@ -4,6 +4,9 @@ const VIEW_HEIGHT = 540;
 const HUD_HEIGHT = 86;
 const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
 const TIME_LIMIT = 150;
+const GABI_FRAME_WIDTH = 32;
+const GABI_FRAME_HEIGHT = 64;
+const GABI_SCALE = 1.18;
 const LEVEL = [
   "........................................................................",
   "..................a.................a..............a....................",
@@ -127,7 +130,7 @@ function makeTextures(scene) {
   g.generateTexture("crate", 64, 64);
   g.clear();
 
-  makeCharacter(scene, "gabi", 0xffdf43, 0x10e050);
+  makeCharacter(scene, "gabi-fallback", 0x5b2e16, 0x10e050);
   g.destroy();
 }
 
@@ -136,7 +139,24 @@ class PlayScene extends Phaser.Scene {
     super("PlayScene");
   }
 
-  preload() {}
+  preload() {
+    this.load.spritesheet("gabi-base", "./public/assets/character/base_light.png", {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
+    this.load.spritesheet("gabi-hair", "./public/assets/character/hair_long_brown.png", {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
+    this.load.spritesheet("gabi-outfit", "./public/assets/character/outfit_thief_blue.png", {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
+    this.load.spritesheet("forest-tiles", "./public/assets/environment/forest-tileset.png", {
+      frameWidth: TILE,
+      frameHeight: TILE
+    });
+  }
 
   create() {
     makeTextures(this);
@@ -155,6 +175,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyDirection = new Map();
 
     state.totalGems = 0;
+    this.createAnimations();
     this.buildLevel();
     this.createPlayer();
     this.createInput();
@@ -196,6 +217,37 @@ class PlayScene extends Phaser.Scene {
     }
 
     sky.fillStyle(0x161616, 0.12).fillRect(0, PLAY_HEIGHT - 36, this.levelWidth, 36);
+
+  }
+
+  createAnimations() {
+    if (this.anims.exists("gabi-idle")) return;
+    const layers = ["base", "hair", "outfit"];
+    layers.forEach((layer) => {
+      this.anims.create({
+        key: `gabi-${layer}-idle`,
+        frames: [{ key: `gabi-${layer}`, frame: 1 }],
+        frameRate: 1
+      });
+      this.anims.create({
+        key: `gabi-${layer}-walk`,
+        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [4, 5, 6, 7, 8, 9] }),
+        frameRate: 9,
+        repeat: -1
+      });
+      this.anims.create({
+        key: `gabi-${layer}-jump`,
+        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [20, 21, 22] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: `gabi-${layer}-hurt`,
+        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [70, 71] }),
+        frameRate: 6,
+        repeat: -1
+      });
+    });
   }
 
   buildLevel() {
@@ -203,7 +255,7 @@ class PlayScene extends Phaser.Scene {
       [...row].forEach((cell, columnIndex) => {
         const x = columnIndex * TILE + TILE / 2;
         const y = rowIndex * TILE + TILE / 2;
-        if (cell === "#") this.platforms.create(x, y, "tile-ground");
+        if (cell === "#") this.platforms.create(x, y, "forest-tiles", 0);
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "gem");
           gem.setCircle(10, 6, 6);
@@ -248,11 +300,19 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi");
+    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-base", 1);
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(20, 29).setOffset(6, 3);
+    this.player.body.setSize(18, 42).setOffset(7, 18);
     this.player.setDragX(1200);
     this.player.setMaxVelocity(260, 620);
+    this.player.setScale(GABI_SCALE);
+    this.player.setDepth(4);
+    this.gabiLayers = [
+      this.player,
+      this.add.sprite(this.player.x, this.player.y, "gabi-outfit", 1).setScale(GABI_SCALE).setDepth(5),
+      this.add.sprite(this.player.x, this.player.y, "gabi-hair", 1).setScale(GABI_SCALE).setDepth(6)
+    ];
+    this.setGabiAnimation("idle");
   }
 
   createInput() {
@@ -293,6 +353,7 @@ class PlayScene extends Phaser.Scene {
 
     this.moveEnemies();
     this.updateAcorns(time);
+    this.syncGabiLayers();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -302,10 +363,10 @@ class PlayScene extends Phaser.Scene {
 
     if (left) {
       this.player.setAccelerationX(-1250);
-      this.player.setFlipX(true);
+      this.setGabiFlip(true);
     } else if (right) {
       this.player.setAccelerationX(1250);
-      this.player.setFlipX(false);
+      this.setGabiFlip(false);
     } else {
       this.player.setAccelerationX(0);
     }
@@ -315,6 +376,37 @@ class PlayScene extends Phaser.Scene {
     }
 
     if (this.player.y > this.levelHeight - 12) this.loseLife();
+    this.updateGabiAnimation(left || right, onFloor);
+  }
+
+  syncGabiLayers() {
+    if (!this.gabiLayers) return;
+    this.gabiLayers.forEach((part) => {
+      if (part === this.player) return;
+      part.setPosition(this.player.x, this.player.y);
+    });
+  }
+
+  setGabiFlip(flipX) {
+    this.gabiLayers.forEach((part) => part.setFlipX(flipX));
+  }
+
+  setGabiAnimation(name) {
+    if (this.currentGabiAnimation === name || !this.gabiLayers) return;
+    this.currentGabiAnimation = name;
+    ["base", "outfit", "hair"].forEach((layer, index) => {
+      this.gabiLayers[index].play(`gabi-${layer}-${name}`, true);
+    });
+  }
+
+  updateGabiAnimation(isMoving, onFloor) {
+    if (!onFloor) {
+      this.setGabiAnimation("jump");
+    } else if (isMoving) {
+      this.setGabiAnimation("walk");
+    } else {
+      this.setGabiAnimation("idle");
+    }
   }
 
   moveEnemies() {
@@ -420,6 +512,7 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
       state.running = false;
+      this.setGabiAnimation("hurt");
       if (this.timerEvent) this.timerEvent.remove(false);
       setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the bright forest.", "Restart");
       return;

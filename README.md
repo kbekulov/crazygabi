@@ -18,4 +18,4 @@ Then open [http://localhost:4173](http://localhost:4173).
 
 ## Notes
 
-This is built as a static Phaser game using a pinned Phaser CDN script, so it does not require `npm install`. All visuals are original procedural pixel-style textures generated at runtime.
+This is built as a static Phaser game using a pinned Phaser CDN script, so it does not require `npm install`. Gabi's character direction lives in `docs/character.md`, and third-party asset sources are tracked in `ASSET_CREDITS.md`.
