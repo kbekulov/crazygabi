@@ -4,10 +4,10 @@ const VIEW_HEIGHT = 540;
 const HUD_HEIGHT = 86;
 const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
 const TIME_LIMIT = 150;
-const GABI_FRAME_WIDTH = 128;
-const GABI_FRAME_HEIGHT = 128;
-const GABI_SCALE = 0.52;
-const ASSET_VERSION = "20260521-doublejump-parallax";
+const GABI_FRAME_WIDTH = 238;
+const GABI_FRAME_HEIGHT = 238;
+const GABI_SCALE = 0.34;
+const ASSET_VERSION = "20260521-238px-gabi";
 const LEVEL = [
   "........................................................................",
   ".................a........................a......................a......",
@@ -134,7 +134,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite_32x32_scaled4x.png?v=${ASSET_VERSION}`, {
+    this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
@@ -211,26 +211,26 @@ class PlayScene extends Phaser.Scene {
     if (this.anims.exists("gabi-idle")) return;
     this.anims.create({
       key: "gabi-idle",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1, 2, 3] }),
-      frameRate: 5,
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
+      frameRate: 3,
       repeat: -1
     });
     this.anims.create({
       key: "gabi-walk",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
-      frameRate: 9,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "gabi-jump",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [16, 17, 18, 19] }),
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1] }),
       frameRate: 8,
       repeat: -1
     });
     this.anims.create({
+      key: "gabi-jump",
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [2, 3] }),
+      frameRate: 6,
+      repeat: -1
+    });
+    this.anims.create({
       key: "gabi-hurt",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [40, 41, 42, 43] }),
-      frameRate: 7,
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
+      frameRate: 6,
       repeat: -1
     });
   }
@@ -292,7 +292,7 @@ class PlayScene extends Phaser.Scene {
   createPlayer() {
     this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-sheet", 0);
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(44, 76).setOffset(42, 32);
+    this.player.body.setSize(68, 162).setOffset(82, 58);
     this.player.setDragX(1200);
     this.player.setMaxVelocity(260, 620);
     this.player.setScale(GABI_SCALE);

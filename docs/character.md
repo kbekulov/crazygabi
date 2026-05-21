@@ -7,4 +7,4 @@ Gabi is the player character and should consistently read as:
 - Stylish, put-together outfit
 - Bright retro platformer proportions: chunky chibi silhouette, strong dark outlines, readable red outfit, clear jump/walk/hurt poses
 
-When replacing or editing character art, keep those traits intact. The current implementation uses `public/assets/character/main_char_sprite_32x32_scaled4x.png` for Gabi.
+When replacing or editing character art, keep those traits intact. The current implementation uses `public/assets/character/main_char_sprite.png` for Gabi, with two 238px frames each for running, jumping, and standing.
