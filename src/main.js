@@ -4,10 +4,10 @@ const VIEW_HEIGHT = 540;
 const HUD_HEIGHT = 86;
 const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
 const TIME_LIMIT = 150;
-const GABI_FRAME_WIDTH = 48;
-const GABI_FRAME_HEIGHT = 48;
-const GABI_SCALE = 1.35;
-const ASSET_VERSION = "20260521-chibi-gabi";
+const GABI_FRAME_WIDTH = 128;
+const GABI_FRAME_HEIGHT = 128;
+const GABI_SCALE = 0.52;
+const ASSET_VERSION = "20260521-main-char-sheet";
 const LEVEL = [
   "........................................................................",
   "..................a.................a..............a....................",
@@ -64,53 +64,6 @@ function updateHud() {
   hud.key.textContent = state.hasKey ? "x01" : "x00";
 }
 
-function drawGabiFrame(scene, key, pose = "idle", step = 0) {
-  const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  const bob = pose === "walk" ? [0, -1, 0, 1, 0, -1][step % 6] : pose === "jump" ? -3 : 0;
-  const lean = pose === "jump" ? 3 : pose === "hurt" ? -2 : 0;
-  const crouch = pose === "duck" || pose === "hurt" ? 5 : 0;
-  const armSwing = pose === "walk" ? [-3, -1, 2, 3, 1, -2][step % 6] : pose === "jump" ? 4 : 0;
-  const legSwing = pose === "walk" ? [-3, 0, 3, -3, 0, 3][step % 6] : pose === "jump" ? 2 : 0;
-  const x = 24 + lean;
-  const y = 24 + bob + crouch;
-
-  g.fillStyle(0x000000, 0.28).fillEllipse(24, 42, 30, 7);
-
-  g.lineStyle(4, 0x120806, 1);
-  g.fillStyle(0x5a2a12).strokeEllipse(x - 1, y - 10, 30, 27).fillEllipse(x - 1, y - 10, 30, 27);
-  g.fillStyle(0x7a3e17).fillEllipse(x + 2, y - 12, 21, 20).fillRect(x - 14, y - 7, 9, 18).fillRect(x + 10, y - 4, 9, 17);
-  g.fillStyle(0xc06b22).fillEllipse(x - 2, y - 17, 14, 6).fillRect(x + 5, y - 18, 8, 5);
-
-  g.lineStyle(3, 0x170807, 1);
-  g.fillStyle(0xffcf9f).strokeRoundedRect(x - 9, y - 15, 17, 18, 6).fillRoundedRect(x - 9, y - 15, 17, 18, 6);
-  g.fillStyle(0x1b0a08).fillRect(x - 4, y - 9, 3, 5).fillRect(x + 5, y - 9, 3, 5);
-  g.fillStyle(0xff9c7f).fillRect(x + 1, y - 3, 5, 2);
-
-  g.lineStyle(4, 0x180707, 1);
-  g.fillStyle(0xde1f16).strokeRoundedRect(x - 10, y + 1, 22, 18 - crouch, 4).fillRoundedRect(x - 10, y + 1, 22, 18 - crouch, 4);
-  g.fillStyle(0xffe7ad).fillRect(x - 5, y + 2, 7, 11 - Math.floor(crouch / 2));
-  g.fillStyle(0xff5b24).fillRect(x + 6, y + 5, 5, 5);
-
-  g.lineStyle(3, 0x170807, 1);
-  g.fillStyle(0xffcf9f).strokeCircle(x - 13 - armSwing, y + 9, 5).fillCircle(x - 13 - armSwing, y + 9, 5);
-  g.fillStyle(0xffcf9f).strokeCircle(x + 15 + armSwing, y + 9, 5).fillCircle(x + 15 + armSwing, y + 9, 5);
-
-  g.fillStyle(0xde1f16).fillRoundedRect(x - 10 - legSwing, y + 17 - crouch, 9, 12, 3);
-  g.fillStyle(0xde1f16).fillRoundedRect(x + 3 + legSwing, y + 17 - crouch, 9, 12, 3);
-  g.fillStyle(0x67110d).fillRect(x - 12 - legSwing, y + 27 - crouch, 13, 5).fillRect(x + 2 + legSwing, y + 27 - crouch, 13, 5);
-  g.fillStyle(0xff6e25).fillRect(x - 7, y + 6, 4, 9).fillRect(x + 8, y + 6, 4, 9);
-
-  g.generateTexture(key, GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
-  g.destroy();
-}
-
-function makeGabiSprites(scene) {
-  ["idle", "duck"].forEach((pose) => drawGabiFrame(scene, `gabi-${pose}-0`, pose, 0));
-  for (let i = 0; i < 6; i += 1) drawGabiFrame(scene, `gabi-walk-${i}`, "walk", i);
-  for (let i = 0; i < 3; i += 1) drawGabiFrame(scene, `gabi-jump-${i}`, "jump", i);
-  for (let i = 0; i < 3; i += 1) drawGabiFrame(scene, `gabi-hurt-${i}`, "hurt", i);
-}
-
 function makeTextures(scene) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
 
@@ -164,7 +117,6 @@ function makeTextures(scene) {
   g.generateTexture("crate", 64, 64);
   g.clear();
 
-  makeGabiSprites(scene);
   g.destroy();
 }
 
@@ -174,6 +126,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite_32x32_scaled4x.png?v=${ASSET_VERSION}`, {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
     this.load.spritesheet("forest-tiles", `./public/assets/environment/forest-tileset.png?v=${ASSET_VERSION}`, {
       frameWidth: TILE,
       frameHeight: TILE
@@ -244,22 +200,27 @@ class PlayScene extends Phaser.Scene {
 
   createAnimations() {
     if (this.anims.exists("gabi-idle")) return;
-    this.anims.create({ key: "gabi-idle", frames: [{ key: "gabi-idle-0" }], frameRate: 1 });
+    this.anims.create({
+      key: "gabi-idle",
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1, 2, 3] }),
+      frameRate: 5,
+      repeat: -1
+    });
     this.anims.create({
       key: "gabi-walk",
-      frames: [0, 1, 2, 3, 4, 5].map((frame) => ({ key: `gabi-walk-${frame}` })),
-      frameRate: 10,
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1, 2, 3, 4, 5, 6, 7] }),
+      frameRate: 9,
       repeat: -1
     });
     this.anims.create({
       key: "gabi-jump",
-      frames: [0, 1, 2].map((frame) => ({ key: `gabi-jump-${frame}` })),
-      frameRate: 7,
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [16, 17, 18, 19] }),
+      frameRate: 8,
       repeat: -1
     });
     this.anims.create({
       key: "gabi-hurt",
-      frames: [0, 1, 2].map((frame) => ({ key: `gabi-hurt-${frame}` })),
+      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [40, 41, 42, 43] }),
       frameRate: 7,
       repeat: -1
     });
@@ -315,9 +276,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-idle-0");
+    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-sheet", 0);
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(24, 36).setOffset(12, 10);
+    this.player.body.setSize(44, 76).setOffset(42, 32);
     this.player.setDragX(1200);
     this.player.setMaxVelocity(260, 620);
     this.player.setScale(GABI_SCALE);
