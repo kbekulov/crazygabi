@@ -7,23 +7,23 @@ const TIME_LIMIT = 150;
 const GABI_FRAME_WIDTH = 128;
 const GABI_FRAME_HEIGHT = 128;
 const GABI_SCALE = 0.52;
-const ASSET_VERSION = "20260521-main-char-sheet";
+const ASSET_VERSION = "20260521-doublejump-parallax";
 const LEVEL = [
   "........................................................................",
-  "..................a.................a..............a....................",
+  ".................a........................a......................a......",
+  "............................................................####....k...",
   "........................................................................",
-  "....................................cc..................................",
-  ".............................###.............gg.........................",
-  "..............gg...........................######.......................",
-  ".........#########...................m..................................",
-  "..........................gg.....#########......................k.......",
-  ".....................#########.............a..................#####.....",
-  "....p.....gg.................................gg........................",
-  "########.................m..............###########.....................",
-  ".................##############..................a......................",
-  ".............................................m...............d..........",
-  ".......................gg...............###########################......",
-  "...............################.........................................",
+  ".............................................gg.........................",
+  "........................................############....................",
+  "........................................................................",
+  ".......................gg.................................m.............",
+  "...................#########......................############..........",
+  "........................................................................",
+  "....p..j..gg...................m..............................d.........",
+  "###########.................############..................###########...",
+  "........................................................................",
+  ".................................gg.............a.......................",
+  ".........................################...............................",
   "........................................................................",
   "########################...#############################################"
 ];
@@ -35,6 +35,7 @@ const state = {
   lives: 3,
   timeLeft: TIME_LIMIT,
   hasKey: false,
+  hasDoubleJump: false,
   running: false,
   won: false
 };
@@ -87,6 +88,13 @@ function makeTextures(scene) {
   g.generateTexture("key", 32, 32);
   g.clear();
 
+  g.fillStyle(0x1f6cff).fillCircle(16, 16, 12);
+  g.fillStyle(0x8bdcff).fillCircle(16, 16, 7);
+  g.fillStyle(0xffffff).fillTriangle(5, 14, 13, 8, 13, 20).fillTriangle(27, 14, 19, 8, 19, 20);
+  g.lineStyle(2, 0x0b276b, 1).strokeCircle(16, 16, 12);
+  g.generateTexture("double-jump", 32, 32);
+  g.clear();
+
   g.fillStyle(0x633a2e).fillRoundedRect(5, 2, 22, 30, 4);
   g.fillStyle(0x2a1715).fillRoundedRect(9, 7, 14, 25, 3);
   g.fillStyle(0xf9d36c).fillCircle(22, 17, 2);
@@ -134,6 +142,11 @@ class PlayScene extends Phaser.Scene {
       frameWidth: TILE,
       frameHeight: TILE
     });
+    this.load.image("para-sky", `./public/assets/paralax/parallax_forest_assets/00_sky_gradient.png?v=${ASSET_VERSION}`);
+    this.load.image("para-far", `./public/assets/paralax/parallax_forest_assets/01_far_forest_tileable.png?v=${ASSET_VERSION}`);
+    this.load.image("para-mid", `./public/assets/paralax/parallax_forest_assets/02_mid_forest_tileable.png?v=${ASSET_VERSION}`);
+    this.load.image("para-near", `./public/assets/paralax/parallax_forest_assets/03_near_forest_trunks.png?v=${ASSET_VERSION}`);
+    this.load.image("para-ground", `./public/assets/paralax/parallax_forest_assets/04_ground_foliage_tileable.png?v=${ASSET_VERSION}`);
   }
 
   create() {
@@ -146,6 +159,7 @@ class PlayScene extends Phaser.Scene {
     this.createBackdrop();
     this.platforms = this.physics.add.staticGroup();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -170,32 +184,27 @@ class PlayScene extends Phaser.Scene {
     state.lives = 3;
     state.timeLeft = TIME_LIMIT;
     state.hasKey = false;
+    state.hasDoubleJump = false;
     state.running = false;
     state.won = false;
     updateHud();
   }
 
   createBackdrop() {
-    const sky = this.add.graphics();
-    sky.fillStyle(0x00d7d7).fillRect(0, 0, this.levelWidth, PLAY_HEIGHT);
-    sky.fillStyle(0x39e0c4, 0.6).fillRect(0, PLAY_HEIGHT - 160, this.levelWidth, 44);
-
-    for (let i = 0; i < 46; i += 1) {
-      const x = i * 88 - 18;
-      const trunkWidth = i % 3 === 0 ? 48 : 36;
-      sky.fillStyle(i % 2 ? 0x8a3f10 : 0x6b2b0d, 1).fillRect(x, 0, trunkWidth, PLAY_HEIGHT);
-      sky.fillStyle(0xb66a14, 1).fillRect(x + 7, 0, 8, PLAY_HEIGHT);
-      sky.fillStyle(0x3c1507, 0.9).fillRect(x + trunkWidth - 8, 0, 5, PLAY_HEIGHT);
-      for (let y = 18; y < PLAY_HEIGHT; y += 38) {
-        sky.fillStyle(0x451805, 0.9).fillRect(x + 18, y + (i % 2) * 7, 6, 10);
-        sky.fillStyle(0xd78b20, 0.5).fillRect(x + 4, y + 16, 3, 16);
-      }
-      sky.fillStyle(0x14bd45, 1).fillRect(x - 8, PLAY_HEIGHT - 32, trunkWidth + 16, 7);
-      sky.fillStyle(0x62ff57, 1).fillRect(x - 6, PLAY_HEIGHT - 34, trunkWidth + 8, 3);
-    }
-
-    sky.fillStyle(0x161616, 0.12).fillRect(0, PLAY_HEIGHT - 36, this.levelWidth, 36);
-
+    const scale = PLAY_HEIGHT / 144;
+    this.parallaxLayers = [
+      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-sky"), speed: 0.03 },
+      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-far"), speed: 0.12 },
+      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-mid"), speed: 0.24 },
+      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-near"), speed: 0.42 },
+      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-ground"), speed: 0.58 }
+    ];
+    this.parallaxLayers.forEach(({ sprite }, index) => {
+      sprite.setOrigin(0, 0);
+      sprite.setScale(scale);
+      sprite.setScrollFactor(0);
+      sprite.setDepth(-10 + index);
+    });
   }
 
   createAnimations() {
@@ -237,6 +246,11 @@ class PlayScene extends Phaser.Scene {
           gem.setCircle(10, 6, 6);
           state.totalGems += 1;
           this.tweens.add({ targets: gem, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        }
+        if (cell === "j") {
+          const doubleJump = this.doubleJumps.create(x, y, "double-jump");
+          doubleJump.setCircle(12, 4, 4);
+          this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
           const enemy = this.enemies.create(x, y, "mischief");
@@ -301,6 +315,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.enemies, this.platforms);
     this.physics.add.collider(this.acorns, this.platforms, this.resetAcorn, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
+    this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
@@ -312,6 +327,7 @@ class PlayScene extends Phaser.Scene {
     hud.message.hidden = true;
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setVelocity(0, 0);
+    this.airJumpsUsed = 0;
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.startTimer();
   }
@@ -324,6 +340,7 @@ class PlayScene extends Phaser.Scene {
 
     this.moveEnemies();
     this.updateAcorns(time);
+    this.updateParallax();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -341,8 +358,14 @@ class PlayScene extends Phaser.Scene {
       this.player.setAccelerationX(0);
     }
 
+    if (onFloor) this.airJumpsUsed = 0;
+
     if (jump && onFloor) {
       this.player.setVelocityY(-510);
+    } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
+      this.airJumpsUsed += 1;
+      this.player.setVelocityY(-490);
+      this.cameras.main.flash(80, 104, 220, 255, false);
     }
 
     if (this.player.y > this.levelHeight - 12) this.loseLife();
@@ -406,6 +429,14 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  updateParallax() {
+    if (!this.parallaxLayers) return;
+    const scrollX = this.cameras.main.scrollX;
+    this.parallaxLayers.forEach(({ sprite, speed }) => {
+      sprite.tilePositionX = scrollX * speed;
+    });
+  }
+
   startTimer() {
     if (this.timerEvent) this.timerEvent.remove(false);
     this.timerEvent = this.time.addEvent({
@@ -425,6 +456,14 @@ class PlayScene extends Phaser.Scene {
     state.gems += 1;
     state.score += 100;
     this.cameras.main.flash(80, 114, 214, 201, false);
+    updateHud();
+  }
+
+  collectDoubleJump(_player, doubleJump) {
+    doubleJump.disableBody(true, true);
+    state.hasDoubleJump = true;
+    state.score += 300;
+    this.cameras.main.flash(130, 139, 220, 255, false);
     updateHud();
   }
 

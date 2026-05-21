@@ -13,7 +13,7 @@ Then open [http://localhost:4173](http://localhost:4173).
 ## Controls
 
 - Arrow keys or `A` / `D`: move
-- Up arrow or `Space`: jump
+- Up arrow or `Space`: jump, then jump again after collecting the blue double-jump pickup
 - `R`: restart the level
 
 ## Notes
