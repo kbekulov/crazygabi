@@ -10,23 +10,20 @@ export interface TouchControlState {
 type ButtonKey = keyof TouchControlState;
 
 export class TouchControls {
-  private state: TouchControlState = {
+  private readonly buttons: Phaser.GameObjects.Group;
+  private readonly state: TouchControlState = {
     left: false,
     right: false,
     jump: false,
     action: false
   };
 
-  private buttons: Phaser.GameObjects.Group;
-
-  constructor(private scene: Phaser.Scene) {
+  constructor(private readonly scene: Phaser.Scene) {
     this.buttons = scene.add.group();
-    this.createButton(58, 308, '<', 'left');
-    this.createButton(126, 308, '>', 'right');
-    this.createButton(506, 308, 'J', 'jump');
-    this.createButton(580, 308, 'A', 'action');
-
-    scene.scale.on('resize', this.onResize, this);
+    this.createButton(54, 310, '<', 'left');
+    this.createButton(124, 310, '>', 'right');
+    this.createButton(508, 310, 'J', 'jump');
+    this.createButton(578, 310, 'A', 'action');
   }
 
   get input(): TouchControlState {
@@ -34,21 +31,22 @@ export class TouchControls {
   }
 
   destroy(): void {
-    this.scene.scale.off('resize', this.onResize, this);
     this.buttons.destroy(true);
   }
 
   private createButton(x: number, y: number, label: string, key: ButtonKey): void {
-    const pad = this.scene.add.container(x, y).setScrollFactor(0).setDepth(1000);
+    const pad = this.scene.add.container(x, y).setScrollFactor(0).setDepth(3000);
     const bg = this.scene.add
-      .rectangle(0, 0, 54, 54, 0x1f2d20, 0.68)
-      .setStrokeStyle(3, 0xf3d07a, 0.9);
+      .rectangle(0, 0, 54, 54, 0x21361f, 0.62)
+      .setStrokeStyle(3, 0xf7df8a, 0.92);
     const text = this.scene.add
       .text(0, 1, label, {
-        color: '#fff1ad',
+        color: '#fff7bf',
         fontFamily: 'monospace',
         fontSize: '24px',
-        fontStyle: 'bold'
+        fontStyle: 'bold',
+        stroke: '#2d1908',
+        strokeThickness: 3
       })
       .setOrigin(0.5);
 
@@ -58,7 +56,7 @@ export class TouchControls {
 
     pad.on('pointerdown', () => {
       this.state[key] = true;
-      bg.setFillStyle(0x4f7046, 0.86);
+      bg.setFillStyle(0x4f7846, 0.82);
     });
     pad.on('pointerup', () => this.release(key, bg));
     pad.on('pointerout', () => this.release(key, bg));
@@ -69,10 +67,6 @@ export class TouchControls {
 
   private release(key: ButtonKey, bg: Phaser.GameObjects.Rectangle): void {
     this.state[key] = false;
-    bg.setFillStyle(0x1f2d20, 0.68);
-  }
-
-  private onResize(): void {
-    // Future mobile layouts can reposition controls here when using a larger logical canvas.
+    bg.setFillStyle(0x21361f, 0.62);
   }
 }

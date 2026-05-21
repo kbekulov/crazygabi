@@ -1,68 +1,49 @@
 # Crazy Gabi
 
-Crazy Gabi is a browser-playable retro 2D platformer built with Phaser, TypeScript, and Vite. This version starts at Gabi's house and pushes into a moody forest where mushrooms patrol the path and acorns fall from the canopy.
+Crazy Gabi is a browser-playable retro 2D platformer built with TypeScript, Phaser 3, and Vite.
 
-The game is inspired by the general feel of early 1990s European platform games, but it does not copy or reproduce Crazy Sue assets, levels, music, UI, names, or exact mechanics.
-
-## Tech Stack
-
-- Phaser 3.90
-- TypeScript
-- Vite
-- Static GitHub Pages build
+This version is a clean rebuild: Gabi starts at her house in bright daylight, heads into Acorn Wood, collects fruit and coins, avoids mushrooms, and survives falling acorns on the way to the forest gate.
 
 ## Local Development
 
-Install dependencies:
-
 ```bash
 npm install
-```
-
-Run the dev server:
-
-```bash
 npm run dev
 ```
 
-Build for production:
+Open the dev URL printed in the terminal.
+
+## Production Build
 
 ```bash
 npm run build
-```
-
-Preview the production build locally:
-
-```bash
 npm run preview
 ```
 
-## Controls
+The build outputs static files to `dist/`. The post-build step also copies `index.html`, `assets/`, and `CNAME` to the repository root so the project can work with either GitHub Actions Pages deployment or branch-root Pages hosting.
 
-- Move left/right: `A` / `D` or arrow keys
-- Jump: `W`, up arrow, or space
-- Touch/mobile: on-screen left, right, jump, and action buttons
-- Restart after win/loss: `R`
+## GitHub Pages
 
-## Assets
+The repository includes `.github/workflows/pages.yml`. On every push to `main`, GitHub Actions runs:
 
-The game uses CC0 pixel-art assets from OpenGameArt. See `ASSETS.md` for source links, authors, and license notes.
+```bash
+npm ci
+npm run build
+```
 
-## GitHub Pages Deployment
-
-The Vite config uses relative production assets, so the build works from the custom domain and from the repository path. The included GitHub Actions workflow builds and deploys `dist/`.
-
-The custom domain is included in `public/CNAME`:
+Then it deploys the `dist/` folder to GitHub Pages. The custom domain is configured through `CNAME` and `public/CNAME`:
 
 ```text
 crazygabi.bekulov.com
 ```
 
-The build also copies compiled game files into the repository root. That fallback keeps the game playable if GitHub Pages is configured as **Deploy from branch / root**.
+## Controls
 
-## Expansion Hooks
+- Move: Arrow keys or A/D
+- Jump: Up, W, or Space
+- Restart after win/loss: R
+- Touch controls are shown on screen for mobile and testing.
 
-- Add more levels in `src/levels/levelData.ts`
-- Add richer enemy AI through new entity classes beside `ForestMushroom`
-- Add moving platforms, secrets, boss fights, power-ups, and save progress as systems
-- Replace or extend sprite sheets in `public/assets/sprites`
+## Asset Policy
+
+No Crazy Sue assets, music, levels, UI, or exact mechanics are copied. The included sprites are CC0 assets credited in `ASSETS.md`; the code is structured so art, levels, enemies, and mechanics can be swapped later.

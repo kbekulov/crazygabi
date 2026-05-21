@@ -1,6 +1,6 @@
 # Asset Credits
 
-All listed assets are CC0 public-domain style assets from OpenGameArt. Attribution is not required by the licenses, but the creators are credited here for clarity.
+All listed visual assets are CC0 public-domain style assets from OpenGameArt. Attribution is not required by the licenses, but the creators are credited here for clarity.
 
 | Local file | Source | Author | License |
 | --- | --- | --- | --- |

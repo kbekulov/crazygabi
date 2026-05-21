@@ -6,10 +6,10 @@ export class FallingAcorn extends Phaser.Physics.Arcade.Sprite {
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
-    this.setScale(0.12);
+    this.setScale(0.115);
     this.setCircle(72);
     this.setOffset(55, 50);
-    this.setVelocity(Phaser.Math.Between(-18, 18), velocityY);
-    this.setAngle(Phaser.Math.Between(-10, 10));
+    this.setAngle(Phaser.Math.Between(-12, 12));
+    this.setVelocity(Phaser.Math.Between(-22, 22), velocityY);
   }
 }

@@ -19,8 +19,6 @@ type NormalizedTextureConfig = {
 type AlphaBounds = {
   minX: number;
   minY: number;
-  maxX: number;
-  maxY: number;
   width: number;
   height: number;
 };
@@ -39,13 +37,13 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.createTextureFrames();
+    this.createAtlasFrames();
     this.createStabilizedSprites();
     this.createAnimations();
     this.scene.start('MainMenuScene');
   }
 
-  private createTextureFrames(): void {
+  private createAtlasFrames(): void {
     const forest = this.textures.get('forest');
     forest.add('ground-top', 0, 0, 0, 32, 32);
     forest.add('ground-mid', 0, 0, 32, 32, 32);
@@ -73,8 +71,6 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private createStabilizedSprites(): void {
-    // The source sheets are CC0 placeholder art, but their visible pixels sit in
-    // slightly different places per cell. Re-centering them prevents blink/jitter.
     this.createNormalizedTexture({
       key: 'gabi',
       sourceKey: 'gabi-source',
@@ -92,7 +88,7 @@ export class PreloadScene extends Phaser.Scene {
     });
 
     this.createNormalizedTexture({
-      key: 'mushroom-walk',
+      key: 'mushroom',
       sourceKey: 'mushroom-source',
       sourceColumns: 6,
       sourceFrameWidth: 29,
@@ -112,7 +108,7 @@ export class PreloadScene extends Phaser.Scene {
     );
 
     if (!texture) {
-      throw new Error(`Unable to create texture "${config.key}"`);
+      throw new Error(`Unable to create texture ${config.key}`);
     }
 
     const context = texture.getContext();
@@ -150,8 +146,8 @@ export class PreloadScene extends Phaser.Scene {
       const bounds = this.getAlphaBounds(
         sampleContext.getImageData(0, 0, config.sourceFrameWidth, config.sourceFrameHeight)
       );
-      const drawX = outputX + this.getCenteredDrawOffset(bounds, config.frameWidth, config.sourceFrameWidth, 'x');
-      const drawY = this.getBottomAlignedDrawOffset(bounds, config.frameHeight, config.sourceFrameHeight);
+      const drawX = outputX + this.getCenteredX(bounds, config.frameWidth, config.sourceFrameWidth);
+      const drawY = this.getBottomAlignedY(bounds, config.frameHeight, config.sourceFrameHeight);
 
       context.drawImage(
         source,
@@ -197,33 +193,20 @@ export class PreloadScene extends Phaser.Scene {
     return {
       minX,
       minY,
-      maxX,
-      maxY,
       width: maxX - minX + 1,
       height: maxY - minY + 1
     };
   }
 
-  private getCenteredDrawOffset(
-    bounds: AlphaBounds | undefined,
-    outputFrameSize: number,
-    sourceFrameSize: number,
-    axis: 'x' | 'y'
-  ): number {
+  private getCenteredX(bounds: AlphaBounds | undefined, outputFrameWidth: number, sourceFrameWidth: number): number {
     if (!bounds) {
-      return Math.round((outputFrameSize - sourceFrameSize) / 2);
+      return Math.round((outputFrameWidth - sourceFrameWidth) / 2);
     }
 
-    const visibleSize = axis === 'x' ? bounds.width : bounds.height;
-    const visibleStart = axis === 'x' ? bounds.minX : bounds.minY;
-    return Math.round((outputFrameSize - visibleSize) / 2) - visibleStart;
+    return Math.round((outputFrameWidth - bounds.width) / 2) - bounds.minX;
   }
 
-  private getBottomAlignedDrawOffset(
-    bounds: AlphaBounds | undefined,
-    outputFrameHeight: number,
-    sourceFrameHeight: number
-  ): number {
+  private getBottomAlignedY(bounds: AlphaBounds | undefined, outputFrameHeight: number, sourceFrameHeight: number): number {
     if (!bounds) {
       return outputFrameHeight - sourceFrameHeight;
     }
@@ -255,7 +238,7 @@ export class PreloadScene extends Phaser.Scene {
     });
     this.anims.create({
       key: 'mushroom-walk',
-      frames: this.anims.generateFrameNumbers('mushroom-walk', { start: 0, end: 5 }),
+      frames: this.anims.generateFrameNumbers('mushroom', { start: 0, end: 5 }),
       frameRate: 8,
       repeat: -1
     });

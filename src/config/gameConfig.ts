@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene.ts';
-import { PreloadScene } from '../scenes/PreloadScene.ts';
-import { MainMenuScene } from '../scenes/MainMenuScene.ts';
 import { GameScene } from '../scenes/GameScene.ts';
+import { MainMenuScene } from '../scenes/MainMenuScene.ts';
+import { PreloadScene } from '../scenes/PreloadScene.ts';
 
 export const GAME_WIDTH = 640;
 export const GAME_HEIGHT = 360;
@@ -10,7 +10,7 @@ export const GAME_HEIGHT = 360;
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: '#8fd2ff',
+  backgroundColor: '#8ed3ff',
   pixelArt: true,
   roundPixels: true,
   render: {
@@ -29,7 +29,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   physics: {
     default: 'arcade',
     arcade: {
-      gravity: { y: 1050, x: 0 },
+      gravity: { x: 0, y: 1060 },
       debug: false
     }
   },

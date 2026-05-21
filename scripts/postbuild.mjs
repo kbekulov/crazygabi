@@ -1,27 +1,26 @@
-import { cp, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, rename, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const projectRoot = process.cwd();
-const distDir = join(projectRoot, 'dist');
-const distAppHtml = join(distDir, 'app.html');
-const distIndexHtml = join(distDir, 'index.html');
-const rootAssetsDir = join(projectRoot, 'assets');
+const root = process.cwd();
+const dist = join(root, 'dist');
+const distApp = join(dist, 'app.html');
+const distIndex = join(dist, 'index.html');
 
-if (existsSync(distAppHtml)) {
-  await rename(distAppHtml, distIndexHtml);
+if (existsSync(distApp)) {
+  await rename(distApp, distIndex);
 }
 
-let html = await readFile(distIndexHtml, 'utf8');
-html = html.replaceAll('./assets/', './assets/');
-await writeFile(distIndexHtml, html);
+await copyFile(distIndex, join(root, 'index.html'));
 
-await cp(distIndexHtml, join(projectRoot, 'index.html'));
-await rm(rootAssetsDir, { recursive: true, force: true });
-await cp(join(distDir, 'assets'), rootAssetsDir, { recursive: true });
+await rm(join(root, 'assets'), { recursive: true, force: true });
+await cp(join(dist, 'assets'), join(root, 'assets'), { recursive: true });
 
-if (existsSync(join(distDir, 'CNAME'))) {
-  await cp(join(distDir, 'CNAME'), join(projectRoot, 'CNAME'));
+if (existsSync(join(dist, 'CNAME'))) {
+  await copyFile(join(dist, 'CNAME'), join(root, 'CNAME'));
+} else {
+  await mkdir(dist, { recursive: true });
+  await copyFile(join(root, 'CNAME'), join(dist, 'CNAME'));
 }
 
-console.log('Published built game files to repository root for branch-based GitHub Pages.');
+console.log('Published built game files to dist and repository root.');
