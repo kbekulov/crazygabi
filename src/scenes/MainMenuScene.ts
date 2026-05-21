@@ -6,11 +6,16 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.cameras.main.setBackgroundColor('#101827');
-    this.add.rectangle(320, 180, 640, 360, 0x172033);
-    this.add.rectangle(320, 314, 640, 92, 0x27351f);
-    this.add.image(110, 226, 'forest', 'tree-left').setScale(1.1);
-    this.add.image(500, 220, 'forest', 'tree-large').setScale(1.0);
+    this.cameras.main.setBackgroundColor('#8fd2ff');
+    this.add.rectangle(320, 180, 640, 360, 0x8fd2ff);
+    this.add.rectangle(320, 122, 640, 120, 0xbde9ff, 0.45);
+    this.add.circle(78, 64, 34, 0xffd46d, 0.95);
+    this.add.circle(78, 64, 48, 0xffed9a, 0.2);
+    this.add.rectangle(320, 314, 640, 92, 0x5d9b45);
+    this.createCloud(220, 82);
+    this.createCloud(445, 62);
+    this.add.image(110, 288, 'forest', 'tree-left').setOrigin(0.5, 1).setScale(1.1);
+    this.add.image(500, 288, 'forest', 'tree-large').setOrigin(0.5, 1).setScale(1.0);
     this.add.image(320, 300, 'forest', 'log-long').setScale(1.5, 1.2);
 
     this.add
@@ -65,5 +70,12 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     label.setDepth(1);
+  }
+
+  private createCloud(x: number, y: number): void {
+    this.add.circle(x - 28, y + 10, 16, 0xffffff, 0.76);
+    this.add.circle(x - 10, y, 22, 0xffffff, 0.82);
+    this.add.circle(x + 17, y + 8, 18, 0xffffff, 0.76);
+    this.add.ellipse(x + 4, y + 18, 82, 22, 0xffffff, 0.72);
   }
 }

@@ -10,7 +10,7 @@ export const GAME_HEIGHT = 360;
 export const gameConfig: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   parent: 'game',
-  backgroundColor: '#101827',
+  backgroundColor: '#8fd2ff',
   pixelArt: true,
   roundPixels: true,
   render: {

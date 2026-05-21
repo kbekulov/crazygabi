@@ -12,6 +12,7 @@ export interface DecorationSpec {
   scale?: number;
   depth?: number;
   flipX?: boolean;
+  grounded?: boolean;
 }
 
 export interface CollectibleSpec {
@@ -80,18 +81,18 @@ export const levels: PlatformerLevel[] = [
       { x: 2220, y: 252, minX: 2010, maxX: 2480, speed: 70 }
     ],
     decorations: [
-      { x: 385, y: 226, frame: 'sign', scale: 0.78, depth: 0 },
-      { x: 720, y: 227, frame: 'tree-left', scale: 1.05, depth: -2 },
-      { x: 1000, y: 226, frame: 'tree-large', scale: 1.12, depth: -2 },
-      { x: 1260, y: 230, frame: 'tree-slim', scale: 1.0, depth: -2, flipX: true },
-      { x: 1510, y: 218, frame: 'tree-right', scale: 1.15, depth: -2 },
-      { x: 1800, y: 226, frame: 'tree-large', scale: 1.05, depth: -2 },
-      { x: 2110, y: 228, frame: 'tree-left', scale: 1.18, depth: -2, flipX: true },
-      { x: 2420, y: 225, frame: 'tree-large', scale: 1.16, depth: -2 },
-      { x: 2750, y: 228, frame: 'tree-right', scale: 1.1, depth: -2 },
-      { x: 930, y: 266, frame: 'rocks', scale: 0.7, depth: 1 },
-      { x: 1880, y: 268, frame: 'log-round', scale: 0.9, depth: 1 },
-      { x: 2520, y: 270, frame: 'log-long', scale: 0.9, depth: 1 }
+      { x: 385, y: 288, frame: 'sign', scale: 0.78, depth: 0, grounded: true },
+      { x: 720, y: 288, frame: 'tree-left', scale: 1.05, depth: -2, grounded: true },
+      { x: 1000, y: 288, frame: 'tree-large', scale: 1.12, depth: -2, grounded: true },
+      { x: 1260, y: 288, frame: 'tree-slim', scale: 1.0, depth: -2, flipX: true, grounded: true },
+      { x: 1510, y: 288, frame: 'tree-right', scale: 1.15, depth: -2, grounded: true },
+      { x: 1800, y: 288, frame: 'tree-large', scale: 1.05, depth: -2, grounded: true },
+      { x: 2110, y: 288, frame: 'tree-left', scale: 1.18, depth: -2, flipX: true, grounded: true },
+      { x: 2420, y: 288, frame: 'tree-large', scale: 1.16, depth: -2, grounded: true },
+      { x: 2750, y: 288, frame: 'tree-right', scale: 1.1, depth: -2, grounded: true },
+      { x: 930, y: 288, frame: 'rocks', scale: 0.7, depth: 1, grounded: true },
+      { x: 1880, y: 288, frame: 'log-round', scale: 0.9, depth: 1, grounded: true },
+      { x: 2520, y: 288, frame: 'log-long', scale: 0.9, depth: 1, grounded: true }
     ],
     goal: { x: 2880, y: 214 }
   }

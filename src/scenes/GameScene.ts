@@ -82,22 +82,33 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createBackdrop(): void {
-    this.add.rectangle(0, 0, this.level.width * 2, GAME_HEIGHT, 0x162033).setOrigin(0);
-    this.add.circle(132, 88, 54, 0xf2cf7a, 0.75).setScrollFactor(0.15);
+    this.add.rectangle(0, 0, this.level.width * 2, GAME_HEIGHT, 0x8fd2ff).setOrigin(0);
+    this.add.rectangle(0, 120, this.level.width * 2, 120, 0xb8e4ff, 0.36).setOrigin(0).setDepth(-12);
+    this.add.circle(124, 68, 42, 0xffd46d, 0.92).setScrollFactor(0.12).setDepth(-11);
+    this.add.circle(124, 68, 56, 0xffed9a, 0.18).setScrollFactor(0.12).setDepth(-12);
 
-    for (let i = 0; i < 36; i += 1) {
-      const x = 80 + i * 94;
-      const y = 36 + ((i * 41) % 78);
-      this.add.circle(x, y, i % 3 === 0 ? 2 : 1, 0xffe7a1, 0.6).setScrollFactor(0.25);
-    }
+    this.createCloud(300, 72, 0.22);
+    this.createCloud(930, 58, 0.2);
+    this.createCloud(1540, 86, 0.22);
+    this.createCloud(2300, 64, 0.2);
 
     for (let i = 0; i < 15; i += 1) {
       const x = 420 + i * 180;
       const frame = i % 2 === 0 ? 'tree-left' : 'tree-large';
-      this.add.image(x, 250, 'forest', frame).setScale(0.95).setAlpha(0.55).setScrollFactor(0.45).setDepth(-8);
+      this.add.image(x, 286, 'forest', frame).setOrigin(0.5, 1).setScale(0.95).setAlpha(0.5).setScrollFactor(0.45).setDepth(-8);
     }
 
-    this.add.rectangle(this.level.width / 2, 344, this.level.width, 64, 0x162514).setDepth(-4);
+    this.add.rectangle(this.level.width / 2, 344, this.level.width, 64, 0x5d9b45).setDepth(-4);
+  }
+
+  private createCloud(x: number, y: number, scrollFactor: number): void {
+    const cloud = this.add.container(x, y).setScrollFactor(scrollFactor).setDepth(-10);
+    cloud.add([
+      this.add.circle(-30, 10, 18, 0xffffff, 0.78),
+      this.add.circle(-12, 0, 24, 0xffffff, 0.82),
+      this.add.circle(15, 8, 20, 0xffffff, 0.78),
+      this.add.ellipse(6, 18, 86, 24, 0xffffff, 0.75)
+    ]);
   }
 
   private createPlatforms(): void {
@@ -134,13 +145,13 @@ export class GameScene extends Phaser.Scene {
 
   private createHouse(): void {
     const startX = 42;
-    const startY = 118;
     const rows = [
       ['tile-0-6', 'tile-0-6', 'tile-0-7', 'tile-0-7', 'tile-0-7'],
       ['tile-0-0', 'tile-0-4', 'tile-0-5', 'tile-0-4', 'tile-0-1'],
       ['tile-1-0', 'tile-1-1', 'tile-1-3', 'tile-1-4', 'tile-1-1'],
       ['tile-2-0', 'tile-2-1', 'tile-2-2', 'tile-2-3', 'tile-2-1']
     ];
+    const startY = this.getMainGroundY() - rows.length * 32;
 
     rows.forEach((row, rowIndex) => {
       row.forEach((frame, colIndex) => {
@@ -148,8 +159,8 @@ export class GameScene extends Phaser.Scene {
       });
     });
 
-    this.add.image(58, 250, 'forest', 'log-round').setScale(0.65).setDepth(4);
-    this.add.text(42, 104, "Gabi's house", {
+    this.add.image(58, this.getMainGroundY(), 'forest', 'log-round').setOrigin(0.5, 1).setScale(0.65).setDepth(4);
+    this.add.text(42, startY - 14, "Gabi's house", {
       color: '#ffe8a3',
       fontFamily: 'monospace',
       fontSize: '12px',
@@ -162,6 +173,7 @@ export class GameScene extends Phaser.Scene {
     this.level.decorations.forEach((decoration) => {
       this.add
         .image(decoration.x, decoration.y, 'forest', decoration.frame)
+        .setOrigin(0.5, decoration.grounded ? 1 : 0.5)
         .setScale(decoration.scale ?? 1)
         .setFlipX(decoration.flipX ?? false)
         .setDepth(decoration.depth ?? 0);
@@ -334,7 +346,7 @@ export class GameScene extends Phaser.Scene {
     if (this.lives <= 0) {
       this.phase = 'lost';
       this.player.setVelocity(0, 0);
-      this.message.setText('The forest wins tonight\nPress R to restart');
+      this.message.setText('The forest sends you back\nPress R to restart');
       return;
     }
 
@@ -342,6 +354,10 @@ export class GameScene extends Phaser.Scene {
     this.player.setPosition(respawn.x, respawn.y);
     this.player.setVelocity(0, 0);
     this.cameras.main.shake(120, 0.006);
+  }
+
+  private getMainGroundY(): number {
+    return this.level.platforms[0]?.y ?? 288;
   }
 
   private completeLevel(): void {
