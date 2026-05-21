@@ -4,10 +4,10 @@ const VIEW_HEIGHT = 540;
 const HUD_HEIGHT = 86;
 const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
 const TIME_LIMIT = 150;
-const GABI_FRAME_WIDTH = 32;
-const GABI_FRAME_HEIGHT = 64;
-const GABI_SCALE = 1.18;
-const ASSET_VERSION = "20260521-brown-gabi";
+const GABI_FRAME_WIDTH = 48;
+const GABI_FRAME_HEIGHT = 48;
+const GABI_SCALE = 1.35;
+const ASSET_VERSION = "20260521-chibi-gabi";
 const LEVEL = [
   "........................................................................",
   "..................a.................a..............a....................",
@@ -64,18 +64,51 @@ function updateHud() {
   hud.key.textContent = state.hasKey ? "x01" : "x00";
 }
 
-function makeCharacter(scene, key, hair, dress) {
+function drawGabiFrame(scene, key, pose = "idle", step = 0) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0x000000, 0.22).fillEllipse(16, 30, 24, 5);
-  g.fillStyle(hair).fillCircle(18, 9, 8).fillCircle(23, 10, 6).fillRect(9, 5, 13, 18).fillRect(22, 13, 5, 12);
-  g.fillStyle(0xffb28a).fillRoundedRect(10, 7, 12, 12, 5);
-  g.fillStyle(0xb44cff).fillRoundedRect(8, 17, 14, 9, 3);
-  g.fillStyle(dress).fillRect(9, 24, 8, 5).fillRect(18, 24, 7, 5);
-  g.fillStyle(0x4331ff).fillRect(7, 28, 9, 3).fillRect(18, 28, 9, 3);
-  g.fillStyle(0x17130a).fillRect(14, 11, 2, 2);
-  g.fillStyle(0x7a3f22).fillRect(7, 18, 5, 9).fillRect(22, 18, 5, 8);
-  g.generateTexture(key, 32, 32);
+  const bob = pose === "walk" ? [0, -1, 0, 1, 0, -1][step % 6] : pose === "jump" ? -3 : 0;
+  const lean = pose === "jump" ? 3 : pose === "hurt" ? -2 : 0;
+  const crouch = pose === "duck" || pose === "hurt" ? 5 : 0;
+  const armSwing = pose === "walk" ? [-3, -1, 2, 3, 1, -2][step % 6] : pose === "jump" ? 4 : 0;
+  const legSwing = pose === "walk" ? [-3, 0, 3, -3, 0, 3][step % 6] : pose === "jump" ? 2 : 0;
+  const x = 24 + lean;
+  const y = 24 + bob + crouch;
+
+  g.fillStyle(0x000000, 0.28).fillEllipse(24, 42, 30, 7);
+
+  g.lineStyle(4, 0x120806, 1);
+  g.fillStyle(0x5a2a12).strokeEllipse(x - 1, y - 10, 30, 27).fillEllipse(x - 1, y - 10, 30, 27);
+  g.fillStyle(0x7a3e17).fillEllipse(x + 2, y - 12, 21, 20).fillRect(x - 14, y - 7, 9, 18).fillRect(x + 10, y - 4, 9, 17);
+  g.fillStyle(0xc06b22).fillEllipse(x - 2, y - 17, 14, 6).fillRect(x + 5, y - 18, 8, 5);
+
+  g.lineStyle(3, 0x170807, 1);
+  g.fillStyle(0xffcf9f).strokeRoundedRect(x - 9, y - 15, 17, 18, 6).fillRoundedRect(x - 9, y - 15, 17, 18, 6);
+  g.fillStyle(0x1b0a08).fillRect(x - 4, y - 9, 3, 5).fillRect(x + 5, y - 9, 3, 5);
+  g.fillStyle(0xff9c7f).fillRect(x + 1, y - 3, 5, 2);
+
+  g.lineStyle(4, 0x180707, 1);
+  g.fillStyle(0xde1f16).strokeRoundedRect(x - 10, y + 1, 22, 18 - crouch, 4).fillRoundedRect(x - 10, y + 1, 22, 18 - crouch, 4);
+  g.fillStyle(0xffe7ad).fillRect(x - 5, y + 2, 7, 11 - Math.floor(crouch / 2));
+  g.fillStyle(0xff5b24).fillRect(x + 6, y + 5, 5, 5);
+
+  g.lineStyle(3, 0x170807, 1);
+  g.fillStyle(0xffcf9f).strokeCircle(x - 13 - armSwing, y + 9, 5).fillCircle(x - 13 - armSwing, y + 9, 5);
+  g.fillStyle(0xffcf9f).strokeCircle(x + 15 + armSwing, y + 9, 5).fillCircle(x + 15 + armSwing, y + 9, 5);
+
+  g.fillStyle(0xde1f16).fillRoundedRect(x - 10 - legSwing, y + 17 - crouch, 9, 12, 3);
+  g.fillStyle(0xde1f16).fillRoundedRect(x + 3 + legSwing, y + 17 - crouch, 9, 12, 3);
+  g.fillStyle(0x67110d).fillRect(x - 12 - legSwing, y + 27 - crouch, 13, 5).fillRect(x + 2 + legSwing, y + 27 - crouch, 13, 5);
+  g.fillStyle(0xff6e25).fillRect(x - 7, y + 6, 4, 9).fillRect(x + 8, y + 6, 4, 9);
+
+  g.generateTexture(key, GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
   g.destroy();
+}
+
+function makeGabiSprites(scene) {
+  ["idle", "duck"].forEach((pose) => drawGabiFrame(scene, `gabi-${pose}-0`, pose, 0));
+  for (let i = 0; i < 6; i += 1) drawGabiFrame(scene, `gabi-walk-${i}`, "walk", i);
+  for (let i = 0; i < 3; i += 1) drawGabiFrame(scene, `gabi-jump-${i}`, "jump", i);
+  for (let i = 0; i < 3; i += 1) drawGabiFrame(scene, `gabi-hurt-${i}`, "hurt", i);
 }
 
 function makeTextures(scene) {
@@ -131,7 +164,7 @@ function makeTextures(scene) {
   g.generateTexture("crate", 64, 64);
   g.clear();
 
-  makeCharacter(scene, "gabi-fallback", 0x5b2e16, 0x10e050);
+  makeGabiSprites(scene);
   g.destroy();
 }
 
@@ -141,18 +174,6 @@ class PlayScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.spritesheet("gabi-base", `./public/assets/character/base_light.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("gabi-hair", `./public/assets/character/hair_long_brown.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("gabi-outfit", `./public/assets/character/outfit_thief_blue.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
     this.load.spritesheet("forest-tiles", `./public/assets/environment/forest-tileset.png?v=${ASSET_VERSION}`, {
       frameWidth: TILE,
       frameHeight: TILE
@@ -223,31 +244,24 @@ class PlayScene extends Phaser.Scene {
 
   createAnimations() {
     if (this.anims.exists("gabi-idle")) return;
-    const layers = ["base", "hair", "outfit"];
-    layers.forEach((layer) => {
-      this.anims.create({
-        key: `gabi-${layer}-idle`,
-        frames: [{ key: `gabi-${layer}`, frame: 1 }],
-        frameRate: 1
-      });
-      this.anims.create({
-        key: `gabi-${layer}-walk`,
-        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [4, 5, 6, 7, 8, 9] }),
-        frameRate: 9,
-        repeat: -1
-      });
-      this.anims.create({
-        key: `gabi-${layer}-jump`,
-        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [20, 21, 22] }),
-        frameRate: 6,
-        repeat: -1
-      });
-      this.anims.create({
-        key: `gabi-${layer}-hurt`,
-        frames: this.anims.generateFrameNumbers(`gabi-${layer}`, { frames: [70, 71] }),
-        frameRate: 6,
-        repeat: -1
-      });
+    this.anims.create({ key: "gabi-idle", frames: [{ key: "gabi-idle-0" }], frameRate: 1 });
+    this.anims.create({
+      key: "gabi-walk",
+      frames: [0, 1, 2, 3, 4, 5].map((frame) => ({ key: `gabi-walk-${frame}` })),
+      frameRate: 10,
+      repeat: -1
+    });
+    this.anims.create({
+      key: "gabi-jump",
+      frames: [0, 1, 2].map((frame) => ({ key: `gabi-jump-${frame}` })),
+      frameRate: 7,
+      repeat: -1
+    });
+    this.anims.create({
+      key: "gabi-hurt",
+      frames: [0, 1, 2].map((frame) => ({ key: `gabi-hurt-${frame}` })),
+      frameRate: 7,
+      repeat: -1
     });
   }
 
@@ -301,18 +315,13 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-base", 1);
+    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-idle-0");
     this.player.setCollideWorldBounds(true);
-    this.player.body.setSize(18, 42).setOffset(7, 18);
+    this.player.body.setSize(24, 36).setOffset(12, 10);
     this.player.setDragX(1200);
     this.player.setMaxVelocity(260, 620);
     this.player.setScale(GABI_SCALE);
     this.player.setDepth(4);
-    this.gabiLayers = [
-      this.player,
-      this.add.sprite(this.player.x, this.player.y, "gabi-outfit", 1).setScale(GABI_SCALE).setDepth(5),
-      this.add.sprite(this.player.x, this.player.y, "gabi-hair", 1).setScale(GABI_SCALE).setDepth(6)
-    ];
     this.setGabiAnimation("idle");
   }
 
@@ -354,7 +363,6 @@ class PlayScene extends Phaser.Scene {
 
     this.moveEnemies();
     this.updateAcorns(time);
-    this.syncGabiLayers();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -380,24 +388,14 @@ class PlayScene extends Phaser.Scene {
     this.updateGabiAnimation(left || right, onFloor);
   }
 
-  syncGabiLayers() {
-    if (!this.gabiLayers) return;
-    this.gabiLayers.forEach((part) => {
-      if (part === this.player) return;
-      part.setPosition(this.player.x, this.player.y);
-    });
-  }
-
   setGabiFlip(flipX) {
-    this.gabiLayers.forEach((part) => part.setFlipX(flipX));
+    this.player.setFlipX(flipX);
   }
 
   setGabiAnimation(name) {
-    if (this.currentGabiAnimation === name || !this.gabiLayers) return;
+    if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
-    ["base", "outfit", "hair"].forEach((layer, index) => {
-      this.gabiLayers[index].play(`gabi-${layer}-${name}`, true);
-    });
+    this.player.play(`gabi-${name}`, true);
   }
 
   updateGabiAnimation(isMoving, onFloor) {
