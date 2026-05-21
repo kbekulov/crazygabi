@@ -11,7 +11,7 @@ const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
 const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
-const ASSET_VERSION = "20260521-platform-strips";
+const ASSET_VERSION = "20260522-city-parallax";
 const LEVEL = [
   "........................................................................",
   ".................a........................a......................a......",
@@ -154,11 +154,7 @@ class PlayScene extends Phaser.Scene {
       frameWidth: PLATFORM_FRAME_WIDTH,
       frameHeight: PLATFORM_FRAME_HEIGHT
     });
-    this.load.image("para-sky", `./public/assets/paralax/parallax_forest_assets/00_sky_gradient.png?v=${ASSET_VERSION}`);
-    this.load.image("para-far", `./public/assets/paralax/parallax_forest_assets/01_far_forest_tileable.png?v=${ASSET_VERSION}`);
-    this.load.image("para-mid", `./public/assets/paralax/parallax_forest_assets/02_mid_forest_tileable.png?v=${ASSET_VERSION}`);
-    this.load.image("para-near", `./public/assets/paralax/parallax_forest_assets/03_near_forest_trunks.png?v=${ASSET_VERSION}`);
-    this.load.image("para-ground", `./public/assets/paralax/parallax_forest_assets/04_ground_foliage_tileable.png?v=${ASSET_VERSION}`);
+    this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
   }
 
   create() {
@@ -204,13 +200,14 @@ class PlayScene extends Phaser.Scene {
   }
 
   createBackdrop() {
-    const scale = PLAY_HEIGHT / 144;
+    const sourceHeight = 1314;
+    const scale = PLAY_HEIGHT / sourceHeight;
+    const tileWidth = Math.ceil(VIEW_WIDTH / scale);
     this.parallaxLayers = [
-      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-sky"), speed: 0.03 },
-      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-far"), speed: 0.12 },
-      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-mid"), speed: 0.24 },
-      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-near"), speed: 0.42 },
-      { sprite: this.add.tileSprite(0, 0, VIEW_WIDTH / scale, 144, "para-ground"), speed: 0.58 }
+      {
+        sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, "parallax-city"),
+        speed: 0.18
+      }
     ];
     this.parallaxLayers.forEach(({ sprite }, index) => {
       sprite.setOrigin(0, 0);
@@ -571,7 +568,7 @@ class PlayScene extends Phaser.Scene {
       state.running = false;
       this.setGabiAnimation("hurt");
       if (this.timerEvent) this.timerEvent.remove(false);
-      setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the bright forest.", "Restart");
+      setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the city.", "Restart");
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
@@ -587,7 +584,7 @@ class PlayScene extends Phaser.Scene {
     state.score += state.gems === state.totalGems ? 1000 : 350;
     state.score += state.timeLeft * 10;
     updateHud();
-    setMessage("Level Clear", "You found the key and escaped. The next step is more forest rooms, ladders, and secret bonuses.", "Play Again");
+    setMessage("Level Clear", "You found the key and escaped. The next step is more city routes, ladders, and secret bonuses.", "Play Again");
   }
 }
 
