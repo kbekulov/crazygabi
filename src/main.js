@@ -7,6 +7,7 @@ const TIME_LIMIT = 150;
 const GABI_FRAME_WIDTH = 32;
 const GABI_FRAME_HEIGHT = 64;
 const GABI_SCALE = 1.18;
+const ASSET_VERSION = "20260521-brown-gabi";
 const LEVEL = [
   "........................................................................",
   "..................a.................a..............a....................",
@@ -66,13 +67,13 @@ function updateHud() {
 function makeCharacter(scene, key, hair, dress) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
   g.fillStyle(0x000000, 0.22).fillEllipse(16, 30, 24, 5);
-  g.fillStyle(0xffdf43).fillCircle(20, 8, 8).fillCircle(25, 8, 5).fillRect(11, 4, 10, 7);
+  g.fillStyle(hair).fillCircle(18, 9, 8).fillCircle(23, 10, 6).fillRect(9, 5, 13, 18).fillRect(22, 13, 5, 12);
   g.fillStyle(0xffb28a).fillRoundedRect(10, 7, 12, 12, 5);
   g.fillStyle(0xb44cff).fillRoundedRect(8, 17, 14, 9, 3);
   g.fillStyle(dress).fillRect(9, 24, 8, 5).fillRect(18, 24, 7, 5);
   g.fillStyle(0x4331ff).fillRect(7, 28, 9, 3).fillRect(18, 28, 9, 3);
   g.fillStyle(0x17130a).fillRect(14, 11, 2, 2);
-  g.fillStyle(hair).fillRect(7, 17, 5, 5).fillRect(22, 17, 5, 5);
+  g.fillStyle(0x7a3f22).fillRect(7, 18, 5, 9).fillRect(22, 18, 5, 8);
   g.generateTexture(key, 32, 32);
   g.destroy();
 }
@@ -140,19 +141,19 @@ class PlayScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.spritesheet("gabi-base", "./public/assets/character/base_light.png", {
+    this.load.spritesheet("gabi-base", `./public/assets/character/base_light.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
-    this.load.spritesheet("gabi-hair", "./public/assets/character/hair_long_brown.png", {
+    this.load.spritesheet("gabi-hair", `./public/assets/character/hair_long_brown.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
-    this.load.spritesheet("gabi-outfit", "./public/assets/character/outfit_thief_blue.png", {
+    this.load.spritesheet("gabi-outfit", `./public/assets/character/outfit_thief_blue.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
-    this.load.spritesheet("forest-tiles", "./public/assets/environment/forest-tileset.png", {
+    this.load.spritesheet("forest-tiles", `./public/assets/environment/forest-tileset.png?v=${ASSET_VERSION}`, {
       frameWidth: TILE,
       frameHeight: TILE
     });
