@@ -1,6 +1,6 @@
 # Crazy Gabi
 
-A small original Phaser platformer prototype with a bright DOS-era woodland look: jump across chunky grass platforms, gather coins, dodge or stomp wandering troublemakers, avoid falling acorns, find the key, and reach the door.
+A small original Phaser platformer prototype with a moody woodland look: jump across stone platforms, gather coins, dodge or stomp wandering troublemakers, avoid falling acorns, find the key, and reach the door.
 
 ## Run
 

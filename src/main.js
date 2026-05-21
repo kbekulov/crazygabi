@@ -7,7 +7,11 @@ const TIME_LIMIT = 150;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
-const ASSET_VERSION = "20260521-238px-gabi";
+const PLATFORM_FRAME_WIDTH = 238;
+const PLATFORM_FRAME_HEIGHT = 238;
+const PLATFORM_SCALE = 0.28;
+const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
+const ASSET_VERSION = "20260521-platform-strips";
 const LEVEL = [
   "........................................................................",
   ".................a........................a......................a......",
@@ -142,6 +146,14 @@ class PlayScene extends Phaser.Scene {
       frameWidth: TILE,
       frameHeight: TILE
     });
+    this.load.spritesheet("platform-strip", `./public/assets/environment/platform.png?v=${ASSET_VERSION}`, {
+      frameWidth: PLATFORM_FRAME_WIDTH,
+      frameHeight: PLATFORM_FRAME_HEIGHT
+    });
+    this.load.spritesheet("platform-fence", `./public/assets/environment/platform_fence.png?v=${ASSET_VERSION}`, {
+      frameWidth: PLATFORM_FRAME_WIDTH,
+      frameHeight: PLATFORM_FRAME_HEIGHT
+    });
     this.load.image("para-sky", `./public/assets/paralax/parallax_forest_assets/00_sky_gradient.png?v=${ASSET_VERSION}`);
     this.load.image("para-far", `./public/assets/paralax/parallax_forest_assets/01_far_forest_tileable.png?v=${ASSET_VERSION}`);
     this.load.image("para-mid", `./public/assets/paralax/parallax_forest_assets/02_mid_forest_tileable.png?v=${ASSET_VERSION}`);
@@ -158,6 +170,7 @@ class PlayScene extends Phaser.Scene {
 
     this.createBackdrop();
     this.platforms = this.physics.add.staticGroup();
+    this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
@@ -240,7 +253,10 @@ class PlayScene extends Phaser.Scene {
       [...row].forEach((cell, columnIndex) => {
         const x = columnIndex * TILE + TILE / 2;
         const y = rowIndex * TILE + TILE / 2;
-        if (cell === "#") this.platforms.create(x, y, "forest-tiles", 0);
+        if (cell === "#") {
+          const block = this.platforms.create(x, y, "tile-ground");
+          block.setVisible(false);
+        }
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "gem");
           gem.setCircle(10, 6, 6);
@@ -287,6 +303,48 @@ class PlayScene extends Phaser.Scene {
         if (cell === "p") this.spawnPoint = { x, y };
       });
     });
+    this.createPlatformVisuals();
+  }
+
+  createPlatformVisuals() {
+    LEVEL.forEach((row, rowIndex) => {
+      let columnIndex = 0;
+      while (columnIndex < row.length) {
+        if (row[columnIndex] !== "#") {
+          columnIndex += 1;
+          continue;
+        }
+
+        const start = columnIndex;
+        while (columnIndex < row.length && row[columnIndex] === "#") columnIndex += 1;
+        this.addPlatformRun(start, columnIndex - start, rowIndex);
+      }
+    });
+  }
+
+  addPlatformRun(startColumn, length, rowIndex) {
+    const worldStart = startColumn * TILE;
+    const worldWidth = length * TILE;
+    const topY = rowIndex * TILE;
+    const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
+
+    for (let index = 0; index < segments; index += 1) {
+      const x = worldStart + index * PLATFORM_SEGMENT_WIDTH + PLATFORM_SEGMENT_WIDTH / 2;
+      const platformFrame = Phaser.Math.Between(0, 2);
+      const platform = this.add.image(x, topY + 22, "platform-strip", platformFrame);
+      platform.setScale(PLATFORM_SCALE);
+      platform.setDepth(2);
+      this.platformVisuals.add(platform);
+
+      if (Phaser.Math.Between(0, 100) < 68) {
+        const fenceRoll = Phaser.Math.Between(0, 100);
+        const fenceFrame = fenceRoll < 6 ? 2 : Phaser.Math.Between(0, 1);
+        const fence = this.add.image(x, topY - 28, "platform-fence", fenceFrame);
+        fence.setScale(PLATFORM_SCALE);
+        fence.setDepth(Phaser.Math.Between(0, 1) ? 3 : 7);
+        this.platformVisuals.add(fence);
+      }
+    }
   }
 
   createPlayer() {
