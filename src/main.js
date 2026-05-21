@@ -11,7 +11,17 @@ const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
 const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
-const ASSET_VERSION = "20260522-city-parallax";
+const ROBOT_FRAME_WIDTH = 238;
+const ROBOT_FRAME_HEIGHT = 238;
+const ROBOT_SCALE = 0.22;
+const ENEMY_NAMES = [
+  "PEP LVL 2",
+  "ECDD Manual Case Handling",
+  "GSI BI First Attempt",
+  "PEP LVL 1",
+  "GCR Upload from Email to Pharos"
+];
+const ASSET_VERSION = "20260522-robot-enemies";
 const LEVEL = [
   "........................................................................",
   ".................a........................a......................a......",
@@ -154,6 +164,10 @@ class PlayScene extends Phaser.Scene {
       frameWidth: PLATFORM_FRAME_WIDTH,
       frameHeight: PLATFORM_FRAME_HEIGHT
     });
+    this.load.spritesheet("robot", `./public/assets/character/robot.png?v=${ASSET_VERSION}`, {
+      frameWidth: ROBOT_FRAME_WIDTH,
+      frameHeight: ROBOT_FRAME_HEIGHT
+    });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
   }
 
@@ -174,6 +188,8 @@ class PlayScene extends Phaser.Scene {
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.enemyDirection = new Map();
+    this.enemyLabels = new Map();
+    this.enemyNames = [...ENEMY_NAMES];
 
     state.totalGems = 0;
     this.createAnimations();
@@ -243,6 +259,12 @@ class PlayScene extends Phaser.Scene {
       frameRate: 6,
       repeat: -1
     });
+    this.anims.create({
+      key: "robot-move",
+      frames: this.anims.generateFrameNumbers("robot", { frames: [0, 1, 2] }),
+      frameRate: 8,
+      repeat: -1
+    });
   }
 
   buildLevel() {
@@ -266,11 +288,15 @@ class PlayScene extends Phaser.Scene {
           this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
-          const enemy = this.enemies.create(x, y, "mischief");
+          const enemy = this.enemies.create(x, y, "robot", 0);
           enemy.setBounce(0);
           enemy.setCollideWorldBounds(true);
-          enemy.body.setSize(24, 22).setOffset(4, 8);
+          enemy.setScale(ROBOT_SCALE);
+          enemy.setDepth(5);
+          enemy.body.setSize(112, 110).setOffset(58, 82);
+          enemy.play("robot-move");
           this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
+          this.attachEnemyLabel(enemy);
         }
         if (cell === "a") {
           const acorn = this.acorns.create(x, y, "acorn");
@@ -394,6 +420,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.moveEnemies();
+    this.updateEnemyLabels();
     this.updateAcorns(time);
     this.updateParallax();
     if (!state.running || state.won) return;
@@ -465,6 +492,32 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  attachEnemyLabel(enemy) {
+    const name = this.enemyNames.shift() || "GABI OPS BOT";
+    const label = this.add.text(enemy.x, enemy.y - 38, name, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "8px",
+      color: "#fff6b0",
+      backgroundColor: "rgba(0, 0, 0, 0.72)",
+      padding: { left: 4, right: 4, top: 2, bottom: 2 },
+      align: "center",
+      wordWrap: { width: 112, useAdvancedWrap: true }
+    });
+    label.setOrigin(0.5, 1);
+    label.setDepth(9);
+    this.enemyLabels.set(enemy, label);
+  }
+
+  updateEnemyLabels() {
+    this.enemyLabels.forEach((label, enemy) => {
+      if (!enemy.active) {
+        label.setVisible(false);
+        return;
+      }
+      label.setPosition(enemy.x, enemy.y - 34);
+    });
+  }
+
   updateAcorns(time) {
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
@@ -533,6 +586,8 @@ class PlayScene extends Phaser.Scene {
     if (!state.running) return;
     if (player.body.velocity.y > 120 && player.y < enemy.y - 5) {
       enemy.disableBody(true, true);
+      const label = this.enemyLabels.get(enemy);
+      if (label) label.setVisible(false);
       player.setVelocityY(-330);
       state.score += 250;
       updateHud();
