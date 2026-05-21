@@ -1,6 +1,9 @@
 const TILE = 32;
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
+const HUD_HEIGHT = 86;
+const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
+const TIME_LIMIT = 150;
 const LEVEL = [
   "........................................................................",
   "..................a.................a..............a....................",
@@ -26,6 +29,7 @@ const state = {
   gems: 0,
   totalGems: 0,
   lives: 3,
+  timeLeft: TIME_LIMIT,
   hasKey: false,
   running: false,
   won: false
@@ -35,6 +39,7 @@ const hud = {
   score: document.querySelector("#score"),
   gems: document.querySelector("#gems"),
   lives: document.querySelector("#lives"),
+  time: document.querySelector("#time"),
   key: document.querySelector("#key"),
   message: document.querySelector("#message"),
   startButton: document.querySelector("#start-button")
@@ -48,21 +53,23 @@ function setMessage(title, copy, button = "Start") {
 }
 
 function updateHud() {
-  hud.score.textContent = String(state.score).padStart(4, "0");
-  hud.gems.textContent = `${state.gems}/${state.totalGems}`;
-  hud.lives.textContent = String(state.lives);
-  hud.key.textContent = state.hasKey ? "Yes" : "No";
+  hud.score.textContent = String(state.score).padStart(6, "0");
+  hud.gems.textContent = `x${String(state.gems).padStart(2, "0")}`;
+  hud.lives.textContent = `x${state.lives}`;
+  hud.time.textContent = String(state.timeLeft).padStart(3, "0");
+  hud.key.textContent = state.hasKey ? "x01" : "x00";
 }
 
 function makeCharacter(scene, key, hair, dress) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
-  g.fillStyle(0x000000, 0.18).fillEllipse(16, 30, 24, 6);
-  g.fillStyle(dress).fillRoundedRect(9, 12, 14, 16, 4);
-  g.fillStyle(0xffd6a3).fillRoundedRect(10, 5, 12, 11, 5);
-  g.fillStyle(hair).fillCircle(16, 7, 7).fillRect(9, 7, 14, 5);
-  g.fillStyle(0x17130a).fillRect(13, 9, 2, 2).fillRect(19, 9, 2, 2);
-  g.fillStyle(0xffe07a).fillRect(8, 14, 4, 6).fillRect(21, 14, 4, 6);
-  g.fillStyle(0x40251b).fillRect(10, 27, 5, 4).fillRect(19, 27, 5, 4);
+  g.fillStyle(0x000000, 0.22).fillEllipse(16, 30, 24, 5);
+  g.fillStyle(0xffdf43).fillCircle(20, 8, 8).fillCircle(25, 8, 5).fillRect(11, 4, 10, 7);
+  g.fillStyle(0xffb28a).fillRoundedRect(10, 7, 12, 12, 5);
+  g.fillStyle(0xb44cff).fillRoundedRect(8, 17, 14, 9, 3);
+  g.fillStyle(dress).fillRect(9, 24, 8, 5).fillRect(18, 24, 7, 5);
+  g.fillStyle(0x4331ff).fillRect(7, 28, 9, 3).fillRect(18, 28, 9, 3);
+  g.fillStyle(0x17130a).fillRect(14, 11, 2, 2);
+  g.fillStyle(hair).fillRect(7, 17, 5, 5).fillRect(22, 17, 5, 5);
   g.generateTexture(key, 32, 32);
   g.destroy();
 }
@@ -70,20 +77,23 @@ function makeCharacter(scene, key, hair, dress) {
 function makeTextures(scene) {
   const g = scene.make.graphics({ x: 0, y: 0, add: false });
 
-  g.fillStyle(0x4e5e50).fillRect(0, 0, TILE, TILE);
-  g.fillStyle(0x8b734b).fillRect(0, 5, TILE, TILE - 5);
-  g.fillStyle(0xb6975c).fillRect(0, 0, TILE, 7);
-  g.lineStyle(2, 0x3d3328, 1).strokeRect(0, 0, TILE, TILE);
+  g.fillStyle(0x13d94a).fillRect(0, 0, TILE, 7);
+  g.fillStyle(0x6b2b0d).fillRect(0, 7, TILE, TILE - 7);
+  g.fillStyle(0x3d1708).fillRect(0, 18, TILE, 4).fillRect(0, 28, TILE, 4);
+  g.fillStyle(0xa34d10).fillRect(4, 10, 3, 4).fillRect(15, 22, 3, 4).fillRect(25, 13, 3, 4);
+  g.fillStyle(0x6fff61).fillRect(1, 0, 5, 3).fillRect(12, 0, 7, 3).fillRect(25, 0, 5, 3);
+  g.fillStyle(0x00a83b).fillRect(2, 6, 2, 5).fillRect(10, 5, 2, 6).fillRect(21, 6, 2, 5).fillRect(29, 5, 2, 6);
   g.generateTexture("tile-ground", TILE, TILE);
   g.clear();
 
-  g.fillStyle(0x72d6c9).fillTriangle(16, 2, 29, 17, 16, 31).fillTriangle(16, 2, 3, 17, 16, 31);
-  g.fillStyle(0xe9fff6, 0.82).fillTriangle(16, 4, 23, 16, 16, 29);
+  g.fillStyle(0xffc800).fillEllipse(16, 16, 17, 27);
+  g.fillStyle(0xfff34a).fillEllipse(18, 13, 8, 20);
+  g.lineStyle(3, 0xb06a00, 1).strokeEllipse(16, 16, 17, 27);
   g.generateTexture("gem", 32, 32);
   g.clear();
 
-  g.fillStyle(0xf9d36c).fillRect(7, 14, 14, 6).fillCircle(8, 17, 6);
-  g.fillStyle(0x4f3320).fillCircle(8, 17, 2).fillRect(19, 18, 8, 3).fillRect(24, 20, 3, 5);
+  g.fillStyle(0xffdf2b).fillRect(7, 14, 16, 5).fillCircle(8, 16, 6);
+  g.fillStyle(0x9b5b00).fillCircle(8, 16, 2).fillRect(20, 18, 9, 3).fillRect(25, 20, 3, 5);
   g.generateTexture("key", 32, 32);
   g.clear();
 
@@ -93,11 +103,13 @@ function makeTextures(scene) {
   g.generateTexture("door", 32, 32);
   g.clear();
 
-  g.fillStyle(0x20171a).fillEllipse(16, 21, 26, 16);
-  g.fillStyle(0xb94337).fillEllipse(16, 15, 22, 17);
-  g.fillStyle(0xffffff).fillCircle(12, 12, 3).fillCircle(20, 12, 3);
-  g.fillStyle(0x181818).fillCircle(12, 12, 1).fillCircle(20, 12, 1);
-  g.fillStyle(0xf9d36c).fillRect(6, 24, 7, 4).fillRect(19, 24, 7, 4);
+  g.fillStyle(0x000000, 0.2).fillEllipse(16, 28, 24, 5);
+  g.fillStyle(0xff5d18).fillEllipse(16, 18, 20, 18);
+  g.fillStyle(0xffff29).fillEllipse(12, 17, 14, 18);
+  g.fillStyle(0xffffff).fillCircle(20, 10, 4);
+  g.fillStyle(0x111111).fillCircle(21, 10, 2);
+  g.fillStyle(0xfff04a).fillTriangle(23, 12, 31, 15, 23, 18);
+  g.fillStyle(0xffd51a).fillRect(9, 26, 7, 4).fillRect(18, 26, 7, 4);
   g.generateTexture("mischief", 32, 32);
   g.clear();
 
@@ -115,7 +127,7 @@ function makeTextures(scene) {
   g.generateTexture("crate", 64, 64);
   g.clear();
 
-  makeCharacter(scene, "gabi", 0x7d3c35, 0xf27869);
+  makeCharacter(scene, "gabi", 0xffdf43, 0x10e050);
   g.destroy();
 }
 
@@ -149,6 +161,7 @@ class PlayScene extends Phaser.Scene {
     this.setupPhysics();
 
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
+    this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
     this.physics.world.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
@@ -156,6 +169,7 @@ class PlayScene extends Phaser.Scene {
     state.score = 0;
     state.gems = 0;
     state.lives = 3;
+    state.timeLeft = TIME_LIMIT;
     state.hasKey = false;
     state.running = false;
     state.won = false;
@@ -164,15 +178,24 @@ class PlayScene extends Phaser.Scene {
 
   createBackdrop() {
     const sky = this.add.graphics();
-    sky.fillGradientStyle(0x1b2431, 0x1b2431, 0x364553, 0x26354a, 1);
-    sky.fillRect(0, 0, this.levelWidth, this.levelHeight);
+    sky.fillStyle(0x00d7d7).fillRect(0, 0, this.levelWidth, PLAY_HEIGHT);
+    sky.fillStyle(0x39e0c4, 0.6).fillRect(0, PLAY_HEIGHT - 160, this.levelWidth, 44);
 
-    for (let i = 0; i < 34; i += 1) {
-      const x = i * 130;
-      const y = 120 + Math.sin(i * 0.9) * 28;
-      sky.fillStyle(i % 2 ? 0x2c655d : 0x3a705a, 0.38);
-      sky.fillTriangle(x - 80, this.levelHeight, x + 55, y, x + 210, this.levelHeight);
+    for (let i = 0; i < 46; i += 1) {
+      const x = i * 88 - 18;
+      const trunkWidth = i % 3 === 0 ? 48 : 36;
+      sky.fillStyle(i % 2 ? 0x8a3f10 : 0x6b2b0d, 1).fillRect(x, 0, trunkWidth, PLAY_HEIGHT);
+      sky.fillStyle(0xb66a14, 1).fillRect(x + 7, 0, 8, PLAY_HEIGHT);
+      sky.fillStyle(0x3c1507, 0.9).fillRect(x + trunkWidth - 8, 0, 5, PLAY_HEIGHT);
+      for (let y = 18; y < PLAY_HEIGHT; y += 38) {
+        sky.fillStyle(0x451805, 0.9).fillRect(x + 18, y + (i % 2) * 7, 6, 10);
+        sky.fillStyle(0xd78b20, 0.5).fillRect(x + 4, y + 16, 3, 16);
+      }
+      sky.fillStyle(0x14bd45, 1).fillRect(x - 8, PLAY_HEIGHT - 32, trunkWidth + 16, 7);
+      sky.fillStyle(0x62ff57, 1).fillRect(x - 6, PLAY_HEIGHT - 34, trunkWidth + 8, 3);
     }
+
+    sky.fillStyle(0x161616, 0.12).fillRect(0, PLAY_HEIGHT - 36, this.levelWidth, 36);
   }
 
   buildLevel() {
@@ -259,6 +282,7 @@ class PlayScene extends Phaser.Scene {
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setVelocity(0, 0);
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
+    this.startTimer();
   }
 
   update(time = 0) {
@@ -330,6 +354,20 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  startTimer() {
+    if (this.timerEvent) this.timerEvent.remove(false);
+    this.timerEvent = this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        if (!state.running || state.won) return;
+        state.timeLeft = Math.max(0, state.timeLeft - 1);
+        updateHud();
+        if (state.timeLeft <= 0) this.loseLife();
+      }
+    });
+  }
+
   collectGem(_player, gem) {
     gem.disableBody(true, true);
     state.gems += 1;
@@ -382,9 +420,11 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
       state.running = false;
-      setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the gem workshop.", "Restart");
+      if (this.timerEvent) this.timerEvent.remove(false);
+      setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the bright forest.", "Restart");
       return;
     }
+    state.timeLeft = Math.max(45, state.timeLeft);
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setVelocity(0, 0);
   }
@@ -393,9 +433,11 @@ class PlayScene extends Phaser.Scene {
     if (!state.running || !state.hasKey) return;
     state.won = true;
     state.running = false;
+    if (this.timerEvent) this.timerEvent.remove(false);
     state.score += state.gems === state.totalGems ? 1000 : 350;
+    state.score += state.timeLeft * 10;
     updateHud();
-    setMessage("Level Clear", "You found the key and escaped. The next step is more rooms, ladders, toys, and secret bonuses.", "Play Again");
+    setMessage("Level Clear", "You found the key and escaped. The next step is more forest rooms, ladders, and secret bonuses.", "Play Again");
   }
 }
 
