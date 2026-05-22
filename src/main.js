@@ -594,8 +594,8 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     state.running = true;
     hud.message.hidden = true;
+    this.resetPlayerMotion();
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
-    this.player.setVelocity(0, 0);
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
@@ -671,6 +671,16 @@ class PlayScene extends Phaser.Scene {
     } else {
       this.setGabiAnimation("idle");
     }
+  }
+
+  resetPlayerMotion({ freeze = false } = {}) {
+    if (!this.player?.body) return;
+    this.player.body.moves = !freeze;
+    this.player.body.setAllowGravity(!freeze);
+    this.player.body.stop();
+    this.player.setAcceleration(0, 0);
+    this.player.setVelocity(0, 0);
+    this.player.setAngularVelocity(0);
   }
 
   moveEnemies() {
@@ -899,20 +909,23 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
       state.running = false;
+      this.resetPlayerMotion({ freeze: true });
       this.setGabiAnimation("hurt");
       if (this.timerEvent) this.timerEvent.remove(false);
       setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the city.", "Restart");
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
+    this.resetPlayerMotion();
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
-    this.player.setVelocity(0, 0);
   }
 
   enterDoor() {
     if (!state.running || !state.hasKey) return;
     state.won = true;
     state.running = false;
+    this.resetPlayerMotion({ freeze: true });
+    this.setGabiAnimation("idle");
     if (this.timerEvent) this.timerEvent.remove(false);
     state.score += state.gems === state.totalGems ? 1000 : 350;
     state.score += state.timeLeft * 10;
