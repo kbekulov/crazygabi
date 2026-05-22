@@ -3,7 +3,7 @@ const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const HUD_HEIGHT = 86;
 const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
-const TIME_LIMIT = 150;
+const TIME_LIMIT = 220;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
@@ -11,6 +11,9 @@ const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
 const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
+const ITEM_SCALE = 0.16;
+const DOOR_SCALE = 0.34;
+const ACORN_SCALE = 0.18;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
@@ -21,26 +24,68 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-robot-enemies";
-const LEVEL = [
-  "........................................................................",
-  ".................a........................a......................a......",
-  "............................................................####....k...",
-  "........................................................................",
-  ".............................................gg.........................",
-  "........................................############....................",
-  "........................................................................",
-  ".......................gg.................................m.............",
-  "...................#########......................############..........",
-  "........................................................................",
-  "....p..j..gg...................m..............................d.........",
-  "###########.................############..................###########...",
-  "........................................................................",
-  ".................................gg.............a.......................",
-  ".........................################...............................",
-  "........................................................................",
-  "########################...#############################################"
-];
+const ASSET_VERSION = "20260522-gameplay-expansion";
+const LEVEL_WIDTH_TILES = 128;
+const LEVEL_HEIGHT_TILES = 17;
+const LEVEL = createLevel();
+
+function createLevel() {
+  const rows = Array.from({ length: LEVEL_HEIGHT_TILES }, () => Array(LEVEL_WIDTH_TILES).fill("."));
+  const put = (row, column, value) => {
+    if (rows[row] && column >= 0 && column < LEVEL_WIDTH_TILES) rows[row][column] = value;
+  };
+  const run = (row, start, length, value = "#") => {
+    for (let index = 0; index < length; index += 1) put(row, start + index, value);
+  };
+
+  run(16, 0, 22);
+  run(16, 28, 100);
+  run(13, 0, 18);
+  run(13, 27, 15);
+  run(13, 52, 20);
+  run(13, 84, 17);
+  run(13, 112, 15);
+  run(10, 2, 13);
+  run(10, 25, 14, "=");
+  run(10, 48, 15);
+  run(10, 73, 13, "=");
+  run(10, 101, 18);
+  run(7, 18, 12);
+  run(7, 39, 13);
+  run(7, 62, 13, "=");
+  run(7, 88, 14);
+  run(4, 54, 14);
+  run(4, 78, 11, "=");
+  run(4, 106, 12);
+  run(2, 116, 5);
+
+  [
+    [12, 4, "p"],
+    [12, 8, "j"],
+    [12, 12, "g"],
+    [12, 14, "g"],
+    [9, 31, "m"],
+    [9, 56, "m"],
+    [9, 81, "g"],
+    [9, 83, "g"],
+    [6, 24, "g"],
+    [6, 26, "g"],
+    [6, 47, "m"],
+    [6, 94, "m"],
+    [3, 62, "g"],
+    [3, 64, "g"],
+    [3, 84, "m"],
+    [1, 18, "a"],
+    [1, 43, "a"],
+    [1, 70, "a"],
+    [1, 97, "a"],
+    [1, 111, "a"],
+    [1, 120, "k"],
+    [9, 116, "d"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
 
 const state = {
   score: 0,
@@ -152,6 +197,10 @@ class PlayScene extends Phaser.Scene {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
+    this.load.spritesheet("gabi-wings-sheet", `./public/assets/character/main_char_sprite_with_double_jump.png?v=${ASSET_VERSION}`, {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
     this.load.spritesheet("forest-tiles", `./public/assets/environment/forest-tileset.png?v=${ASSET_VERSION}`, {
       frameWidth: TILE,
       frameHeight: TILE
@@ -169,6 +218,12 @@ class PlayScene extends Phaser.Scene {
       frameHeight: ROBOT_FRAME_HEIGHT
     });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
+    this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
+    this.load.image("jump-item", `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`);
+    this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
+    this.load.image("exit-door", `./public/assets/environment/exit_door.png?v=${ASSET_VERSION}`);
+    this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
+    this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
   }
 
   create() {
@@ -180,6 +235,8 @@ class PlayScene extends Phaser.Scene {
 
     this.createBackdrop();
     this.platforms = this.physics.add.staticGroup();
+    this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.movingPlatformRuns = [];
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -254,6 +311,12 @@ class PlayScene extends Phaser.Scene {
       repeat: -1
     });
     this.anims.create({
+      key: "gabi-wing-jump",
+      frames: this.anims.generateFrameNumbers("gabi-wings-sheet", { frames: [2, 3] }),
+      frameRate: 6,
+      repeat: -1
+    });
+    this.anims.create({
       key: "gabi-hurt",
       frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
       frameRate: 6,
@@ -277,14 +340,16 @@ class PlayScene extends Phaser.Scene {
           block.setVisible(false);
         }
         if (cell === "g" || cell === "c") {
-          const gem = this.gems.create(x, y, "gem");
-          gem.setCircle(10, 6, 6);
+          const gem = this.gems.create(x, y, "coin");
+          gem.setScale(ITEM_SCALE);
+          gem.setCircle(58, 61, 58);
           state.totalGems += 1;
           this.tweens.add({ targets: gem, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "j") {
-          const doubleJump = this.doubleJumps.create(x, y, "double-jump");
-          doubleJump.setCircle(12, 4, 4);
+          const doubleJump = this.doubleJumps.create(x, y, "jump-item");
+          doubleJump.setScale(ITEM_SCALE);
+          doubleJump.setCircle(60, 59, 60);
           this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
@@ -299,34 +364,33 @@ class PlayScene extends Phaser.Scene {
           this.attachEnemyLabel(enemy);
         }
         if (cell === "a") {
-          const acorn = this.acorns.create(x, y, "acorn");
+          const acorn = this.acorns.create(x, -80, "falling-acorn");
+          acorn.setScale(ACORN_SCALE);
           acorn.setDepth(1);
-          acorn.setCircle(10, 6, 8);
+          acorn.setCircle(70, 47, 52);
           acorn.body.allowGravity = false;
-          acorn.body.immovable = true;
+          acorn.body.immovable = false;
           acorn.setData("homeX", x);
-          acorn.setData("homeY", y);
-          acorn.setData("armed", true);
-          acorn.setData("nextDrop", 0);
-          this.tweens.add({
-            targets: acorn,
-            angle: { from: -4, to: 4 },
-            duration: 700 + columnIndex * 12,
-            yoyo: true,
-            repeat: -1,
-            ease: "Sine.inOut"
-          });
+          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(400, 2400));
+          acorn.setData("pace", Phaser.Math.Between(150, 245));
+          acorn.setVelocity(0, 0);
         }
         if (cell === "k") {
-          const key = this.keys.create(x, y, "key");
-          key.setCircle(12, 4, 5);
+          const key = this.keys.create(x, y, "door-key");
+          key.setScale(ITEM_SCALE);
+          key.setCircle(58, 59, 59);
           this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
-        if (cell === "d") this.doors.create(x, y, "door");
+        if (cell === "d") {
+          const door = this.doors.create(x, y - 16, "exit-door");
+          door.setScale(DOOR_SCALE);
+          door.refreshBody();
+        }
         if (cell === "p") this.spawnPoint = { x, y };
       });
     });
     this.createPlatformVisuals();
+    this.createMovingPlatforms();
   }
 
   createPlatformVisuals() {
@@ -341,6 +405,22 @@ class PlayScene extends Phaser.Scene {
         const start = columnIndex;
         while (columnIndex < row.length && row[columnIndex] === "#") columnIndex += 1;
         this.addPlatformRun(start, columnIndex - start, rowIndex);
+      }
+    });
+  }
+
+  createMovingPlatforms() {
+    LEVEL.forEach((row, rowIndex) => {
+      let columnIndex = 0;
+      while (columnIndex < row.length) {
+        if (row[columnIndex] !== "=") {
+          columnIndex += 1;
+          continue;
+        }
+
+        const start = columnIndex;
+        while (columnIndex < row.length && row[columnIndex] === "=") columnIndex += 1;
+        this.addMovingPlatformRun(start, columnIndex - start, rowIndex);
       }
     });
   }
@@ -370,6 +450,48 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
+  addMovingPlatformRun(startColumn, length, rowIndex) {
+    const worldStart = startColumn * TILE;
+    const worldWidth = length * TILE;
+    const centerX = worldStart + worldWidth / 2;
+    const centerY = rowIndex * TILE + TILE / 2;
+    const topY = rowIndex * TILE;
+    const body = this.movingPlatforms.create(centerX, centerY, "tile-ground");
+    body.setVisible(false);
+    body.body.allowGravity = false;
+    body.body.immovable = true;
+    body.body.setSize(worldWidth, TILE);
+    body.body.setOffset((TILE - worldWidth) / 2, 0);
+    body.setVelocityX(72);
+
+    const visuals = [];
+    const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
+    for (let index = 0; index < segments; index += 1) {
+      const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + PLATFORM_SEGMENT_WIDTH / 2;
+      const platformFrame = Phaser.Math.Between(0, 2);
+      const platform = this.add.image(centerX + offsetX, topY + 22, "platform-strip", platformFrame);
+      platform.setScale(PLATFORM_SCALE);
+      platform.setDepth(2);
+      visuals.push({ sprite: platform, offsetX, offsetY: 22 - TILE / 2 });
+
+      if (Phaser.Math.Between(0, 100) < 54) {
+        const fenceFrame = Phaser.Math.Between(0, 100) < 5 ? 2 : Phaser.Math.Between(0, 1);
+        const fence = this.add.image(centerX + offsetX, topY - 28, "platform-fence", fenceFrame);
+        fence.setScale(PLATFORM_SCALE);
+        fence.setDepth(Phaser.Math.Between(0, 1) ? 3 : 7);
+        visuals.push({ sprite: fence, offsetX, offsetY: -28 - TILE / 2 });
+      }
+    }
+
+    this.movingPlatformRuns.push({
+      body,
+      visuals,
+      minX: centerX - 130,
+      maxX: centerX + 130,
+      speed: Phaser.Math.Between(0, 1) ? 72 : -72
+    });
+  }
+
   createPlayer() {
     this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-sheet", 0);
     this.player.setCollideWorldBounds(true);
@@ -387,14 +509,16 @@ class PlayScene extends Phaser.Scene {
       left: Phaser.Input.Keyboard.KeyCodes.A,
       right: Phaser.Input.Keyboard.KeyCodes.D,
       jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
+      jumpW: Phaser.Input.Keyboard.KeyCodes.W,
       restart: Phaser.Input.Keyboard.KeyCodes.R
     });
   }
 
   setupPhysics() {
     this.physics.add.collider(this.player, this.platforms);
+    this.physics.add.collider(this.player, this.movingPlatforms);
     this.physics.add.collider(this.enemies, this.platforms);
-    this.physics.add.collider(this.acorns, this.platforms, this.resetAcorn, null, this);
+    this.physics.add.collider(this.enemies, this.movingPlatforms);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
@@ -409,7 +533,9 @@ class PlayScene extends Phaser.Scene {
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setVelocity(0, 0);
     this.airJumpsUsed = 0;
+    this.usingWingJump = false;
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
+    this.startMusic();
     this.startTimer();
   }
 
@@ -421,13 +547,17 @@ class PlayScene extends Phaser.Scene {
 
     this.moveEnemies();
     this.updateEnemyLabels();
+    this.updateMovingPlatforms();
     this.updateAcorns(time);
     this.updateParallax();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
     const right = this.cursors.right.isDown || this.keysInput.right.isDown;
-    const jump = Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.keysInput.jump);
+    const jump =
+      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
+      Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
+      Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW);
     const onFloor = this.player.body.blocked.down;
 
     if (left) {
@@ -440,12 +570,16 @@ class PlayScene extends Phaser.Scene {
       this.player.setAccelerationX(0);
     }
 
-    if (onFloor) this.airJumpsUsed = 0;
+    if (onFloor) {
+      this.airJumpsUsed = 0;
+      this.usingWingJump = false;
+    }
 
     if (jump && onFloor) {
       this.player.setVelocityY(-510);
     } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
       this.airJumpsUsed += 1;
+      this.usingWingJump = true;
       this.player.setVelocityY(-490);
       this.cameras.main.flash(80, 104, 220, 255, false);
     }
@@ -466,7 +600,7 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiAnimation(isMoving, onFloor) {
     if (!onFloor) {
-      this.setGabiAnimation("jump");
+      this.setGabiAnimation(this.usingWingJump ? "wing-jump" : "jump");
     } else if (isMoving) {
       this.setGabiAnimation("walk");
     } else {
@@ -489,6 +623,17 @@ class PlayScene extends Phaser.Scene {
       this.enemyDirection.set(enemy, direction);
       enemy.setVelocityX(direction * 72);
       enemy.setFlipX(direction < 0);
+    });
+  }
+
+  updateMovingPlatforms() {
+    this.movingPlatformRuns.forEach((platform) => {
+      if (platform.body.x <= platform.minX) platform.speed = Math.abs(platform.speed);
+      if (platform.body.x >= platform.maxX) platform.speed = -Math.abs(platform.speed);
+      platform.body.setVelocityX(platform.speed);
+      platform.visuals.forEach(({ sprite, offsetX, offsetY }) => {
+        sprite.setPosition(platform.body.x + offsetX, platform.body.y + offsetY);
+      });
     });
   }
 
@@ -521,18 +666,14 @@ class PlayScene extends Phaser.Scene {
   updateAcorns(time) {
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
-      if (!acorn.getData("armed") || time < acorn.getData("nextDrop")) return;
+      if (time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
+        acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 60);
+        acorn.setVelocity(0, acorn.getData("pace"));
+        acorn.setAngularVelocity(Phaser.Math.Between(-140, 140));
+      }
 
-      const horizontallyClose = Math.abs(this.player.x - acorn.x) < 170;
-      const playerBelow = this.player.y > acorn.y + 20;
-      const visibleAhead = acorn.x > this.cameras.main.scrollX - 48 && acorn.x < this.cameras.main.scrollX + VIEW_WIDTH + 48;
-
-      if (horizontallyClose && playerBelow && visibleAhead) {
-        acorn.setData("armed", false);
-        acorn.body.allowGravity = true;
-        acorn.body.immovable = false;
-        acorn.setVelocity(Phaser.Math.Between(-24, 24), 40);
-        acorn.setAngularVelocity(Phaser.Math.Between(-180, 180));
+      if (acorn.y > this.cameras.main.scrollY + PLAY_HEIGHT + 90) {
+        this.resetAcorn(acorn);
       }
     });
   }
@@ -557,6 +698,12 @@ class PlayScene extends Phaser.Scene {
         if (state.timeLeft <= 0) this.loseLife();
       }
     });
+  }
+
+  startMusic() {
+    if (this.bgm?.isPlaying) return;
+    this.bgm = this.sound.add("bgm", { loop: true, volume: 0.35 });
+    this.bgm.play();
   }
 
   collectGem(_player, gem) {
@@ -605,13 +752,13 @@ class PlayScene extends Phaser.Scene {
   resetAcorn(acorn) {
     if (!acorn || !acorn.active) return;
     acorn.body.allowGravity = false;
-    acorn.body.immovable = true;
+    acorn.body.immovable = false;
     acorn.setVelocity(0, 0);
     acorn.setAngularVelocity(0);
     acorn.setAngle(0);
-    acorn.setPosition(acorn.getData("homeX"), acorn.getData("homeY"));
-    acorn.setData("armed", true);
-    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(900, 1700));
+    acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 70);
+    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(700, 2600));
+    acorn.setData("pace", Phaser.Math.Between(150, 245));
   }
 
   loseLife() {
