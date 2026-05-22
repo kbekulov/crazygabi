@@ -17,7 +17,8 @@ const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
 const WATER_SCALE = 0.32;
-const WATER_OVERLAP = 0.1;
+const WATER_OVERLAP = 0.25;
+const WATER_SPEED = 6;
 const WATER_Y_OFFSET = 18;
 const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
@@ -35,7 +36,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-water-below";
+const ASSET_VERSION = "20260522-water-motion";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -324,13 +325,19 @@ class PlayScene extends Phaser.Scene {
     const step = renderedWidth * (1 - WATER_OVERLAP);
     const startX = -renderedWidth * WATER_OVERLAP * 0.5;
     const y = this.levelHeight + WATER_Y_OFFSET;
+    this.waterTiles = [];
 
     for (let x = startX; x < this.levelWidth + renderedWidth; x += step) {
       const water = this.add.image(x, y, "water-below");
       water.setOrigin(0, 1);
       water.setScale(WATER_SCALE);
       water.setDepth(WATER_DEPTH);
+      this.waterTiles.push(water);
     }
+
+    this.waterStep = step;
+    this.waterWrapDistance = this.waterTiles.length * step;
+    this.waterStartX = startX;
   }
 
   createStartingHouse() {
@@ -592,7 +599,7 @@ class PlayScene extends Phaser.Scene {
     this.startTimer();
   }
 
-  update(time = 0) {
+  update(time = 0, delta = 0) {
     if (Phaser.Input.Keyboard.JustDown(this.keysInput.restart)) {
       this.scene.restart();
       return;
@@ -603,6 +610,7 @@ class PlayScene extends Phaser.Scene {
     this.updateMovingPlatforms();
     this.updateAcorns(time);
     this.updateParallax();
+    this.updateWater(delta);
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -687,6 +695,17 @@ class PlayScene extends Phaser.Scene {
       platform.visuals.forEach(({ sprite, offsetX, offsetY }) => {
         sprite.setPosition(platform.body.x + offsetX, platform.body.y + offsetY);
       });
+    });
+  }
+
+  updateWater(delta = 0) {
+    if (!this.waterTiles?.length || !delta) return;
+    const movement = (WATER_SPEED * delta) / 1000;
+    this.waterTiles.forEach((water) => {
+      water.x -= movement;
+      if (water.x <= this.waterStartX - this.waterStep) {
+        water.x += this.waterWrapDistance;
+      }
     });
   }
 
