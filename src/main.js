@@ -24,7 +24,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-gradual-level";
+const ASSET_VERSION = "20260522-single-start";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -38,12 +38,10 @@ function createLevel() {
     for (let index = 0; index < length; index += 1) put(row, start + index, value);
   };
 
-  run(16, 0, 34);
-  run(16, 43, 37);
+  run(16, 0, 28);
+  run(16, 34, 46);
   run(16, 88, 26);
   run(16, 123, 25);
-  run(13, 0, 10);
-  run(13, 16, 7);
   run(13, 42, 15);
   run(13, 67, 11);
   run(13, 91, 19);
@@ -66,10 +64,10 @@ function createLevel() {
   run(2, 138, 6);
 
   [
-    [12, 4, "p"],
-    [12, 8, "j"],
-    [12, 17, "g"],
-    [12, 20, "g"],
+    [14, 4, "p"],
+    [15, 17, "g"],
+    [15, 20, "g"],
+    [15, 45, "j"],
     [12, 51, "g"],
     [12, 53, "g"],
     [12, 101, "m"],
@@ -77,8 +75,8 @@ function createLevel() {
     [9, 86, "g"],
     [9, 88, "g"],
     [9, 135, "g"],
-    [6, 21, "g"],
-    [6, 23, "g"],
+    [6, 54, "g"],
+    [6, 56, "g"],
     [6, 52, "m"],
     [6, 95, "m"],
     [3, 55, "g"],
