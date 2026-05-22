@@ -24,8 +24,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-gameplay-expansion";
-const LEVEL_WIDTH_TILES = 128;
+const ASSET_VERSION = "20260522-audio-challenge";
+const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
 
@@ -38,50 +38,70 @@ function createLevel() {
     for (let index = 0; index < length; index += 1) put(row, start + index, value);
   };
 
-  run(16, 0, 22);
-  run(16, 28, 100);
+  run(16, 0, 18);
+  run(16, 27, 19);
+  run(16, 52, 28);
+  run(16, 88, 26);
+  run(16, 123, 25);
   run(13, 0, 18);
-  run(13, 27, 15);
-  run(13, 52, 20);
-  run(13, 84, 17);
-  run(13, 112, 15);
+  run(13, 25, 9);
+  run(13, 42, 15);
+  run(13, 67, 11);
+  run(13, 91, 19);
+  run(13, 121, 14);
   run(10, 2, 13);
-  run(10, 30, 4, "=");
-  run(10, 48, 15);
-  run(10, 78, 4, "=");
-  run(10, 101, 18);
-  run(7, 18, 12);
-  run(7, 39, 13);
-  run(7, 66, 4, "=");
-  run(7, 88, 14);
-  run(4, 54, 14);
-  run(4, 82, 4, "=");
-  run(4, 106, 12);
-  run(2, 116, 5);
+  run(10, 22, 4, "=");
+  run(10, 35, 11);
+  run(10, 59, 4, "=");
+  run(10, 82, 13);
+  run(10, 113, 4, "=");
+  run(10, 131, 11);
+  run(7, 16, 9);
+  run(7, 34, 4, "=");
+  run(7, 47, 12);
+  run(7, 73, 4, "=");
+  run(7, 90, 11);
+  run(7, 120, 4, "=");
+  run(4, 50, 10);
+  run(4, 68, 4, "=");
+  run(4, 86, 9);
+  run(4, 112, 4, "=");
+  run(4, 128, 9);
+  run(2, 138, 6);
 
   [
     [12, 4, "p"],
     [12, 8, "j"],
     [12, 12, "g"],
     [12, 14, "g"],
-    [9, 31, "m"],
-    [9, 56, "m"],
-    [9, 81, "g"],
-    [9, 83, "g"],
-    [6, 24, "g"],
-    [6, 26, "g"],
-    [6, 47, "m"],
-    [6, 94, "m"],
-    [3, 62, "g"],
-    [3, 64, "g"],
-    [3, 84, "m"],
-    [1, 18, "a"],
-    [1, 43, "a"],
-    [1, 70, "a"],
-    [1, 97, "a"],
-    [1, 111, "a"],
-    [1, 120, "k"],
-    [9, 116, "d"]
+    [12, 28, "g"],
+    [12, 31, "m"],
+    [12, 51, "g"],
+    [12, 53, "g"],
+    [12, 101, "m"],
+    [9, 39, "m"],
+    [9, 86, "g"],
+    [9, 88, "g"],
+    [9, 135, "g"],
+    [6, 21, "g"],
+    [6, 23, "g"],
+    [6, 52, "m"],
+    [6, 95, "m"],
+    [3, 55, "g"],
+    [3, 57, "g"],
+    [3, 91, "g"],
+    [3, 93, "g"],
+    [1, 16, "a"],
+    [1, 29, "a"],
+    [1, 45, "a"],
+    [1, 61, "a"],
+    [1, 78, "a"],
+    [1, 96, "a"],
+    [1, 109, "a"],
+    [1, 121, "a"],
+    [1, 134, "a"],
+    [1, 142, "k"],
+    [9, 137, "d"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -254,6 +274,7 @@ class PlayScene extends Phaser.Scene {
     this.createPlayer();
     this.createInput();
     this.setupPhysics();
+    this.registerAudioLifecycle();
 
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
@@ -371,8 +392,8 @@ class PlayScene extends Phaser.Scene {
           acorn.body.allowGravity = false;
           acorn.body.immovable = false;
           acorn.setData("homeX", x);
-          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(400, 2400));
-          acorn.setData("pace", Phaser.Math.Between(150, 245));
+          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(300, 1800));
+          acorn.setData("pace", Phaser.Math.Between(185, 295));
           acorn.setVelocity(0, 0);
         }
         if (cell === "k") {
@@ -701,13 +722,63 @@ class PlayScene extends Phaser.Scene {
 
   startMusic() {
     if (this.bgm?.isPlaying) return;
+    this.resumeAudioContext();
     if (this.bgm) {
       this.bgm.play();
       return;
     }
     this.bgm = this.sound.add("bgm", { loop: true, volume: 0.35 });
-    this.bgm.on("complete", () => this.bgm?.play());
     this.bgm.play();
+  }
+
+  registerAudioLifecycle() {
+    if (this.audioLifecycleRegistered) return;
+    this.audioLifecycleRegistered = true;
+
+    this.handlePageHidden = () => {
+      this.wasMusicPlayingBeforeHidden = this.wasMusicPlayingBeforeHidden || Boolean(this.bgm?.isPlaying);
+      this.stopGameAudio();
+    };
+
+    this.handlePageVisible = () => {
+      if (!state.running || state.won || !this.wasMusicPlayingBeforeHidden) return;
+      this.resumeAudioContext();
+      this.startMusic();
+    };
+
+    this.handleVisibilityChange = () => {
+      if (document.hidden) {
+        this.handlePageHidden();
+      } else {
+        this.handlePageVisible();
+      }
+    };
+
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+    window.addEventListener("pagehide", this.handlePageHidden);
+    window.addEventListener("beforeunload", this.handlePageHidden);
+    window.addEventListener("unload", this.handlePageHidden);
+    window.addEventListener("blur", this.handlePageHidden);
+    window.addEventListener("focus", this.handlePageVisible);
+
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+      window.removeEventListener("pagehide", this.handlePageHidden);
+      window.removeEventListener("beforeunload", this.handlePageHidden);
+      window.removeEventListener("unload", this.handlePageHidden);
+      window.removeEventListener("blur", this.handlePageHidden);
+      window.removeEventListener("focus", this.handlePageVisible);
+      this.stopGameAudio();
+    });
+  }
+
+  stopGameAudio() {
+    if (this.bgm?.isPlaying) this.bgm.stop();
+    if (this.sound?.context?.state === "running") this.sound.context.suspend();
+  }
+
+  resumeAudioContext() {
+    if (this.sound?.context?.state === "suspended") this.sound.context.resume();
   }
 
   collectGem(_player, gem) {
@@ -761,8 +832,8 @@ class PlayScene extends Phaser.Scene {
     acorn.setAngularVelocity(0);
     acorn.setAngle(0);
     acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 70);
-    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(700, 2600));
-    acorn.setData("pace", Phaser.Math.Between(150, 245));
+    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(450, 1800));
+    acorn.setData("pace", Phaser.Math.Between(185, 295));
   }
 
   loseLife() {
