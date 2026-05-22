@@ -15,6 +15,10 @@ const PLATFORM_Y_OFFSET = 22;
 const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
+const WATER_DEPTH = -1;
+const WATER_SCALE = 0.32;
+const WATER_OVERLAP = 0.1;
+const WATER_Y_OFFSET = 18;
 const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
@@ -31,7 +35,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-starting-house-large";
+const ASSET_VERSION = "20260522-water-below";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -237,6 +241,7 @@ class PlayScene extends Phaser.Scene {
       frameHeight: ROBOT_FRAME_HEIGHT
     });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
+    this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
     this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
     this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
     this.load.image("jump-item", `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`);
@@ -254,6 +259,7 @@ class PlayScene extends Phaser.Scene {
     this.levelHeight = LEVEL.length * TILE;
 
     this.createBackdrop();
+    this.createWaterBelow();
     this.createStartingHouse();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -310,6 +316,21 @@ class PlayScene extends Phaser.Scene {
       sprite.setScrollFactor(0);
       sprite.setDepth(-10 + index);
     });
+  }
+
+  createWaterBelow() {
+    const source = this.textures.get("water-below").getSourceImage();
+    const renderedWidth = source.width * WATER_SCALE;
+    const step = renderedWidth * (1 - WATER_OVERLAP);
+    const startX = -renderedWidth * WATER_OVERLAP * 0.5;
+    const y = this.levelHeight + WATER_Y_OFFSET;
+
+    for (let x = startX; x < this.levelWidth + renderedWidth; x += step) {
+      const water = this.add.image(x, y, "water-below");
+      water.setOrigin(0, 1);
+      water.setScale(WATER_SCALE);
+      water.setDepth(WATER_DEPTH);
+    }
   }
 
   createStartingHouse() {
