@@ -11,6 +11,10 @@ const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
 const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
+const PLATFORM_Y_OFFSET = 22;
+const FENCE_Y_OFFSET = -52;
+const PLATFORM_DEPTH = 2;
+const FENCE_DEPTH = 1;
 const ITEM_SCALE = 0.32;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -24,7 +28,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-single-start";
+const ASSET_VERSION = "20260522-fence-depth";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -447,17 +451,17 @@ class PlayScene extends Phaser.Scene {
     for (let index = 0; index < segments; index += 1) {
       const x = worldStart + index * PLATFORM_SEGMENT_WIDTH + PLATFORM_SEGMENT_WIDTH / 2;
       const platformFrame = Phaser.Math.Between(0, 2);
-      const platform = this.add.image(x, topY + 22, "platform-strip", platformFrame);
+      const platform = this.add.image(x, topY + PLATFORM_Y_OFFSET, "platform-strip", platformFrame);
       platform.setScale(PLATFORM_SCALE);
-      platform.setDepth(2);
+      platform.setDepth(PLATFORM_DEPTH);
       this.platformVisuals.add(platform);
 
       if (Phaser.Math.Between(0, 100) < 68) {
         const fenceRoll = Phaser.Math.Between(0, 100);
         const fenceFrame = fenceRoll < 6 ? 2 : Phaser.Math.Between(0, 1);
-        const fence = this.add.image(x, topY - 28, "platform-fence", fenceFrame);
+        const fence = this.add.image(x, topY + FENCE_Y_OFFSET, "platform-fence", fenceFrame);
         fence.setScale(PLATFORM_SCALE);
-        fence.setDepth(Phaser.Math.Between(0, 1) ? 3 : 7);
+        fence.setDepth(FENCE_DEPTH);
         this.platformVisuals.add(fence);
       }
     }
@@ -482,17 +486,17 @@ class PlayScene extends Phaser.Scene {
     for (let index = 0; index < segments; index += 1) {
       const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + PLATFORM_SEGMENT_WIDTH / 2;
       const platformFrame = Phaser.Math.Between(0, 2);
-      const platform = this.add.image(centerX + offsetX, topY + 22, "platform-strip", platformFrame);
+      const platform = this.add.image(centerX + offsetX, topY + PLATFORM_Y_OFFSET, "platform-strip", platformFrame);
       platform.setScale(PLATFORM_SCALE);
-      platform.setDepth(2);
-      visuals.push({ sprite: platform, offsetX, offsetY: 22 - TILE / 2 });
+      platform.setDepth(PLATFORM_DEPTH);
+      visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
 
       if (Phaser.Math.Between(0, 100) < 54) {
         const fenceFrame = Phaser.Math.Between(0, 100) < 5 ? 2 : Phaser.Math.Between(0, 1);
-        const fence = this.add.image(centerX + offsetX, topY - 28, "platform-fence", fenceFrame);
+        const fence = this.add.image(centerX + offsetX, topY + FENCE_Y_OFFSET, "platform-fence", fenceFrame);
         fence.setScale(PLATFORM_SCALE);
-        fence.setDepth(Phaser.Math.Between(0, 1) ? 3 : 7);
-        visuals.push({ sprite: fence, offsetX, offsetY: -28 - TILE / 2 });
+        fence.setDepth(FENCE_DEPTH);
+        visuals.push({ sprite: fence, offsetX, offsetY: FENCE_Y_OFFSET - TILE / 2 });
       }
     }
 
