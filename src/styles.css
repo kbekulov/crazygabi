@@ -43,9 +43,9 @@ button:active {
 
 #game-wrap {
   position: relative;
-  width: min(90vw, 160vh);
+  width: min(100vw, 177.78vh);
   aspect-ratio: 16 / 9;
-  max-height: 90vh;
+  max-height: 100vh;
   image-rendering: pixelated;
   overflow: hidden;
   border: 0;
@@ -158,8 +158,8 @@ button:active {
   }
 
   #game-wrap {
-    width: 96vw;
-    max-height: 96vh;
+    width: min(100vw, 177.78vh);
+    max-height: 100vh;
   }
 
   #hud {
