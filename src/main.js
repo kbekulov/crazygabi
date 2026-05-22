@@ -26,7 +26,7 @@ const ENEMY_NAMES = [
 ];
 const ASSET_VERSION = "20260522-gameplay-expansion";
 const LEVEL_WIDTH_TILES = 128;
-const LEVEL_HEIGHT_TILES = 17;
+const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
 
 function createLevel() {
@@ -46,16 +46,16 @@ function createLevel() {
   run(13, 84, 17);
   run(13, 112, 15);
   run(10, 2, 13);
-  run(10, 25, 14, "=");
+  run(10, 30, 4, "=");
   run(10, 48, 15);
-  run(10, 73, 13, "=");
+  run(10, 78, 4, "=");
   run(10, 101, 18);
   run(7, 18, 12);
   run(7, 39, 13);
-  run(7, 62, 13, "=");
+  run(7, 66, 4, "=");
   run(7, 88, 14);
   run(4, 54, 14);
-  run(4, 78, 11, "=");
+  run(4, 82, 4, "=");
   run(4, 106, 12);
   run(2, 116, 5);
 
@@ -257,7 +257,7 @@ class PlayScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
-    this.physics.world.setBounds(0, 0, this.levelWidth, this.levelHeight);
+    this.physics.world.setBounds(0, 0, this.levelWidth, this.levelHeight + PLAY_HEIGHT);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
 
@@ -518,7 +518,6 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.movingPlatforms);
     this.physics.add.collider(this.enemies, this.platforms);
-    this.physics.add.collider(this.enemies, this.movingPlatforms);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
@@ -584,7 +583,7 @@ class PlayScene extends Phaser.Scene {
       this.cameras.main.flash(80, 104, 220, 255, false);
     }
 
-    if (this.player.y > this.levelHeight - 12) this.loseLife();
+    if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
   }
 
@@ -702,7 +701,12 @@ class PlayScene extends Phaser.Scene {
 
   startMusic() {
     if (this.bgm?.isPlaying) return;
+    if (this.bgm) {
+      this.bgm.play();
+      return;
+    }
     this.bgm = this.sound.add("bgm", { loop: true, volume: 0.35 });
+    this.bgm.on("complete", () => this.bgm?.play());
     this.bgm.play();
   }
 
