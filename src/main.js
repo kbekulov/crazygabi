@@ -36,7 +36,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-water-motion";
+const ASSET_VERSION = "20260522-top-boundary";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -286,7 +286,7 @@ class PlayScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
-    this.physics.world.setBounds(0, 0, this.levelWidth, this.levelHeight + PLAY_HEIGHT);
+    this.physics.world.setBounds(0, -PLAY_HEIGHT * 2, this.levelWidth, this.levelHeight + PLAY_HEIGHT * 3);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
 
