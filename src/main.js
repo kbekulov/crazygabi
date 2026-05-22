@@ -15,6 +15,7 @@ const PLATFORM_Y_OFFSET = 22;
 const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
+const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -28,7 +29,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-screen-fence";
+const ASSET_VERSION = "20260522-item-depth";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -359,6 +360,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "coin");
           gem.setScale(ITEM_SCALE);
+          gem.setDepth(ITEM_DEPTH);
           gem.setCircle(58, 61, 58);
           state.totalGems += 1;
           this.tweens.add({ targets: gem, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.inOut" });
@@ -366,6 +368,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "j") {
           const doubleJump = this.doubleJumps.create(x, y, "jump-item");
           doubleJump.setScale(ITEM_SCALE);
+          doubleJump.setDepth(ITEM_DEPTH);
           doubleJump.setCircle(60, 59, 60);
           this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
@@ -383,7 +386,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "a") {
           const acorn = this.acorns.create(x, -80, "falling-acorn");
           acorn.setScale(ACORN_SCALE);
-          acorn.setDepth(1);
+          acorn.setDepth(ITEM_DEPTH);
           acorn.setCircle(70, 47, 52);
           acorn.body.allowGravity = false;
           acorn.body.immovable = false;
@@ -395,12 +398,14 @@ class PlayScene extends Phaser.Scene {
         if (cell === "k") {
           const key = this.keys.create(x, y, "door-key");
           key.setScale(ITEM_SCALE);
+          key.setDepth(ITEM_DEPTH);
           key.setCircle(58, 59, 59);
           this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "d") {
           const door = this.doors.create(x, y - 16, "exit-door");
           door.setScale(DOOR_SCALE);
+          door.setDepth(ITEM_DEPTH);
           door.refreshBody();
         }
         if (cell === "p") this.spawnPoint = { x, y };
