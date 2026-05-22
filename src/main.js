@@ -16,7 +16,7 @@ const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const STARTING_HOUSE_DEPTH = 0;
-const STARTING_HOUSE_SCALE = 0.24;
+const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const DOOR_SCALE = 0.34;
@@ -31,7 +31,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-starting-house";
+const ASSET_VERSION = "20260522-starting-house-large";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
