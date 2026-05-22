@@ -1,7 +1,8 @@
 const TILE = 32;
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
-const PLAY_HEIGHT = VIEW_HEIGHT;
+const HUD_HEIGHT = 86;
+const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
 const TIME_LIMIT = 220;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
@@ -37,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-full-playfield";
+const ASSET_VERSION = "20260522-door-depth";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
