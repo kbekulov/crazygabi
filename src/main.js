@@ -12,7 +12,7 @@ const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
 const PLATFORM_SEGMENT_WIDTH = PLATFORM_FRAME_WIDTH * PLATFORM_SCALE;
 const PLATFORM_Y_OFFSET = 22;
-const FENCE_Y_OFFSET = -52;
+const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const ITEM_SCALE = 0.32;
@@ -28,7 +28,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-fence-depth";
+const ASSET_VERSION = "20260522-screen-fence";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();

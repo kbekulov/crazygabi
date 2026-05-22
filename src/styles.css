@@ -38,14 +38,14 @@ button:active {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 20px;
+  padding: 0;
 }
 
 #game-wrap {
   position: relative;
-  width: min(100vw - 40px, 1120px);
+  width: min(90vw, 160vh);
   aspect-ratio: 16 / 9;
-  max-height: calc(100vh - 40px);
+  max-height: 90vh;
   image-rendering: pixelated;
   overflow: hidden;
   border: 0;
@@ -158,8 +158,8 @@ button:active {
   }
 
   #game-wrap {
-    width: calc(100vw - 16px);
-    max-height: calc(100vh - 16px);
+    width: 96vw;
+    max-height: 96vh;
   }
 
   #hud {
