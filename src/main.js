@@ -15,6 +15,8 @@ const PLATFORM_Y_OFFSET = 22;
 const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
+const STARTING_HOUSE_DEPTH = 0;
+const STARTING_HOUSE_SCALE = 0.24;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const DOOR_SCALE = 0.34;
@@ -29,7 +31,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-edge-lines";
+const ASSET_VERSION = "20260522-starting-house";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -235,6 +237,7 @@ class PlayScene extends Phaser.Scene {
       frameHeight: ROBOT_FRAME_HEIGHT
     });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
+    this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
     this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
     this.load.image("jump-item", `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`);
     this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
@@ -251,6 +254,7 @@ class PlayScene extends Phaser.Scene {
     this.levelHeight = LEVEL.length * TILE;
 
     this.createBackdrop();
+    this.createStartingHouse();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
@@ -306,6 +310,13 @@ class PlayScene extends Phaser.Scene {
       sprite.setScrollFactor(0);
       sprite.setDepth(-10 + index);
     });
+  }
+
+  createStartingHouse() {
+    const house = this.add.image(24, 16 * TILE + 4, "starting-house");
+    house.setOrigin(0, 1);
+    house.setScale(STARTING_HOUSE_SCALE);
+    house.setDepth(STARTING_HOUSE_DEPTH);
   }
 
   createAnimations() {
