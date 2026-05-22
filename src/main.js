@@ -25,6 +25,7 @@ const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
+const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
 const ROBOT_FRAME_WIDTH = 238;
@@ -37,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-platform-edges";
+const ASSET_VERSION = "20260522-door-depth";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -445,7 +446,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "d") {
           const door = this.doors.create(x, y - 16, "exit-door");
           door.setScale(DOOR_SCALE);
-          door.setDepth(ITEM_DEPTH);
+          door.setDepth(DOOR_DEPTH);
           door.refreshBody();
         }
         if (cell === "p") this.spawnPoint = { x, y };
