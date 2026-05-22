@@ -24,7 +24,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-audio-challenge";
+const ASSET_VERSION = "20260522-gradual-level";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVEL = createLevel();
@@ -38,26 +38,22 @@ function createLevel() {
     for (let index = 0; index < length; index += 1) put(row, start + index, value);
   };
 
-  run(16, 0, 18);
-  run(16, 27, 19);
-  run(16, 52, 28);
+  run(16, 0, 34);
+  run(16, 43, 37);
   run(16, 88, 26);
   run(16, 123, 25);
-  run(13, 0, 18);
-  run(13, 25, 9);
+  run(13, 0, 10);
+  run(13, 16, 7);
   run(13, 42, 15);
   run(13, 67, 11);
   run(13, 91, 19);
   run(13, 121, 14);
-  run(10, 2, 13);
-  run(10, 22, 4, "=");
-  run(10, 35, 11);
+  run(10, 36, 4, "=");
+  run(10, 48, 11);
   run(10, 59, 4, "=");
   run(10, 82, 13);
   run(10, 113, 4, "=");
   run(10, 131, 11);
-  run(7, 16, 9);
-  run(7, 34, 4, "=");
   run(7, 47, 12);
   run(7, 73, 4, "=");
   run(7, 90, 11);
@@ -72,10 +68,8 @@ function createLevel() {
   [
     [12, 4, "p"],
     [12, 8, "j"],
-    [12, 12, "g"],
-    [12, 14, "g"],
-    [12, 28, "g"],
-    [12, 31, "m"],
+    [12, 17, "g"],
+    [12, 20, "g"],
     [12, 51, "g"],
     [12, 53, "g"],
     [12, 101, "m"],
@@ -91,10 +85,10 @@ function createLevel() {
     [3, 57, "g"],
     [3, 91, "g"],
     [3, 93, "g"],
-    [1, 16, "a"],
-    [1, 29, "a"],
     [1, 45, "a"],
+    [1, 57, "a"],
     [1, 61, "a"],
+    [1, 70, "a"],
     [1, 78, "a"],
     [1, 96, "a"],
     [1, 109, "a"],
