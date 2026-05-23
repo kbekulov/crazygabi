@@ -31,6 +31,11 @@ const ACORN_SCALE = 0.36;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
+const CAT_FRAME_WIDTH = 238;
+const CAT_FRAME_HEIGHT = 238;
+const CAT_SCALE = 0.2;
+const CAT_SAFE_DISTANCE = 230;
+const CAT_PANIC_DISTANCE = 145;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -38,8 +43,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-story-layout";
-const STORY_ASSET_VERSION = "20260523-story-layout";
+const ASSET_VERSION = "20260523-cat-story-flow";
+const STORY_ASSET_VERSION = "20260523-cat-story-flow";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -70,8 +75,9 @@ const LEVELS = [
       ["./public/assets/story/level-2/frame-1.png", "./public/assets/story/level-2/frame_1.png"],
       ["./public/assets/story/level-2/frame-2.png", "./public/assets/story/level-2/frame_2.png"]
     ],
-    startSpeech: "Was that a cat I saw?",
-    showStartingHouse: false
+    startSpeech: "That cat looked strange...",
+    showStartingHouse: false,
+    catNpc: true
   }
 ];
 
@@ -285,6 +291,7 @@ function setCheatMenuVisible(visible) {
 
 function setStoryIntroVisible(visible) {
   hud.storyIntro.hidden = !visible;
+  hud.storyIntro.classList.toggle("leaving", false);
   if (!visible) {
     hud.storyPanels.replaceChildren();
     hud.storyPanels.className = "story-panels";
@@ -403,6 +410,10 @@ class PlayScene extends Phaser.Scene {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
+    this.load.spritesheet("grey-cat", `./public/assets/character/grey_cat.png?v=${ASSET_VERSION}`, {
+      frameWidth: CAT_FRAME_WIDTH,
+      frameHeight: CAT_FRAME_HEIGHT
+    });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
     this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
     this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
@@ -442,11 +453,14 @@ class PlayScene extends Phaser.Scene {
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
     this.lastActionAt = -Infinity;
+    this.catDecisionAt = 0;
+    this.catDirection = 1;
 
     state.totalGems = 0;
     this.createAnimations();
     this.buildLevel();
     this.createPlayer();
+    this.createCatNpc();
     this.createInput();
     this.setupPhysics();
     this.registerAudioLifecycle();
@@ -477,28 +491,32 @@ class PlayScene extends Phaser.Scene {
     const intro = state.pendingLevelPrompt || {
       title: this.level.name,
       copy: "Collect the coins, grab the key, and reach the door.",
-      button: state.levelIndex === 0 ? "Start" : "Go"
+      button: "Start"
     };
     state.pendingLevelPrompt = null;
-    this.showLevelIntro(intro);
+    setStoryIntroVisible(false);
+    setMessage(intro.title, intro.copy, "Start");
   }
 
-  async showLevelIntro(intro) {
+  async playStoryIntroThenBegin() {
     setStoryIntroVisible(false);
     hud.message.hidden = true;
+    this.startMusic();
     const frames = await loadStoryFrames(this.level.storyFrames);
     if (!this.scene.isActive("PlayScene")) return;
     if (frames.length < 2) {
-      setMessage(intro.title, intro.copy, intro.button);
+      this.beginGameplay();
       return;
     }
 
     hud.message.hidden = true;
     setCheatMenuVisible(false);
-    this.renderStoryIntro(frames, intro);
+    await this.renderStoryIntro(frames);
+    if (!this.scene.isActive("PlayScene")) return;
+    this.beginGameplay();
   }
 
-  renderStoryIntro(frames, intro) {
+  renderStoryIntro(frames) {
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
     hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
     hud.storyPanels.replaceChildren();
@@ -511,11 +529,20 @@ class PlayScene extends Phaser.Scene {
       image.alt = `${this.level.name} manga frame ${index + 1}`;
       hud.storyPanels.appendChild(image);
     });
-    hud.storyStart.textContent = intro.button;
     setStoryIntroVisible(true);
-    window.setTimeout(() => {
-      if (!hud.storyIntro.hidden) hud.storyStart.hidden = false;
-    }, 1650);
+    return new Promise((resolve) => {
+      window.setTimeout(() => {
+        if (hud.storyIntro.hidden) {
+          resolve();
+          return;
+        }
+        hud.storyIntro.classList.add("leaving");
+        window.setTimeout(() => {
+          setStoryIntroVisible(false);
+          resolve();
+        }, 820);
+      }, 4650);
+    });
   }
 
   createBackdrop() {
@@ -565,43 +592,70 @@ class PlayScene extends Phaser.Scene {
   }
 
   createAnimations() {
-    if (this.anims.exists("gabi-idle")) return;
-    this.anims.create({
-      key: "gabi-idle",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
-      frameRate: 3,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "gabi-walk",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1] }),
-      frameRate: 8,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "gabi-jump",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [2, 3] }),
-      frameRate: 6,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "gabi-wing-jump",
-      frames: this.anims.generateFrameNumbers("gabi-wings-sheet", { frames: [2, 3] }),
-      frameRate: 6,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "gabi-hurt",
-      frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
-      frameRate: 6,
-      repeat: -1
-    });
-    this.anims.create({
-      key: "robot-move",
-      frames: this.anims.generateFrameNumbers("robot", { frames: [0, 1, 2] }),
-      frameRate: 8,
-      repeat: -1
-    });
+    if (!this.anims.exists("gabi-idle")) {
+      this.anims.create({
+        key: "gabi-idle",
+        frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
+        frameRate: 3,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-walk",
+        frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [0, 1] }),
+        frameRate: 8,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-jump",
+        frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [2, 3] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-wing-jump",
+        frames: this.anims.generateFrameNumbers("gabi-wings-sheet", { frames: [2, 3] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-hurt",
+        frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "robot-move",
+        frames: this.anims.generateFrameNumbers("robot", { frames: [0, 1, 2] }),
+        frameRate: 8,
+        repeat: -1
+      });
+    }
+    if (!this.anims.exists("cat-run")) {
+      this.anims.create({
+        key: "cat-run",
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [0, 1, 2, 3] }),
+        frameRate: 10,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "cat-pounce",
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [4, 5] }),
+        frameRate: 8,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "cat-land",
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [6, 7] }),
+        frameRate: 8,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "cat-idle",
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [8, 9, 10] }),
+        frameRate: 4,
+        repeat: -1
+      });
+    }
   }
 
   buildLevel() {
@@ -783,6 +837,20 @@ class PlayScene extends Phaser.Scene {
     this.setGabiAnimation("idle");
   }
 
+  createCatNpc() {
+    if (!this.level.catNpc) return;
+    this.cat = this.physics.add.sprite(this.spawnPoint.x + 220, this.spawnPoint.y, "grey-cat", 8);
+    this.cat.setScale(CAT_SCALE);
+    this.cat.setDepth(5);
+    this.cat.setDragX(950);
+    this.cat.setMaxVelocity(340, 650);
+    this.cat.setCollideWorldBounds(true);
+    this.cat.body.setSize(96, 88).setOffset(76, 118);
+    this.cat.body.enable = false;
+    this.cat.setVisible(false);
+    this.cat.play("cat-idle");
+  }
+
   createInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keysInput = this.input.keyboard.addKeys({
@@ -798,6 +866,10 @@ class PlayScene extends Phaser.Scene {
   setupPhysics() {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.movingPlatforms);
+    if (this.cat) {
+      this.physics.add.collider(this.cat, this.platforms);
+      this.physics.add.collider(this.cat, this.movingPlatforms);
+    }
     this.physics.add.collider(this.enemies, this.platforms);
     this.physics.add.overlap(this.thrownItems, this.enemies, this.hitEnemyWithThrownItem, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
@@ -809,7 +881,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   startRun() {
-    state.running = true;
+    if (this.introInProgress || state.running) return;
+    this.introInProgress = true;
     hud.message.hidden = true;
     setStoryIntroVisible(false);
     this.resetPlayerMotion();
@@ -818,7 +891,13 @@ class PlayScene extends Phaser.Scene {
     this.usingWingJump = false;
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
-    this.startMusic();
+    this.resetCatNpc();
+    this.playStoryIntroThenBegin();
+  }
+
+  beginGameplay() {
+    this.introInProgress = false;
+    state.running = true;
     this.startTimer();
     this.showGabiSpeech(this.level.startSpeech);
   }
@@ -836,6 +915,7 @@ class PlayScene extends Phaser.Scene {
     this.updateThrownItems();
     this.updateParallax();
     this.updateWater(delta);
+    this.updateCatNpc(time);
     this.updateGabiSpeechPosition();
     if (!state.running || state.won) return;
 
@@ -1010,6 +1090,92 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  resetCatNpc() {
+    if (!this.cat) return;
+    this.cat.enableBody(true, this.spawnPoint.x + 245, this.spawnPoint.y, true, true);
+    this.cat.setVelocity(0, 0);
+    this.cat.setAcceleration(0, 0);
+    this.cat.setFlipX(false);
+    this.catDirection = 1;
+    this.catDecisionAt = 0;
+    this.cat.play("cat-idle", true);
+  }
+
+  updateCatNpc(time = 0) {
+    if (!this.cat || !this.cat.active || !this.cat.visible) return;
+    if (!state.running || state.won) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.cat.play("cat-idle", true);
+      return;
+    }
+
+    if (this.cat.y > this.levelHeight + 80) {
+      this.resetCatNpc();
+      return;
+    }
+
+    const distanceFromGabi = this.player.x - this.cat.x;
+    const absDistance = Math.abs(distanceFromGabi);
+    let direction = this.catDirection || 1;
+    const onFloor = this.cat.body.blocked.down;
+
+    if (absDistance < CAT_SAFE_DISTANCE) {
+      direction = distanceFromGabi > 0 ? -1 : 1;
+    } else if (time >= this.catDecisionAt) {
+      direction = Phaser.Math.Between(0, 100) < 68 ? 1 : -1;
+      this.catDecisionAt = time + Phaser.Math.Between(700, 1600);
+    }
+
+    if (this.cat.x < this.spawnPoint.x + 150) direction = 1;
+    if (this.cat.x > this.levelWidth - 220) direction = -1;
+    if (this.cat.body.blocked.left) direction = 1;
+    if (this.cat.body.blocked.right) direction = -1;
+
+    const groundAhead = this.hasGroundAhead(this.cat, direction);
+    if (onFloor && !groundAhead) {
+      if (Phaser.Math.Between(0, 100) < 58) {
+        this.cat.setVelocityY(-440);
+      } else {
+        direction *= -1;
+      }
+    }
+
+    if (onFloor && (Math.abs(this.player.y - this.cat.y) > 40 || absDistance < CAT_PANIC_DISTANCE) && Phaser.Math.Between(0, 100) < 4) {
+      this.cat.setVelocityY(-430);
+    }
+
+    const panicBoost = absDistance < CAT_PANIC_DISTANCE ? 1.25 : 1;
+    this.catDirection = direction;
+    this.cat.setAccelerationX(direction * 980 * panicBoost);
+    this.cat.setFlipX(direction < 0);
+    this.updateCatAnimation(onFloor);
+  }
+
+  hasGroundAhead(actor, direction) {
+    const aheadX = actor.x + direction * 54;
+    const belowY = actor.y + 58;
+    const onStatic = this.platforms.children.entries.some((platform) => {
+      return Math.abs(platform.x - aheadX) < 20 && Math.abs(platform.y - belowY) < 22;
+    });
+    if (onStatic) return true;
+    return this.movingPlatforms.children.entries.some((platform) => {
+      const halfWidth = Math.max(TILE / 2, platform.body.width / 2);
+      return aheadX >= platform.x - halfWidth && aheadX <= platform.x + halfWidth && Math.abs(platform.y - belowY) < 28;
+    });
+  }
+
+  updateCatAnimation(onFloor) {
+    if (!this.cat) return;
+    if (!onFloor) {
+      this.cat.play(this.cat.body.velocity.y < -40 ? "cat-pounce" : "cat-land", true);
+    } else if (Math.abs(this.cat.body.velocity.x) > 28) {
+      this.cat.play("cat-run", true);
+    } else {
+      this.cat.play("cat-idle", true);
+    }
+  }
+
   attachEnemyLabel(enemy) {
     const name = this.enemyNames.shift() || "GABI OPS BOT";
     const label = this.add.text(enemy.x, enemy.y - 38, name, {
@@ -1137,6 +1303,11 @@ class PlayScene extends Phaser.Scene {
       window.removeEventListener("unload", this.handlePageHidden);
       window.removeEventListener("blur", this.handlePageHidden);
       window.removeEventListener("focus", this.handlePageVisible);
+      if (this.timerEvent) {
+        this.timerEvent.remove(false);
+        this.timerEvent = null;
+      }
+      this.introInProgress = false;
       this.stopGameAudio();
     });
   }
@@ -1258,8 +1429,12 @@ class PlayScene extends Phaser.Scene {
     state.pendingLevelPrompt = {
       title: "Level 2",
       copy: "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.",
-      button: "Go"
+      button: "Start"
     };
+    if (this.timerEvent) {
+      this.timerEvent.remove(false);
+      this.timerEvent = null;
+    }
     this.sound.stopAll();
     this.scene.restart();
   }
@@ -1294,17 +1469,13 @@ hud.startButton.addEventListener("click", () => {
   if (state.won || state.lives <= 0) {
     state.levelIndex = 0;
     state.resetProgressOnCreate = true;
+    if (scene.timerEvent) {
+      scene.timerEvent.remove(false);
+      scene.timerEvent = null;
+    }
     scene.scene.restart();
-    window.setTimeout(() => game.scene.getScene("PlayScene").startRun(), 80);
     return;
   }
-  scene.startRun();
-});
-
-hud.storyStart.addEventListener("click", () => {
-  const scene = game.scene.getScene("PlayScene");
-  if (!scene.scene.isActive()) return;
-  setCheatMenuVisible(false);
   scene.startRun();
 });
 
@@ -1325,9 +1496,13 @@ LEVELS.forEach((level, index) => {
     state.resetProgressOnCreate = false;
     state.pendingLevelPrompt = {
       title: level.name,
-      copy: `Testing route loaded. Press ${index === 0 ? "Start" : "Go"} when ready.`,
-      button: index === 0 ? "Start" : "Go"
+      copy: "Testing route loaded. Press Start when ready.",
+      button: "Start"
     };
+    if (scene.timerEvent) {
+      scene.timerEvent.remove(false);
+      scene.timerEvent = null;
+    }
     scene.sound.stopAll();
     scene.scene.restart();
   });

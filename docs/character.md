@@ -38,6 +38,10 @@ Important animation states:
 
 `Enter` is the general action button. Current Level 2 action behavior lets Gabi throw acorns in a ballistic arc. Future action animations should still preserve her core identity: long brown hair, fair skin, stylish outfit, and confident movement.
 
+## Grey Cat NPC
+
+Level 2 introduces `public/assets/character/grey_cat.png` as a non-playable character. The sheet uses 238px frames: row 1 for running, row 2 for jump and landing poses, and row 3 for sitting / idle. The cat should feel elusive and strange, staying ahead of Gabi rather than acting like an enemy.
+
 ## Art Ownership
 
 The current character direction is user-created and user-directed by Kiril Bekulov. Future sprite edits should follow Kiril's visual direction rather than imitate an external character or asset pack.
