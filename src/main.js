@@ -35,8 +35,8 @@ const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
 const CAT_SAFE_DISTANCE = 230;
-const CAT_PANIC_DISTANCE = 145;
-const CAT_IDLE_DISTANCE = 430;
+const CAT_RUN_SPEED = 235;
+const CAT_REACH_DISTANCE = 22;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -44,8 +44,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-story-tune";
-const STORY_ASSET_VERSION = "20260523-cat-story-tune";
+const ASSET_VERSION = "20260523-cat-guide";
+const STORY_ASSET_VERSION = "20260523-cat-guide";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -62,7 +62,8 @@ const LEVELS = [
       ["./public/assets/story/level-1/frame-2.png", "./public/assets/story/level-1/frame_2.png"]
     ],
     startSpeech: "Ugh... the world looks different...",
-    showStartingHouse: true
+    showStartingHouse: true,
+    doorYOffset: -30
   },
   {
     name: "Level 2",
@@ -78,7 +79,8 @@ const LEVELS = [
     ],
     startSpeech: "That cat looked strange...",
     showStartingHouse: false,
-    catNpc: true
+    catNpc: true,
+    doorYOffset: -16
   }
 ];
 
@@ -454,8 +456,6 @@ class PlayScene extends Phaser.Scene {
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
     this.lastActionAt = -Infinity;
-    this.catDecisionAt = 0;
-    this.catDirection = 1;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -711,13 +711,15 @@ class PlayScene extends Phaser.Scene {
           key.setScale(ITEM_SCALE);
           key.setDepth(ITEM_DEPTH);
           key.setCircle(58, 59, 59);
+          this.keyPoint = { x, y };
           this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "d") {
-          const door = this.doors.create(x, y - 16, "exit-door");
+          const door = this.doors.create(x, y + (this.level.doorYOffset ?? -16), "exit-door");
           door.setScale(DOOR_SCALE);
           door.setDepth(DOOR_DEPTH);
           door.refreshBody();
+          this.doorPoint = { x: door.x, y: door.y };
         }
         if (cell === "p") this.spawnPoint = { x, y };
       });
@@ -847,6 +849,7 @@ class PlayScene extends Phaser.Scene {
     this.cat.setMaxVelocity(340, 650);
     this.cat.setCollideWorldBounds(true);
     this.cat.body.setSize(96, 88).setOffset(76, 118);
+    this.cat.body.allowGravity = false;
     this.cat.body.enable = false;
     this.cat.setVisible(false);
     this.cat.play("cat-idle");
@@ -916,7 +919,7 @@ class PlayScene extends Phaser.Scene {
     this.updateThrownItems();
     this.updateParallax();
     this.updateWater(delta);
-    this.updateCatNpc(time);
+    this.updateCatNpc(time, delta);
     this.updateGabiSpeechPosition();
     if (!state.running || state.won) return;
 
@@ -1094,15 +1097,37 @@ class PlayScene extends Phaser.Scene {
   resetCatNpc() {
     if (!this.cat) return;
     this.cat.enableBody(true, this.spawnPoint.x + 245, this.spawnPoint.y, true, true);
+    this.cat.body.allowGravity = false;
+    this.cat.body.moves = false;
     this.cat.setVelocity(0, 0);
     this.cat.setAcceleration(0, 0);
     this.cat.setFlipX(false);
-    this.catDirection = 1;
-    this.catDecisionAt = 0;
+    this.catGuideWaypoints = this.createCatGuideWaypoints();
+    this.catGuideIndex = 0;
+    this.catGuideWaiting = false;
+    this.catGuideLeaping = false;
     this.cat.play("cat-idle", true);
   }
 
-  updateCatNpc(time = 0) {
+  createCatGuideWaypoints() {
+    if (!this.keyPoint || !this.doorPoint) return [];
+    const groundY = this.spawnPoint.y;
+    return [
+      { x: this.spawnPoint.x + 290, y: groundY },
+      { x: this.spawnPoint.x + 730, y: groundY },
+      { x: this.spawnPoint.x + 1220, y: groundY },
+      { x: this.spawnPoint.x + 1760, y: groundY },
+      { x: this.spawnPoint.x + 2350, y: groundY - 92 },
+      { x: this.spawnPoint.x + 3040, y: groundY - 188 },
+      { x: this.keyPoint.x - 76, y: this.keyPoint.y + 48, stopUntilKey: true },
+      { x: this.doorPoint.x - 92, y: this.doorPoint.y + 44, finalStop: true }
+    ].map((point) => ({
+      ...point,
+      x: Phaser.Math.Clamp(point.x, this.spawnPoint.x + 120, this.levelWidth - 170)
+    }));
+  }
+
+  updateCatNpc(_time = 0, delta = 0) {
     if (!this.cat || !this.cat.active || !this.cat.visible) return;
     if (!state.running || state.won) {
       this.cat.setAccelerationX(0);
@@ -1111,79 +1136,76 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.cat.y > this.levelHeight + 80) {
-      this.resetCatNpc();
-      return;
+    const waypoints = this.catGuideWaypoints || [];
+    if (!waypoints.length) return;
+    if (state.hasKey && !waypoints[this.catGuideIndex]?.finalStop) {
+      this.catGuideIndex = waypoints.length - 1;
+      this.catGuideWaiting = false;
     }
 
-    const distanceFromGabi = this.player.x - this.cat.x;
-    const absDistance = Math.abs(distanceFromGabi);
-    let direction = this.catDirection || 1;
-    const onFloor = this.cat.body.blocked.down;
-    const isSafelyAhead = this.cat.x > this.player.x + CAT_IDLE_DISTANCE;
+    const target = waypoints[this.catGuideIndex];
+    if (!target || this.catGuideLeaping) return;
 
-    if (onFloor && isSafelyAhead && time >= this.catDecisionAt) {
-      this.cat.setAccelerationX(0);
-      this.cat.setVelocityX(0);
+    const closeEnoughForNextMove = this.player.x >= this.cat.x - CAT_SAFE_DISTANCE;
+    if (this.catGuideWaiting) {
+      this.cat.setVelocity(0, 0);
       this.cat.play("cat-idle", true);
-      this.catDecisionAt = time + Phaser.Math.Between(650, 1350);
+      if (target.finalStop || (target.stopUntilKey && !state.hasKey) || !closeEnoughForNextMove) return;
+      this.catGuideIndex = Math.min(this.catGuideIndex + 1, waypoints.length - 1);
+      this.catGuideWaiting = false;
       return;
     }
 
-    if (this.cat.x < this.spawnPoint.x + 360 && this.player.x > this.cat.x - 40) {
-      direction = 1;
-    } else if (absDistance < CAT_SAFE_DISTANCE) {
-      direction = this.player.x <= this.cat.x ? 1 : Phaser.Math.Sign(this.cat.x - this.spawnPoint.x - 320) || 1;
-    } else if (time >= this.catDecisionAt) {
-      direction = this.player.x < this.cat.x ? 1 : -1;
-      this.catDecisionAt = time + Phaser.Math.Between(900, 1700);
+    const distanceX = target.x - this.cat.x;
+    const distanceY = target.y - this.cat.y;
+    if (Math.abs(distanceX) <= CAT_REACH_DISTANCE && Math.abs(distanceY) <= CAT_REACH_DISTANCE) {
+      this.cat.setPosition(target.x, target.y);
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocity(0, 0);
+      this.cat.play("cat-idle", true);
+      this.catGuideWaiting = true;
+      return;
     }
 
-    if (this.cat.x < this.spawnPoint.x + 320) direction = 1;
-    if (this.cat.x > this.levelWidth - 220) direction = -1;
-    if (this.cat.body.blocked.left) direction = 1;
-    if (this.cat.body.blocked.right) direction = -1;
+    if (Math.abs(distanceY) > 34) {
+      this.leapCatToWaypoint(target);
+      return;
+    }
 
-    const groundAhead = this.hasGroundAhead(this.cat, direction);
-    const safeLandingAhead = this.hasSafeLandingAhead(this.cat, direction);
-    if (onFloor && !groundAhead) {
-      if (safeLandingAhead) {
-        this.cat.setVelocityY(-440);
-      } else {
-        direction *= -1;
+    const step = Math.min(Math.abs(distanceX), (CAT_RUN_SPEED * delta) / 1000);
+    this.cat.x += Math.sign(distanceX || 1) * step;
+    this.cat.y = Phaser.Math.Linear(this.cat.y, target.y, 0.18);
+    this.cat.setVelocityX(distanceX >= 0 ? CAT_RUN_SPEED : -CAT_RUN_SPEED);
+    this.cat.setFlipX(distanceX < 0);
+    this.cat.play("cat-run", true);
+  }
+
+  leapCatToWaypoint(target) {
+    if (!this.cat || this.catGuideLeaping) return;
+    this.catGuideLeaping = true;
+    this.cat.body.moves = false;
+    this.cat.setVelocity(0, 0);
+    this.cat.setFlipX(target.x < this.cat.x);
+    const startY = this.cat.y;
+    const jumpHeight = Phaser.Math.Clamp(Math.abs(target.y - startY) + 70, 120, 220);
+    this.tweens.add({
+      targets: this.cat,
+      x: target.x,
+      y: target.y,
+      duration: Phaser.Math.Clamp(Math.abs(target.x - this.cat.x) * 2.8, 620, 1250),
+      ease: "Sine.inOut",
+      onUpdate: (tween, cat) => {
+        const progress = tween.progress;
+        cat.y = Phaser.Math.Linear(startY, target.y, progress) - Math.sin(progress * Math.PI) * jumpHeight;
+        cat.play(progress < 0.55 ? "cat-pounce" : "cat-land", true);
+      },
+      onComplete: () => {
+        this.catGuideLeaping = false;
+        this.cat.body.moves = false;
+        this.cat.setVelocity(0, 0);
+        this.catGuideWaiting = true;
+        this.cat.play("cat-idle", true);
       }
-    }
-
-    const panicBoost = absDistance < CAT_PANIC_DISTANCE ? 1.25 : 1;
-    this.catDirection = direction;
-    this.cat.setAccelerationX(direction * 980 * panicBoost);
-    this.cat.setFlipX(direction < 0);
-    this.updateCatAnimation(onFloor);
-  }
-
-  hasGroundAhead(actor, direction) {
-    const aheadX = actor.x + direction * 54;
-    const belowY = actor.y + 58;
-    const onStatic = this.platforms.children.entries.some((platform) => {
-      return Math.abs(platform.x - aheadX) < 20 && Math.abs(platform.y - belowY) < 22;
-    });
-    if (onStatic) return true;
-    return this.movingPlatforms.children.entries.some((platform) => {
-      const halfWidth = Math.max(TILE / 2, platform.body.width / 2);
-      return aheadX >= platform.x - halfWidth && aheadX <= platform.x + halfWidth && Math.abs(platform.y - belowY) < 28;
-    });
-  }
-
-  hasSafeLandingAhead(actor, direction) {
-    const startX = actor.x + direction * 76;
-    const endX = actor.x + direction * 210;
-    const minY = actor.y + 42;
-    const maxY = actor.y + 122;
-    return this.platforms.children.entries.some((platform) => {
-      const betweenX = direction > 0
-        ? platform.x >= startX && platform.x <= endX
-        : platform.x <= startX && platform.x >= endX;
-      return betweenX && platform.y >= minY && platform.y <= maxY;
     });
   }
 
