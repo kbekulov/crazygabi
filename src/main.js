@@ -38,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cheat-menu";
+const ASSET_VERSION = "20260523-action-throw";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -49,6 +49,7 @@ const LEVELS = [
     soundtrack: "bgm",
     acornDelay: [450, 1800],
     acornPace: [185, 295],
+    actionAbility: null,
     showStartingHouse: true
   },
   {
@@ -58,6 +59,7 @@ const LEVELS = [
     soundtrack: "bgm2",
     acornDelay: [260, 1100],
     acornPace: [245, 370],
+    actionAbility: "throw-acorn",
     showStartingHouse: false
   }
 ];
@@ -392,11 +394,13 @@ class PlayScene extends Phaser.Scene {
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.enemyDirection = new Map();
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
+    this.lastActionAt = -Infinity;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -703,6 +707,7 @@ class PlayScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
       jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
       jumpW: Phaser.Input.Keyboard.KeyCodes.W,
+      action: Phaser.Input.Keyboard.KeyCodes.ENTER,
       restart: Phaser.Input.Keyboard.KeyCodes.R
     });
   }
@@ -711,6 +716,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platforms);
     this.physics.add.collider(this.player, this.movingPlatforms);
     this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.overlap(this.thrownItems, this.enemies, this.hitEnemyWithThrownItem, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
@@ -727,6 +733,7 @@ class PlayScene extends Phaser.Scene {
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
+    this.thrownItems.clear(true, true);
     this.startMusic();
     this.startTimer();
   }
@@ -741,6 +748,7 @@ class PlayScene extends Phaser.Scene {
     this.updateEnemyLabels();
     this.updateMovingPlatforms();
     this.updateAcorns(time);
+    this.updateThrownItems();
     this.updateParallax();
     this.updateWater(delta);
     if (!state.running || state.won) return;
@@ -751,6 +759,7 @@ class PlayScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
       Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
       Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW);
+    const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action);
     const onFloor = this.player.body.blocked.down;
 
     if (left) {
@@ -777,8 +786,30 @@ class PlayScene extends Phaser.Scene {
       this.cameras.main.flash(80, 104, 220, 255, false);
     }
 
+    if (action) this.performAction(time);
+
     if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
+  }
+
+  performAction(time = 0) {
+    if (this.level.actionAbility === "throw-acorn") this.throwAcorn(time);
+  }
+
+  throwAcorn(time = 0) {
+    if (time - this.lastActionAt < 450) return;
+    this.lastActionAt = time;
+    const direction = this.player.flipX ? -1 : 1;
+    const acorn = this.thrownItems.create(this.player.x + direction * 28, this.player.y - 20, "falling-acorn");
+    acorn.setScale(ACORN_SCALE * 0.72);
+    acorn.setDepth(ITEM_DEPTH);
+    acorn.setCircle(70, 47, 52);
+    acorn.body.allowGravity = true;
+    acorn.body.setGravityY(-360);
+    acorn.setVelocity(direction * 430, -295);
+    acorn.setAngularVelocity(direction * 520);
+    acorn.setData("spawnedAt", time);
+    acorn.setData("thrown", true);
   }
 
   setGabiFlip(flipX) {
@@ -892,6 +923,19 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  updateThrownItems() {
+    if (!this.thrownItems) return;
+    this.thrownItems.children.iterate((item) => {
+      if (!item || !item.active) return;
+      const outOfView =
+        item.x < this.cameras.main.scrollX - 160 ||
+        item.x > this.cameras.main.scrollX + VIEW_WIDTH + 160 ||
+        item.y > this.cameras.main.scrollY + PLAY_HEIGHT + 180 ||
+        item.y < this.cameras.main.scrollY - PLAY_HEIGHT - 180;
+      if (!state.running || state.won || outOfView) item.disableBody(true, true);
+    });
+  }
+
   updateParallax() {
     if (!this.parallaxLayers) return;
     const scrollX = this.cameras.main.scrollX;
@@ -1001,18 +1045,30 @@ class PlayScene extends Phaser.Scene {
     updateHud();
   }
 
+  defeatEnemy(enemy) {
+    enemy.disableBody(true, true);
+    const label = this.enemyLabels.get(enemy);
+    if (label) label.setVisible(false);
+  }
+
   hitEnemy(player, enemy) {
     if (!state.running) return;
     if (player.body.velocity.y > 120 && player.y < enemy.y - 5) {
-      enemy.disableBody(true, true);
-      const label = this.enemyLabels.get(enemy);
-      if (label) label.setVisible(false);
+      this.defeatEnemy(enemy);
       player.setVelocityY(-330);
       state.score += 250;
       updateHud();
       return;
     }
     this.loseLife();
+  }
+
+  hitEnemyWithThrownItem(item, enemy) {
+    if (!state.running || !item.active || !enemy.active) return;
+    item.disableBody(true, true);
+    this.defeatEnemy(enemy);
+    state.score += 350;
+    updateHud();
   }
 
   hitAcorn(_player, acorn) {
