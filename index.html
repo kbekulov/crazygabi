@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260522-hud-gap" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260523-story-mode" />
   </head>
   <body>
     <main id="shell">
@@ -23,6 +23,11 @@
           <p>Collect the coins, grab the brass key, and reach the door before the city gets too wild.</p>
           <button id="start-button" type="button">Start</button>
         </div>
+        <div id="story-intro" class="story-intro" hidden>
+          <div class="story-backdrop"></div>
+          <div id="story-panels" class="story-panels"></div>
+          <button id="story-start" class="story-start" type="button" hidden>Start</button>
+        </div>
         <div id="cheat-menu" class="panel cheat-panel" hidden>
           <h1>Level Select</h1>
           <p>Jump directly to a level for testing.</p>
@@ -32,6 +37,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260523-asset-cleanup"></script>
+    <script type="module" src="./src/main.js?v=20260523-story-mode"></script>
   </body>
 </html>

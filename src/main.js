@@ -38,7 +38,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-asset-cleanup";
+const ASSET_VERSION = "20260523-story-mode";
+const STORY_ASSET_VERSION = "20260523-story-mode";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -50,6 +51,11 @@ const LEVELS = [
     acornDelay: [450, 1800],
     acornPace: [185, 295],
     actionAbility: null,
+    storyFrames: [
+      "./public/assets/story/level-1/frame-1.png",
+      "./public/assets/story/level-1/frame-2.png"
+    ],
+    startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true
   },
   {
@@ -60,6 +66,11 @@ const LEVELS = [
     acornDelay: [260, 1100],
     acornPace: [245, 370],
     actionAbility: "throw-acorn",
+    storyFrames: [
+      "./public/assets/story/level-2/frame-1.png",
+      "./public/assets/story/level-2/frame-2.png"
+    ],
+    startSpeech: "Was that a cat I saw?",
     showStartingHouse: false
   }
 ];
@@ -245,6 +256,9 @@ const hud = {
   key: document.querySelector("#key"),
   message: document.querySelector("#message"),
   startButton: document.querySelector("#start-button"),
+  storyIntro: document.querySelector("#story-intro"),
+  storyPanels: document.querySelector("#story-panels"),
+  storyStart: document.querySelector("#story-start"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatClose: document.querySelector("#cheat-close")
@@ -267,6 +281,30 @@ function updateHud() {
 
 function setCheatMenuVisible(visible) {
   hud.cheatMenu.hidden = !visible;
+}
+
+function setStoryIntroVisible(visible) {
+  hud.storyIntro.hidden = !visible;
+  if (!visible) {
+    hud.storyPanels.replaceChildren();
+    hud.storyPanels.className = "story-panels";
+    hud.storyStart.hidden = true;
+  }
+}
+
+function loadStoryFrame(src) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = `${src}?v=${STORY_ASSET_VERSION}`;
+  });
+}
+
+async function loadStoryFrames(paths = []) {
+  if (paths.length < 2) return [];
+  const frames = await Promise.all(paths.slice(0, 2).map((path) => loadStoryFrame(path)));
+  return frames.every(Boolean) ? frames : [];
 }
 
 function makeTextures(scene) {
@@ -425,10 +463,52 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
-    if (state.pendingLevelPrompt) {
-      setMessage(state.pendingLevelPrompt.title, state.pendingLevelPrompt.copy, state.pendingLevelPrompt.button);
-      state.pendingLevelPrompt = null;
+    this.prepareLevelIntro();
+  }
+
+  prepareLevelIntro() {
+    const intro = state.pendingLevelPrompt || {
+      title: this.level.name,
+      copy: "Collect the coins, grab the key, and reach the door.",
+      button: state.levelIndex === 0 ? "Start" : "Go"
+    };
+    state.pendingLevelPrompt = null;
+    this.showLevelIntro(intro);
+  }
+
+  async showLevelIntro(intro) {
+    setStoryIntroVisible(false);
+    hud.message.hidden = true;
+    const frames = await loadStoryFrames(this.level.storyFrames);
+    if (!this.scene.isActive("PlayScene")) return;
+    if (frames.length < 2) {
+      setMessage(intro.title, intro.copy, intro.button);
+      return;
     }
+
+    hud.message.hidden = true;
+    setCheatMenuVisible(false);
+    this.renderStoryIntro(frames, intro);
+  }
+
+  renderStoryIntro(frames, intro) {
+    const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
+    hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
+    hud.storyPanels.replaceChildren();
+    frames.forEach((frame, index) => {
+      const image = document.createElement("img");
+      image.className = tallFrames
+        ? `story-frame ${index === 0 ? "from-top" : "from-bottom"}`
+        : `story-frame from-left ${index === 1 ? "delay" : ""}`;
+      image.src = frame.src;
+      image.alt = `${this.level.name} manga frame ${index + 1}`;
+      hud.storyPanels.appendChild(image);
+    });
+    hud.storyStart.textContent = intro.button;
+    setStoryIntroVisible(true);
+    window.setTimeout(() => {
+      if (!hud.storyIntro.hidden) hud.storyStart.hidden = false;
+    }, 900);
   }
 
   createBackdrop() {
@@ -724,6 +804,7 @@ class PlayScene extends Phaser.Scene {
   startRun() {
     state.running = true;
     hud.message.hidden = true;
+    setStoryIntroVisible(false);
     this.resetPlayerMotion();
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.airJumpsUsed = 0;
@@ -732,6 +813,7 @@ class PlayScene extends Phaser.Scene {
     this.thrownItems.clear(true, true);
     this.startMusic();
     this.startTimer();
+    this.showGabiSpeech(this.level.startSpeech);
   }
 
   update(time = 0, delta = 0) {
@@ -747,6 +829,7 @@ class PlayScene extends Phaser.Scene {
     this.updateThrownItems();
     this.updateParallax();
     this.updateWater(delta);
+    this.updateGabiSpeechPosition();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -836,6 +919,50 @@ class PlayScene extends Phaser.Scene {
     this.player.setAcceleration(0, 0);
     this.player.setVelocity(0, 0);
     this.player.setAngularVelocity(0);
+  }
+
+  showGabiSpeech(text) {
+    if (!text) return;
+    if (this.speechBubble) this.speechBubble.destroy(true);
+    const bubbleWidth = 224;
+    const bubbleHeight = 52;
+    const container = this.add.container(this.player.x, this.player.y - 124);
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0xffffff, 0.94);
+    bubble.lineStyle(3, 0x111111, 1);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 8);
+    bubble.strokeRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 8);
+    bubble.fillTriangle(-10, -5, 10, -5, 0, 8);
+    bubble.strokeTriangle(-10, -5, 10, -5, 0, 8);
+    const label = this.add.text(0, -bubbleHeight / 2, text, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "12px",
+      color: "#111111",
+      align: "center",
+      wordWrap: { width: bubbleWidth - 24, useAdvancedWrap: true }
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add([bubble, label]);
+    container.setDepth(12);
+    this.speechBubble = container;
+    this.updateGabiSpeechPosition();
+    this.time.delayedCall(4200, () => {
+      if (!this.speechBubble) return;
+      this.tweens.add({
+        targets: this.speechBubble,
+        alpha: 0,
+        duration: 260,
+        onComplete: () => {
+          this.speechBubble?.destroy(true);
+          this.speechBubble = null;
+        }
+      });
+    });
+  }
+
+  updateGabiSpeechPosition() {
+    if (!this.speechBubble || !this.player) return;
+    this.speechBubble.setPosition(this.player.x, this.player.y - 124);
   }
 
   moveEnemies() {
@@ -1158,6 +1285,7 @@ hud.startButton.addEventListener("click", () => {
   const scene = game.scene.getScene("PlayScene");
   if (!scene.scene.isActive()) return;
   setCheatMenuVisible(false);
+  setStoryIntroVisible(false);
   if (state.won || state.lives <= 0) {
     state.levelIndex = 0;
     state.resetProgressOnCreate = true;
@@ -1165,6 +1293,13 @@ hud.startButton.addEventListener("click", () => {
     window.setTimeout(() => game.scene.getScene("PlayScene").startRun(), 80);
     return;
   }
+  scene.startRun();
+});
+
+hud.storyStart.addEventListener("click", () => {
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  setCheatMenuVisible(false);
   scene.startRun();
 });
 
@@ -1178,6 +1313,7 @@ LEVELS.forEach((level, index) => {
     const scene = game.scene.getScene("PlayScene");
     if (!scene.scene.isActive()) return;
     setCheatMenuVisible(false);
+    setStoryIntroVisible(false);
     state.levelIndex = index;
     state.score = 0;
     state.lives = 3;
@@ -1196,5 +1332,6 @@ LEVELS.forEach((level, index) => {
 window.addEventListener("keydown", (event) => {
   if (event.key !== "0") return;
   event.preventDefault();
+  if (!hud.storyIntro.hidden) return;
   setCheatMenuVisible(hud.cheatMenu.hidden);
 });
