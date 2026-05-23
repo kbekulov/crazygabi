@@ -50,8 +50,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-unfreeze-gameover";
-const STORY_ASSET_VERSION = "20260523-unfreeze-gameover";
+const ASSET_VERSION = "20260523-hard-reset-gameover";
+const STORY_ASSET_VERSION = "20260523-hard-reset-gameover";
 let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -326,6 +326,14 @@ function resetGameProgress() {
   state.won = false;
   state.resetProgressOnCreate = false;
   state.pendingLevelPrompt = null;
+}
+
+function hardResetDocument() {
+  // Full game-over uses a fresh browser boot because Phaser scene restarts left stale input state.
+  setStoryIntroVisible(false);
+  setCheatMenuVisible(false);
+  hud.message.hidden = true;
+  window.location.replace(`${window.location.pathname}?reset=${Date.now()}`);
 }
 
 function loadStoryFrame(src) {
@@ -979,12 +987,6 @@ class PlayScene extends Phaser.Scene {
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
     this.resetCatNpc();
-    const runToken = this.activeIntroToken;
-    this.time.delayedCall(7200, () => {
-      if (!this.isCurrentIntro(runToken) || state.running || !this.introInProgress) return;
-      setStoryIntroVisible(false);
-      this.beginGameplay(runToken);
-    });
     this.playStoryIntroThenBegin();
   }
 
@@ -1691,7 +1693,7 @@ class PlayScene extends Phaser.Scene {
       this.cancelLevelRuntime();
       resetGameProgress();
       this.sound.stopAll();
-      this.scene.restart();
+      hardResetDocument();
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
@@ -1766,7 +1768,7 @@ hud.startButton.addEventListener("click", () => {
   if (state.won) {
     scene.cancelLevelRuntime();
     resetGameProgress();
-    scene.scene.restart();
+    hardResetDocument();
     return;
   }
   if (state.lives <= 0) {
