@@ -38,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-action-throw";
+const ASSET_VERSION = "20260523-asset-cleanup";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -345,10 +345,6 @@ class PlayScene extends Phaser.Scene {
     this.load.spritesheet("gabi-wings-sheet", `./public/assets/character/main_char_sprite_with_double_jump.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("forest-tiles", `./public/assets/environment/forest-tileset.png?v=${ASSET_VERSION}`, {
-      frameWidth: TILE,
-      frameHeight: TILE
     });
     this.load.spritesheet("platform-strip", `./public/assets/environment/platform.png?v=${ASSET_VERSION}`, {
       frameWidth: PLATFORM_FRAME_WIDTH,

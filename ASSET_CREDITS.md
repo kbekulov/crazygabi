@@ -2,12 +2,11 @@
 
 The game uses original procedural art plus the following permissively licensed assets:
 
-- `public/assets/environment/forest-tileset.png` from **Tileset Platform Forest** by thekingphoenix on OpenGameArt. License: CC0. Source: https://opengameart.org/content/tileset-platform-forest
 - `public/assets/environment/paralax_city.png` is a user-provided city parallax background used as the main scrolling backdrop.
 - `public/assets/environment/platform.png` and `public/assets/environment/platform_fence.png` are user-provided platform and fence strip sprites.
 - `public/assets/character/robot.png` is a user-provided 3-frame robot enemy sprite.
 - `public/assets/environment/falling_acorn.png`, `golden-coin.png`, `double_jump_item.png`, `door_key.png`, and `exit_door.png` are user-provided item and hazard sprites.
 - `public/assets/character/main_char_sprite_with_double_jump.png` is a user-provided winged variant for Gabi's secondary jump.
-- `public/assets/sound/bgm.mp3` is user-provided background music.
+- `public/assets/sound/bgm.mp3` and `public/assets/sound/bgm2.mp3` are user-provided background music.
 
-The downloaded source files are kept in `public/assets/source/` for traceability. `public/assets/character/*` also contains CC0 candidate character layers from **MV Platformer Female (32x64)** by MoikMellah, but the current Gabi runtime sprite uses `main_char_sprite.png`.
+The downloaded source files are kept in `public/assets/source/` for traceability. The current Gabi runtime sprite uses `public/assets/character/main_char_sprite.png`.
