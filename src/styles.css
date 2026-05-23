@@ -154,6 +154,28 @@ button:active {
   line-height: 1.45;
 }
 
+.cheat-panel {
+  z-index: 4;
+  background: rgba(0, 0, 0, 0.74);
+}
+
+.cheat-panel h1 {
+  font-size: clamp(2.1rem, 7vw, 4.6rem);
+}
+
+.cheat-levels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 190px));
+  gap: 12px;
+  justify-content: center;
+}
+
+.cheat-levels button,
+#cheat-close {
+  min-width: 0;
+  padding-inline: 1rem;
+}
+
 @media (max-width: 680px) {
   #shell {
     padding: 8px;
@@ -171,5 +193,9 @@ button:active {
 
   #hud > div {
     padding: 0 2px;
+  }
+
+  .cheat-levels {
+    grid-template-columns: minmax(0, 220px);
   }
 }

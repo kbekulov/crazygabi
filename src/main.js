@@ -38,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-level-2-gate-fix";
+const ASSET_VERSION = "20260523-cheat-menu";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -242,7 +242,10 @@ const hud = {
   time: document.querySelector("#time"),
   key: document.querySelector("#key"),
   message: document.querySelector("#message"),
-  startButton: document.querySelector("#start-button")
+  startButton: document.querySelector("#start-button"),
+  cheatMenu: document.querySelector("#cheat-menu"),
+  cheatLevels: document.querySelector("#cheat-levels"),
+  cheatClose: document.querySelector("#cheat-close")
 };
 
 function setMessage(title, copy, button = "Start") {
@@ -258,6 +261,10 @@ function updateHud() {
   hud.lives.textContent = `x${state.lives}`;
   hud.time.textContent = String(state.timeLeft).padStart(3, "0");
   hud.key.textContent = state.hasKey ? "x01" : "x00";
+}
+
+function setCheatMenuVisible(visible) {
+  hud.cheatMenu.hidden = !visible;
 }
 
 function makeTextures(scene) {
@@ -1098,6 +1105,7 @@ const game = new Phaser.Game({
 hud.startButton.addEventListener("click", () => {
   const scene = game.scene.getScene("PlayScene");
   if (!scene.scene.isActive()) return;
+  setCheatMenuVisible(false);
   if (state.won || state.lives <= 0) {
     state.levelIndex = 0;
     state.resetProgressOnCreate = true;
@@ -1106,4 +1114,35 @@ hud.startButton.addEventListener("click", () => {
     return;
   }
   scene.startRun();
+});
+
+hud.cheatClose.addEventListener("click", () => setCheatMenuVisible(false));
+
+LEVELS.forEach((level, index) => {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = level.name;
+  button.addEventListener("click", () => {
+    const scene = game.scene.getScene("PlayScene");
+    if (!scene.scene.isActive()) return;
+    setCheatMenuVisible(false);
+    state.levelIndex = index;
+    state.score = 0;
+    state.lives = 3;
+    state.resetProgressOnCreate = false;
+    state.pendingLevelPrompt = {
+      title: level.name,
+      copy: `Testing route loaded. Press ${index === 0 ? "Start" : "Go"} when ready.`,
+      button: index === 0 ? "Start" : "Go"
+    };
+    scene.sound.stopAll();
+    scene.scene.restart();
+  });
+  hud.cheatLevels.appendChild(button);
+});
+
+window.addEventListener("keydown", (event) => {
+  if (event.key !== "0") return;
+  event.preventDefault();
+  setCheatMenuVisible(hud.cheatMenu.hidden);
 });
