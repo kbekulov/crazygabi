@@ -38,12 +38,25 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260522-door-depth";
+const ASSET_VERSION = "20260523-level-2";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
-const LEVEL = createLevel();
+const LEVELS = [
+  {
+    name: "Level 1",
+    rows: createLevelOne(),
+    timeLimit: TIME_LIMIT,
+    showStartingHouse: true
+  },
+  {
+    name: "Level 2",
+    rows: createLevelTwo(),
+    timeLimit: 240,
+    showStartingHouse: false
+  }
+];
 
-function createLevel() {
+function createLevelRows() {
   const rows = Array.from({ length: LEVEL_HEIGHT_TILES }, () => Array(LEVEL_WIDTH_TILES).fill("."));
   const put = (row, column, value) => {
     if (rows[row] && column >= 0 && column < LEVEL_WIDTH_TILES) rows[row][column] = value;
@@ -51,6 +64,12 @@ function createLevel() {
   const run = (row, start, length, value = "#") => {
     for (let index = 0; index < length; index += 1) put(row, start + index, value);
   };
+
+  return { rows, put, run };
+}
+
+function createLevelOne() {
+  const { rows, put, run } = createLevelRows();
 
   run(16, 0, 28);
   run(16, 34, 46);
@@ -113,7 +132,86 @@ function createLevel() {
   return rows.map((row) => row.join(""));
 }
 
+function createLevelTwo() {
+  const { rows, put, run } = createLevelRows();
+
+  run(16, 0, 16);
+  run(16, 24, 20);
+  run(16, 52, 13);
+  run(16, 75, 18);
+  run(16, 105, 16);
+  run(16, 132, 16);
+  run(14, 19, 4, "=");
+  run(13, 31, 9);
+  run(13, 46, 4, "=");
+  run(13, 60, 12);
+  run(13, 86, 4, "=");
+  run(13, 99, 12);
+  run(13, 121, 4, "=");
+  run(12, 136, 9);
+  run(10, 28, 8);
+  run(10, 43, 4, "=");
+  run(10, 57, 10);
+  run(10, 76, 8);
+  run(10, 94, 4, "=");
+  run(10, 110, 10);
+  run(9, 130, 12);
+  run(7, 38, 7);
+  run(7, 51, 4, "=");
+  run(7, 64, 8);
+  run(7, 83, 8);
+  run(7, 102, 4, "=");
+  run(7, 116, 8);
+  run(5, 47, 8);
+  run(5, 67, 4, "=");
+  run(5, 87, 8);
+  run(5, 108, 8);
+  run(3, 58, 7);
+  run(3, 78, 4, "=");
+  run(3, 99, 9);
+  run(2, 127, 11);
+
+  [
+    [14, 4, "p"],
+    [15, 30, "g"],
+    [15, 33, "g"],
+    [12, 38, "j"],
+    [12, 64, "g"],
+    [12, 67, "g"],
+    [12, 104, "m"],
+    [11, 141, "g"],
+    [9, 31, "m"],
+    [9, 61, "g"],
+    [9, 80, "m"],
+    [9, 115, "g"],
+    [8, 136, "m"],
+    [6, 42, "g"],
+    [6, 69, "m"],
+    [6, 87, "g"],
+    [6, 119, "g"],
+    [4, 52, "g"],
+    [4, 90, "g"],
+    [2, 61, "g"],
+    [2, 103, "g"],
+    [1, 28, "a"],
+    [1, 37, "a"],
+    [1, 48, "a"],
+    [1, 62, "a"],
+    [1, 74, "a"],
+    [1, 88, "a"],
+    [1, 101, "a"],
+    [1, 113, "a"],
+    [1, 125, "a"],
+    [1, 136, "a"],
+    [1, 133, "k"],
+    [8, 134, "d"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
+
 const state = {
+  levelIndex: 0,
   score: 0,
   gems: 0,
   totalGems: 0,
@@ -122,7 +220,8 @@ const state = {
   hasKey: false,
   hasDoubleJump: false,
   running: false,
-  won: false
+  won: false,
+  resetProgressOnCreate: true
 };
 
 const hud = {
@@ -257,13 +356,15 @@ class PlayScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     this.physics.world.gravity.y = 1150;
+    this.level = LEVELS[state.levelIndex] || LEVELS[0];
+    this.levelRows = this.level.rows;
     this.spawnPoint = { x: 96, y: 120 };
-    this.levelWidth = LEVEL[0].length * TILE;
-    this.levelHeight = LEVEL.length * TILE;
+    this.levelWidth = this.levelRows[0].length * TILE;
+    this.levelHeight = this.levelRows.length * TILE;
 
     this.createBackdrop();
     this.createWaterBelow();
-    this.createStartingHouse();
+    if (this.level.showStartingHouse) this.createStartingHouse();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
@@ -292,10 +393,14 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
 
-    state.score = 0;
+    if (state.resetProgressOnCreate) {
+      state.levelIndex = 0;
+      state.score = 0;
+      state.lives = 3;
+      state.resetProgressOnCreate = false;
+    }
     state.gems = 0;
-    state.lives = 3;
-    state.timeLeft = TIME_LIMIT;
+    state.timeLeft = this.level.timeLimit;
     state.hasKey = false;
     state.hasDoubleJump = false;
     state.running = false;
@@ -390,7 +495,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   buildLevel() {
-    LEVEL.forEach((row, rowIndex) => {
+    this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
         const x = columnIndex * TILE + TILE / 2;
         const y = rowIndex * TILE + TILE / 2;
@@ -457,7 +562,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlatformVisuals() {
-    LEVEL.forEach((row, rowIndex) => {
+    this.levelRows.forEach((row, rowIndex) => {
       let columnIndex = 0;
       while (columnIndex < row.length) {
         if (row[columnIndex] !== "#") {
@@ -473,7 +578,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   createMovingPlatforms() {
-    LEVEL.forEach((row, rowIndex) => {
+    this.levelRows.forEach((row, rowIndex) => {
       let columnIndex = 0;
       while (columnIndex < row.length) {
         if (row[columnIndex] !== "=") {
@@ -922,7 +1027,6 @@ class PlayScene extends Phaser.Scene {
 
   enterDoor() {
     if (!state.running || !state.hasKey) return;
-    state.won = true;
     state.running = false;
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
@@ -930,7 +1034,25 @@ class PlayScene extends Phaser.Scene {
     state.score += state.gems === state.totalGems ? 1000 : 350;
     state.score += state.timeLeft * 10;
     updateHud();
-    setMessage("Level Clear", "You found the key and escaped. The next step is more city routes, ladders, and secret bonuses.", "Play Again");
+    if (state.levelIndex < LEVELS.length - 1) {
+      this.advanceToNextLevel();
+      return;
+    }
+
+    state.won = true;
+    setMessage("Level Clear", "You found the key and escaped. More city routes and secret bonuses are ready for the next build.", "Play Again");
+  }
+
+  advanceToNextLevel() {
+    state.levelIndex += 1;
+    setMessage("Level 2", "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.", "Go");
+    window.setTimeout(() => {
+      this.scene.restart();
+      window.setTimeout(() => {
+        const nextScene = this.game.scene.getScene("PlayScene");
+        if (nextScene?.scene?.isActive()) nextScene.startRun();
+      }, 80);
+    }, 700);
   }
 }
 
@@ -959,6 +1081,8 @@ hud.startButton.addEventListener("click", () => {
   const scene = game.scene.getScene("PlayScene");
   if (!scene.scene.isActive()) return;
   if (state.won || state.lives <= 0) {
+    state.levelIndex = 0;
+    state.resetProgressOnCreate = true;
     scene.scene.restart();
     window.setTimeout(() => game.scene.getScene("PlayScene").startRun(), 80);
     return;
