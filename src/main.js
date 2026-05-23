@@ -35,12 +35,14 @@ const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
 const CAT_SAFE_DISTANCE = 210;
-const CAT_RUN_SPEED = 238;
-const CAT_JUMP_SPEED = 520;
+const CAT_RUN_SPEED = 276;
+const CAT_JUMP_SPEED = 545;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
-const CAT_EDGE_LOOKAHEAD = 42;
-const CAT_LANDING_LOOKAHEAD = 390;
+const CAT_EDGE_LOOKAHEAD = 58;
+const CAT_LANDING_LOOKAHEAD = 520;
+const CAT_EDGE_JUMP_DISTANCE = 118;
+const CAT_START_OFFSET = 74;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -48,8 +50,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-gap-jump";
-const STORY_ASSET_VERSION = "20260523-cat-gap-jump";
+const ASSET_VERSION = "20260523-cat-guide-reset-key";
+const STORY_ASSET_VERSION = "20260523-cat-guide-reset-key";
 let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -463,6 +465,8 @@ class PlayScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     this.physics.world.gravity.y = 1150;
+    this.activeIntroToken = (this.activeIntroToken || 0) + 1;
+    this.introInProgress = false;
     if (state.resetProgressOnCreate) {
       state.levelIndex = 0;
       state.score = 0;
@@ -519,6 +523,11 @@ class PlayScene extends Phaser.Scene {
     state.won = false;
     updateHud();
     this.prepareLevelIntro();
+    this.time.delayedCall(120, () => {
+      if (!state.running && !this.introInProgress && hud.message.hidden && hud.storyIntro.hidden) {
+        this.prepareLevelIntro();
+      }
+    });
   }
 
   prepareLevelIntro() {
@@ -533,28 +542,29 @@ class PlayScene extends Phaser.Scene {
   }
 
   async playStoryIntroThenBegin() {
+    const introToken = this.activeIntroToken;
     setStoryIntroVisible(false);
     hud.message.hidden = true;
     this.startMusic();
     try {
       const frames = await loadStoryFrames(this.level.storyFrames);
-      if (!this.scene.isActive("PlayScene")) return;
+      if (!this.isCurrentIntro(introToken)) return;
       if (frames.length < 2) {
-        this.beginGameplay();
+        this.beginGameplay(introToken);
         return;
       }
 
       hud.message.hidden = true;
       setCheatMenuVisible(false);
-      await this.renderStoryIntro(frames);
-      if (!this.scene.isActive("PlayScene")) return;
-      this.beginGameplay();
+      await this.renderStoryIntro(frames, introToken);
+      if (!this.isCurrentIntro(introToken)) return;
+      this.beginGameplay(introToken);
     } catch (_error) {
-      if (this.scene.isActive("PlayScene")) this.beginGameplay();
+      if (this.isCurrentIntro(introToken)) this.beginGameplay(introToken);
     }
   }
 
-  renderStoryIntro(frames) {
+  renderStoryIntro(frames, introToken) {
     const introRunId = storyIntroRunId + 1;
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
     hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
@@ -571,17 +581,21 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(true);
     return new Promise((resolve) => {
       window.setTimeout(() => {
-        if (hud.storyIntro.hidden || introRunId !== storyIntroRunId) {
+        if (!this.isCurrentIntro(introToken) || hud.storyIntro.hidden || introRunId !== storyIntroRunId) {
           resolve();
           return;
         }
         hud.storyIntro.classList.add("leaving");
         window.setTimeout(() => {
-          if (introRunId === storyIntroRunId) setStoryIntroVisible(false);
+          if (this.isCurrentIntro(introToken) && introRunId === storyIntroRunId) setStoryIntroVisible(false);
           resolve();
         }, 820);
       }, 3650);
     });
+  }
+
+  isCurrentIntro(introToken) {
+    return this.scene.isActive("PlayScene") && introToken === this.activeIntroToken;
   }
 
   createBackdrop() {
@@ -752,6 +766,13 @@ class PlayScene extends Phaser.Scene {
           key.setDepth(ITEM_DEPTH);
           key.setCircle(58, 59, 59);
           this.keyPoint = { x, y };
+          this.keySprite = key;
+          if (this.level.catNpc) {
+            key.disableBody(true, true);
+            this.keyRevealed = false;
+          } else {
+            this.keyRevealed = true;
+          }
           this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "d") {
@@ -883,6 +904,7 @@ class PlayScene extends Phaser.Scene {
     this.player.setMaxVelocity(260, 620);
     this.player.setScale(GABI_SCALE);
     this.player.setDepth(4);
+    this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
   }
 
@@ -930,21 +952,28 @@ class PlayScene extends Phaser.Scene {
   }
 
   startRun() {
-    if (this.introInProgress || state.running) return;
+    if (state.running) return;
+    if (this.introInProgress) {
+      this.activeIntroToken = (this.activeIntroToken || 0) + 1;
+      this.introInProgress = false;
+      setStoryIntroVisible(false);
+    }
+    this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = true;
     hud.message.hidden = true;
     setStoryIntroVisible(false);
-    this.resetPlayerMotion();
-    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
+    if (!state.hasKey) this.resetKeyReveal();
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
     this.resetCatNpc();
     this.playStoryIntroThenBegin();
   }
 
-  beginGameplay() {
+  beginGameplay(introToken = this.activeIntroToken) {
+    if (!this.isCurrentIntro(introToken)) return;
     this.introInProgress = false;
     state.running = true;
     this.startTimer();
@@ -1057,6 +1086,13 @@ class PlayScene extends Phaser.Scene {
     this.player.setAngularVelocity(0);
   }
 
+  resetPlayerToSpawn() {
+    this.resetPlayerMotion();
+    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.currentGabiAnimation = null;
+    this.setGabiAnimation("idle");
+  }
+
   showGabiSpeech(text) {
     if (!text) return;
     if (this.speechBubble) this.speechBubble.destroy(true);
@@ -1141,18 +1177,19 @@ class PlayScene extends Phaser.Scene {
 
   resetCatNpc() {
     if (!this.cat) return;
-    this.cat.enableBody(true, this.spawnPoint.x + 245, this.spawnPoint.y, true, true);
+    this.cat.enableBody(true, this.spawnPoint.x + CAT_START_OFFSET, this.spawnPoint.y, true, true);
     this.cat.body.allowGravity = true;
     this.cat.body.moves = true;
     this.cat.setVelocity(0, 0);
     this.cat.setAcceleration(0, 0);
-    this.cat.setFlipX(false);
+    this.cat.setFlipX(true);
     this.catTarget = null;
-    this.catWaiting = false;
+    this.catWaiting = true;
     this.catWaitAnchorX = this.cat.x;
     this.catNextDecisionAt = 0;
     this.catWasOnFloor = true;
     this.catJumpPoseUntil = 0;
+    this.catIntroUntil = this.time.now + 850;
     this.cat.play("cat-idle", true);
   }
 
@@ -1167,6 +1204,14 @@ class PlayScene extends Phaser.Scene {
 
     if (this.cat.y > this.levelHeight + 60) {
       this.rescueCatToNearestPlatform();
+      return;
+    }
+
+    if (time < this.catIntroUntil) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.cat.setFlipX(this.player.x < this.cat.x);
+      this.cat.play("cat-idle", true);
       return;
     }
 
@@ -1185,6 +1230,8 @@ class PlayScene extends Phaser.Scene {
     const shouldWait =
       reachedGoal ||
       (this.cat.x >= screenRightX - 12 && this.cat.x > this.player.x + CAT_SAFE_DISTANCE && !gabiReachedCat);
+
+    if (!state.hasKey && reachedGoal) this.revealKey();
 
     if ((this.catWaiting || shouldWait) && !gabiReachedCat) {
       this.catWaiting = true;
@@ -1214,6 +1261,14 @@ class PlayScene extends Phaser.Scene {
 
   pickCatTarget(goal, screenRightX) {
     const desiredX = Math.min(goal.x - 80, screenRightX, this.cat.x + Phaser.Math.Between(220, 430));
+    const currentRun = this.findPlatformUnder(this.cat.x);
+    if (currentRun && currentRun.endX - currentRun.startX > CAT_EDGE_JUMP_DISTANCE + 96) {
+      const currentTargetX = Phaser.Math.Clamp(desiredX, currentRun.startX + 54, currentRun.endX - CAT_EDGE_JUMP_DISTANCE);
+      if (currentTargetX > this.cat.x + 64 && currentTargetX <= screenRightX + 24) {
+        return { x: currentTargetX, y: currentRun.topY - CAT_PLATFORM_Y };
+      }
+    }
+
     const candidates = this.platformRuns.filter((run) => {
       const centerX = Phaser.Math.Clamp(desiredX, run.startX + 46, run.endX - 46);
       const targetY = run.topY - CAT_PLATFORM_Y;
@@ -1248,29 +1303,31 @@ class PlayScene extends Phaser.Scene {
     const direction = target.x >= this.cat.x ? 1 : -1;
     const onFloor = this.cat.body.blocked.down;
     const groundAhead = this.hasCatGroundAhead(direction);
+    const currentRun = this.findPlatformUnder(this.cat.x);
+    const distanceToEdge = currentRun
+      ? (direction > 0 ? currentRun.endX - this.cat.x : this.cat.x - currentRun.startX)
+      : 0;
     const nearTarget = Math.abs(target.x - this.cat.x) < 140;
-    const landingAhead = this.hasCatLandingAhead(direction);
-    const needsJump = onFloor && (!groundAhead || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
+    const landingRun = this.findNextCatPlatform(direction);
+    const landingAhead = Boolean(landingRun);
+    const approachingGap = onFloor && currentRun && distanceToEdge < CAT_EDGE_JUMP_DISTANCE;
+    const needsJump = onFloor && (!groundAhead || approachingGap || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
 
     if (needsJump && landingAhead) {
+      const landingX = direction > 0 ? landingRun.startX + 104 : landingRun.endX - 104;
+      this.catTarget = {
+        x: Phaser.Math.Clamp(landingX, landingRun.startX + 46, landingRun.endX - 46),
+        y: landingRun.topY - CAT_PLATFORM_Y
+      };
       this.catJumpPoseUntil = time + 130;
+      this.cat.setVelocityX(direction * CAT_RUN_SPEED);
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
 
     if (onFloor && !groundAhead && !landingAhead) {
-      const nextRun = this.findNextCatPlatform(direction);
-      if (nextRun) {
-        this.catTarget = {
-          x: Phaser.Math.Clamp(this.cat.x + direction * 190, nextRun.startX + 46, nextRun.endX - 46),
-          y: nextRun.topY - CAT_PLATFORM_Y
-        };
-        this.catJumpPoseUntil = time + 130;
-        this.cat.setVelocityY(-CAT_JUMP_SPEED);
-      } else {
-        this.cat.setAccelerationX(0);
-        this.cat.setVelocityX(0);
-        this.catWaiting = true;
-      }
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.catWaiting = true;
       return;
     }
 
@@ -1286,30 +1343,30 @@ class PlayScene extends Phaser.Scene {
   }
 
   hasCatLandingAhead(direction) {
-    const startX = this.cat.x + direction * 70;
-    const endX = this.cat.x + direction * CAT_LANDING_LOOKAHEAD;
-    const currentRun = this.findPlatformUnder(this.cat.x);
-    return this.platformRuns.some((run) => {
-      if (run === currentRun) return false;
-      const xMatches = direction > 0
-        ? run.startX <= endX && run.endX >= startX && run.endX > this.cat.x + 36
-        : run.endX >= endX && run.startX <= startX && run.startX < this.cat.x - 36;
-      const targetY = run.topY - CAT_PLATFORM_Y;
-      return xMatches && targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
-    });
+    return Boolean(this.findNextCatPlatform(direction));
   }
 
   findNextCatPlatform(direction = 1) {
-    return this.platformRuns.find((run) => {
-      if (run === this.findPlatformUnder(this.cat.x)) return false;
+    const currentRun = this.findPlatformUnder(this.cat.x);
+    const candidates = this.platformRuns.filter((run) => {
+      if (run === currentRun) return false;
       const targetY = run.topY - CAT_PLATFORM_Y;
-      const ahead = direction > 0 ? run.endX > this.cat.x + 80 : run.startX < this.cat.x - 80;
-      const closeEnough = direction > 0
-        ? run.startX < this.cat.x + CAT_LANDING_LOOKAHEAD
-        : run.endX > this.cat.x - CAT_LANDING_LOOKAHEAD;
+      const gap = direction > 0 ? run.startX - this.cat.x : this.cat.x - run.endX;
+      const ahead = gap > 24;
+      const closeEnough = gap < CAT_LANDING_LOOKAHEAD;
       const reachableHeight = targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
       return ahead && closeEnough && reachableHeight && run.endX - run.startX > 80;
     });
+
+    candidates.sort((a, b) => {
+      const gapA = direction > 0 ? a.startX - this.cat.x : this.cat.x - a.endX;
+      const gapB = direction > 0 ? b.startX - this.cat.x : this.cat.x - b.endX;
+      const heightA = Math.abs((a.topY - CAT_PLATFORM_Y) - this.cat.y);
+      const heightB = Math.abs((b.topY - CAT_PLATFORM_Y) - this.cat.y);
+      return gapA - gapB || heightA - heightB;
+    });
+
+    return candidates[0] || null;
   }
 
   findPlatformUnder(x) {
@@ -1481,6 +1538,7 @@ class PlayScene extends Phaser.Scene {
         this.timerEvent.remove(false);
         this.timerEvent = null;
       }
+      this.activeIntroToken = (this.activeIntroToken || 0) + 1;
       this.introInProgress = false;
       this.stopGameAudio();
     });
@@ -1511,6 +1569,26 @@ class PlayScene extends Phaser.Scene {
     state.score += 300;
     this.cameras.main.flash(130, 139, 220, 255, false);
     updateHud();
+  }
+
+  resetKeyReveal() {
+    if (!this.keySprite || !this.keyPoint || !this.level.catNpc) return;
+    this.keyRevealed = false;
+    this.keySprite.disableBody(true, true);
+  }
+
+  revealKey() {
+    if (!this.keySprite || !this.keyPoint || this.keyRevealed) return;
+    this.keyRevealed = true;
+    this.keySprite.enableBody(true, this.keyPoint.x, this.keyPoint.y, true, true);
+    this.keySprite.setDepth(ITEM_DEPTH);
+    this.tweens.add({
+      targets: this.keySprite,
+      scale: ITEM_SCALE * 1.18,
+      duration: 180,
+      yoyo: true,
+      ease: "Sine.inOut"
+    });
   }
 
   collectKey(_player, key) {
@@ -1577,6 +1655,9 @@ class PlayScene extends Phaser.Scene {
         this.timerEvent.remove(false);
         this.timerEvent = null;
       }
+      this.activeIntroToken = (this.activeIntroToken || 0) + 1;
+      this.introInProgress = false;
+      setStoryIntroVisible(false);
       state.levelIndex = 0;
       state.resetProgressOnCreate = true;
       state.pendingLevelPrompt = null;
@@ -1585,8 +1666,12 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
-    this.resetPlayerMotion();
-    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.resetPlayerToSpawn();
+    this.airJumpsUsed = 0;
+    this.usingWingJump = false;
+    this.thrownItems.clear(true, true);
+    if (!state.hasKey) this.resetKeyReveal();
+    this.resetCatNpc();
   }
 
   enterDoor() {
