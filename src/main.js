@@ -34,9 +34,12 @@ const ROBOT_SCALE = 0.22;
 const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
-const CAT_SAFE_DISTANCE = 230;
-const CAT_RUN_SPEED = 235;
-const CAT_REACH_DISTANCE = 22;
+const CAT_SAFE_DISTANCE = 210;
+const CAT_RUN_SPEED = 168;
+const CAT_JUMP_SPEED = 430;
+const CAT_SCREEN_MARGIN = 150;
+const CAT_PLATFORM_Y = 48;
+const CAT_EDGE_LOOKAHEAD = 42;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -44,8 +47,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-reset-underground";
-const STORY_ASSET_VERSION = "20260523-reset-underground";
+const ASSET_VERSION = "20260523-cat-physics-guide";
+const STORY_ASSET_VERSION = "20260523-cat-physics-guide";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -484,6 +487,7 @@ class PlayScene extends Phaser.Scene {
     this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
+    this.platformRuns = [];
     this.enemyDirection = new Map();
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
@@ -767,6 +771,12 @@ class PlayScene extends Phaser.Scene {
 
         const start = columnIndex;
         while (columnIndex < row.length && row[columnIndex] === "#") columnIndex += 1;
+        this.platformRuns.push({
+          startX: start * TILE,
+          endX: columnIndex * TILE,
+          topY: rowIndex * TILE,
+          rowIndex
+        });
         this.addPlatformRun(start, columnIndex - start, rowIndex);
       }
     });
@@ -877,7 +887,6 @@ class PlayScene extends Phaser.Scene {
     this.cat.setMaxVelocity(340, 650);
     this.cat.setCollideWorldBounds(true);
     this.cat.body.setSize(96, 88).setOffset(76, 118);
-    this.cat.body.allowGravity = false;
     this.cat.body.enable = false;
     this.cat.setVisible(false);
     this.cat.play("cat-idle");
@@ -1125,37 +1134,19 @@ class PlayScene extends Phaser.Scene {
   resetCatNpc() {
     if (!this.cat) return;
     this.cat.enableBody(true, this.spawnPoint.x + 245, this.spawnPoint.y, true, true);
-    this.cat.body.allowGravity = false;
-    this.cat.body.moves = false;
+    this.cat.body.allowGravity = true;
+    this.cat.body.moves = true;
     this.cat.setVelocity(0, 0);
     this.cat.setAcceleration(0, 0);
     this.cat.setFlipX(false);
-    this.catGuideWaypoints = this.createCatGuideWaypoints();
-    this.catGuideIndex = 0;
-    this.catGuideWaiting = false;
-    this.catGuideLeaping = false;
+    this.catTarget = null;
+    this.catWaiting = false;
+    this.catWaitAnchorX = this.cat.x;
+    this.catNextDecisionAt = 0;
     this.cat.play("cat-idle", true);
   }
 
-  createCatGuideWaypoints() {
-    if (!this.keyPoint || !this.doorPoint) return [];
-    const groundY = this.spawnPoint.y;
-    return [
-      { x: this.spawnPoint.x + 290, y: groundY },
-      { x: this.spawnPoint.x + 730, y: groundY },
-      { x: this.spawnPoint.x + 1220, y: groundY },
-      { x: this.spawnPoint.x + 1760, y: groundY },
-      { x: this.spawnPoint.x + 2350, y: groundY - 92 },
-      { x: this.spawnPoint.x + 3040, y: groundY - 188 },
-      { x: this.keyPoint.x - 76, y: this.keyPoint.y + 48, stopUntilKey: true },
-      { x: this.doorPoint.x - 92, y: this.doorPoint.y + 44, finalStop: true }
-    ].map((point) => ({
-      ...point,
-      x: Phaser.Math.Clamp(point.x, this.spawnPoint.x + 120, this.levelWidth - 170)
-    }));
-  }
-
-  updateCatNpc(_time = 0, delta = 0) {
+  updateCatNpc(time = 0) {
     if (!this.cat || !this.cat.active || !this.cat.visible) return;
     if (!state.running || state.won) {
       this.cat.setAccelerationX(0);
@@ -1164,77 +1155,126 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const waypoints = this.catGuideWaypoints || [];
-    if (!waypoints.length) return;
-    if (state.hasKey && !waypoints[this.catGuideIndex]?.finalStop) {
-      this.catGuideIndex = waypoints.length - 1;
-      this.catGuideWaiting = false;
-    }
-
-    const target = waypoints[this.catGuideIndex];
-    if (!target || this.catGuideLeaping) return;
-
-    const closeEnoughForNextMove = this.player.x >= this.cat.x - CAT_SAFE_DISTANCE;
-    if (this.catGuideWaiting) {
-      this.cat.setVelocity(0, 0);
-      this.cat.play("cat-idle", true);
-      if (target.finalStop || (target.stopUntilKey && !state.hasKey) || !closeEnoughForNextMove) return;
-      this.catGuideIndex = Math.min(this.catGuideIndex + 1, waypoints.length - 1);
-      this.catGuideWaiting = false;
+    if (this.cat.y > this.levelHeight + 60) {
+      this.rescueCatToNearestPlatform();
       return;
     }
 
-    const distanceX = target.x - this.cat.x;
-    const distanceY = target.y - this.cat.y;
-    if (Math.abs(distanceX) <= CAT_REACH_DISTANCE && Math.abs(distanceY) <= CAT_REACH_DISTANCE) {
-      this.cat.setPosition(target.x, target.y);
+    const goal = state.hasKey ? this.doorPoint : this.keyPoint;
+    if (!goal) return;
+
+    const reachedGoal = Math.abs(this.cat.x - goal.x) < 115;
+    const gabiReachedCat = this.player.x >= this.cat.x - CAT_SAFE_DISTANCE;
+    const screenRightX = this.cameras.main.scrollX + VIEW_WIDTH - CAT_SCREEN_MARGIN;
+    const shouldWait =
+      reachedGoal ||
+      (this.cat.x >= screenRightX - 12 && this.cat.x > this.player.x + CAT_SAFE_DISTANCE && !gabiReachedCat);
+
+    if ((this.catWaiting || shouldWait) && !gabiReachedCat) {
+      this.catWaiting = true;
+      this.catTarget = null;
       this.cat.setAccelerationX(0);
-      this.cat.setVelocity(0, 0);
+      this.cat.setVelocityX(0);
       this.cat.play("cat-idle", true);
-      this.catGuideWaiting = true;
       return;
     }
 
-    if (Math.abs(distanceY) > 34) {
-      this.leapCatToWaypoint(target);
+    if (reachedGoal && (state.hasKey || Math.abs(this.player.x - this.cat.x) < CAT_SAFE_DISTANCE)) {
+      this.catWaiting = true;
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.cat.play("cat-idle", true);
       return;
     }
 
-    const step = Math.min(Math.abs(distanceX), (CAT_RUN_SPEED * delta) / 1000);
-    this.cat.x += Math.sign(distanceX || 1) * step;
-    this.cat.y = Phaser.Math.Linear(this.cat.y, target.y, 0.18);
-    this.cat.setVelocityX(distanceX >= 0 ? CAT_RUN_SPEED : -CAT_RUN_SPEED);
-    this.cat.setFlipX(distanceX < 0);
-    this.cat.play("cat-run", true);
+    this.catWaiting = false;
+    if (!this.catTarget || time >= this.catNextDecisionAt || Math.abs(this.cat.x - this.catTarget.x) < 28) {
+      this.catTarget = this.pickCatTarget(goal, screenRightX);
+      this.catNextDecisionAt = time + Phaser.Math.Between(700, 1300);
+    }
+
+    this.moveCatTowardTarget();
   }
 
-  leapCatToWaypoint(target) {
-    if (!this.cat || this.catGuideLeaping) return;
-    this.catGuideLeaping = true;
-    this.cat.body.moves = false;
-    this.cat.setVelocity(0, 0);
-    this.cat.setFlipX(target.x < this.cat.x);
-    const startY = this.cat.y;
-    const jumpHeight = Phaser.Math.Clamp(Math.abs(target.y - startY) + 70, 120, 220);
-    this.tweens.add({
-      targets: this.cat,
-      x: target.x,
-      y: target.y,
-      duration: Phaser.Math.Clamp(Math.abs(target.x - this.cat.x) * 2.8, 620, 1250),
-      ease: "Sine.inOut",
-      onUpdate: (tween, cat) => {
-        const progress = tween.progress;
-        cat.y = Phaser.Math.Linear(startY, target.y, progress) - Math.sin(progress * Math.PI) * jumpHeight;
-        cat.play(progress < 0.55 ? "cat-pounce" : "cat-land", true);
-      },
-      onComplete: () => {
-        this.catGuideLeaping = false;
-        this.cat.body.moves = false;
-        this.cat.setVelocity(0, 0);
-        this.catGuideWaiting = true;
-        this.cat.play("cat-idle", true);
-      }
+  pickCatTarget(goal, screenRightX) {
+    const desiredX = Math.min(goal.x - 80, screenRightX, this.cat.x + Phaser.Math.Between(220, 430));
+    const candidates = this.platformRuns.filter((run) => {
+      const centerX = Phaser.Math.Clamp(desiredX, run.startX + 46, run.endX - 46);
+      const targetY = run.topY - CAT_PLATFORM_Y;
+      const ahead = centerX > this.cat.x + 80;
+      const inCamera = centerX <= screenRightX + 80;
+      const reachableHeight = Math.abs(targetY - this.cat.y) < 190;
+      return ahead && inCamera && reachableHeight && run.endX - run.startX > 96;
     });
+
+    const fallbackRun = this.findPlatformUnder(this.cat.x) || this.platformRuns.find((run) => run.endX > this.cat.x + 120);
+    if (!candidates.length) {
+      const fallbackX = fallbackRun
+        ? Phaser.Math.Clamp(Math.max(this.cat.x + 80, Math.min(screenRightX, goal.x - 70)), fallbackRun.startX + 46, fallbackRun.endX - 46)
+        : Math.min(this.cat.x + 180, screenRightX, goal.x - 70);
+      return { x: fallbackX, y: fallbackRun ? fallbackRun.topY - CAT_PLATFORM_Y : this.cat.y };
+    }
+
+    const chosen = Phaser.Utils.Array.GetRandom(candidates.slice(0, 4));
+    return {
+      x: Phaser.Math.Clamp(desiredX + Phaser.Math.Between(-42, 42), chosen.startX + 46, chosen.endX - 46),
+      y: chosen.topY - CAT_PLATFORM_Y
+    };
+  }
+
+  moveCatTowardTarget() {
+    const target = this.catTarget;
+    if (!target) return;
+    const direction = target.x >= this.cat.x ? 1 : -1;
+    const onFloor = this.cat.body.blocked.down;
+    const groundAhead = this.hasCatGroundAhead(direction);
+    const nearTarget = Math.abs(target.x - this.cat.x) < 140;
+    const needsJump = onFloor && (!groundAhead || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
+
+    if (needsJump && this.hasCatLandingAhead(direction)) {
+      this.cat.setVelocityY(-CAT_JUMP_SPEED);
+    }
+
+    if (onFloor && !groundAhead && !this.hasCatLandingAhead(direction)) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.catWaiting = true;
+      return;
+    }
+
+    this.cat.setAccelerationX(direction * 1050);
+    this.cat.setVelocityX(direction * CAT_RUN_SPEED);
+    this.cat.setFlipX(direction < 0);
+    this.updateCatAnimation(onFloor);
+  }
+
+  hasCatGroundAhead(direction) {
+    const run = this.findPlatformUnder(this.cat.x + direction * CAT_EDGE_LOOKAHEAD);
+    return Boolean(run && this.cat.y <= run.topY + 4);
+  }
+
+  hasCatLandingAhead(direction) {
+    const startX = this.cat.x + direction * 70;
+    const endX = this.cat.x + direction * 235;
+    return this.platformRuns.some((run) => {
+      const xMatches = direction > 0
+        ? run.endX >= startX && run.startX <= endX
+        : run.startX <= startX && run.endX >= endX;
+      const targetY = run.topY - CAT_PLATFORM_Y;
+      return xMatches && targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
+    });
+  }
+
+  findPlatformUnder(x) {
+    return this.platformRuns.find((run) => x >= run.startX + 6 && x <= run.endX - 6 && Math.abs(this.cat.y - (run.topY - CAT_PLATFORM_Y)) < 76);
+  }
+
+  rescueCatToNearestPlatform() {
+    const run = this.platformRuns.find((candidate) => candidate.endX > this.player.x + 120) || this.platformRuns[0];
+    if (!run) return;
+    this.cat.setPosition(Phaser.Math.Clamp(this.player.x + 240, run.startX + 50, run.endX - 50), run.topY - CAT_PLATFORM_Y);
+    this.cat.setVelocity(0, 0);
+    this.catWaiting = true;
   }
 
   updateCatAnimation(onFloor) {
