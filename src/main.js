@@ -50,8 +50,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-restart-lifecycle";
-const STORY_ASSET_VERSION = "20260523-restart-lifecycle";
+const ASSET_VERSION = "20260523-unfreeze-gameover";
+const STORY_ASSET_VERSION = "20260523-unfreeze-gameover";
 let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -979,12 +979,23 @@ class PlayScene extends Phaser.Scene {
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
     this.resetCatNpc();
+    const runToken = this.activeIntroToken;
+    this.time.delayedCall(7200, () => {
+      if (!this.isCurrentIntro(runToken) || state.running || !this.introInProgress) return;
+      setStoryIntroVisible(false);
+      this.beginGameplay(runToken);
+    });
     this.playStoryIntroThenBegin();
   }
 
   beginGameplay(introToken = this.activeIntroToken) {
     if (!this.isCurrentIntro(introToken)) return;
     this.introInProgress = false;
+    this.physics.world.resume();
+    this.input.keyboard.enabled = true;
+    this.player.body.enable = true;
+    this.player.body.moves = true;
+    this.player.body.setAllowGravity(true);
     state.running = true;
     this.startTimer();
     this.showGabiSpeech(this.level.startSpeech);
@@ -1677,8 +1688,6 @@ class PlayScene extends Phaser.Scene {
     updateHud();
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
-      this.resetPlayerMotion({ freeze: true });
-      this.setGabiAnimation("hurt");
       this.cancelLevelRuntime();
       resetGameProgress();
       this.sound.stopAll();
@@ -1754,11 +1763,15 @@ hud.startButton.addEventListener("click", () => {
   if (!scene.scene.isActive()) return;
   setCheatMenuVisible(false);
   setStoryIntroVisible(false);
-  if (state.won || state.lives <= 0) {
+  if (state.won) {
     scene.cancelLevelRuntime();
     resetGameProgress();
     scene.scene.restart();
     return;
+  }
+  if (state.lives <= 0) {
+    resetGameProgress();
+    updateHud();
   }
   scene.startRun();
 });
