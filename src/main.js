@@ -38,8 +38,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-story-mode";
-const STORY_ASSET_VERSION = "20260523-story-mode";
+const ASSET_VERSION = "20260523-speech-style";
+const STORY_ASSET_VERSION = "20260523-speech-style";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -52,8 +52,8 @@ const LEVELS = [
     acornPace: [185, 295],
     actionAbility: null,
     storyFrames: [
-      "./public/assets/story/level-1/frame-1.png",
-      "./public/assets/story/level-1/frame-2.png"
+      ["./public/assets/story/level-1/frame-1.png", "./public/assets/story/level-1/frame_1.png"],
+      ["./public/assets/story/level-1/frame-2.png", "./public/assets/story/level-1/frame_2.png"]
     ],
     startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true
@@ -67,8 +67,8 @@ const LEVELS = [
     acornPace: [245, 370],
     actionAbility: "throw-acorn",
     storyFrames: [
-      "./public/assets/story/level-2/frame-1.png",
-      "./public/assets/story/level-2/frame-2.png"
+      ["./public/assets/story/level-2/frame-1.png", "./public/assets/story/level-2/frame_1.png"],
+      ["./public/assets/story/level-2/frame-2.png", "./public/assets/story/level-2/frame_2.png"]
     ],
     startSpeech: "Was that a cat I saw?",
     showStartingHouse: false
@@ -303,7 +303,14 @@ function loadStoryFrame(src) {
 
 async function loadStoryFrames(paths = []) {
   if (paths.length < 2) return [];
-  const frames = await Promise.all(paths.slice(0, 2).map((path) => loadStoryFrame(path)));
+  const frames = await Promise.all(paths.slice(0, 2).map(async (path) => {
+    const candidates = Array.isArray(path) ? path : [path];
+    for (const candidate of candidates) {
+      const frame = await loadStoryFrame(candidate);
+      if (frame) return frame;
+    }
+    return null;
+  }));
   return frames.every(Boolean) ? frames : [];
 }
 
@@ -924,22 +931,23 @@ class PlayScene extends Phaser.Scene {
   showGabiSpeech(text) {
     if (!text) return;
     if (this.speechBubble) this.speechBubble.destroy(true);
-    const bubbleWidth = 224;
-    const bubbleHeight = 52;
-    const container = this.add.container(this.player.x, this.player.y - 124);
+    const bubbleWidth = 152;
+    const bubbleHeight = 36;
+    const container = this.add.container(this.player.x, this.player.y - 92);
     const bubble = this.add.graphics();
-    bubble.fillStyle(0xffffff, 0.94);
-    bubble.lineStyle(3, 0x111111, 1);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 8);
-    bubble.strokeRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 8);
-    bubble.fillTriangle(-10, -5, 10, -5, 0, 8);
-    bubble.strokeTriangle(-10, -5, 10, -5, 0, 8);
+    bubble.fillStyle(0x050505, 0.86);
+    bubble.lineStyle(1, 0x2c2c2c, 0.95);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.strokeRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
+    bubble.strokeTriangle(-7, -1, 7, -1, 0, 7);
     const label = this.add.text(0, -bubbleHeight / 2, text, {
       fontFamily: "\"Courier New\", monospace",
-      fontSize: "12px",
-      color: "#111111",
+      fontSize: "8px",
+      color: "#f4f0dc",
       align: "center",
-      wordWrap: { width: bubbleWidth - 24, useAdvancedWrap: true }
+      lineSpacing: 1,
+      wordWrap: { width: bubbleWidth - 18, useAdvancedWrap: true }
     });
     label.setOrigin(0.5, 0.5);
     container.add([bubble, label]);
@@ -962,7 +970,7 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiSpeechPosition() {
     if (!this.speechBubble || !this.player) return;
-    this.speechBubble.setPosition(this.player.x, this.player.y - 124);
+    this.speechBubble.setPosition(this.player.x, this.player.y - 92);
   }
 
   moveEnemies() {
