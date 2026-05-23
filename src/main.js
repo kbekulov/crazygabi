@@ -36,6 +36,7 @@ const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
 const CAT_SAFE_DISTANCE = 230;
 const CAT_PANIC_DISTANCE = 145;
+const CAT_IDLE_DISTANCE = 430;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -43,8 +44,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-story-flow";
-const STORY_ASSET_VERSION = "20260523-cat-story-flow";
+const ASSET_VERSION = "20260523-cat-story-tune";
+const STORY_ASSET_VERSION = "20260523-cat-story-tune";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -541,7 +542,7 @@ class PlayScene extends Phaser.Scene {
           setStoryIntroVisible(false);
           resolve();
         }, 820);
-      }, 4650);
+      }, 3650);
     });
   }
 
@@ -1119,30 +1120,38 @@ class PlayScene extends Phaser.Scene {
     const absDistance = Math.abs(distanceFromGabi);
     let direction = this.catDirection || 1;
     const onFloor = this.cat.body.blocked.down;
+    const isSafelyAhead = this.cat.x > this.player.x + CAT_IDLE_DISTANCE;
 
-    if (absDistance < CAT_SAFE_DISTANCE) {
-      direction = distanceFromGabi > 0 ? -1 : 1;
-    } else if (time >= this.catDecisionAt) {
-      direction = Phaser.Math.Between(0, 100) < 68 ? 1 : -1;
-      this.catDecisionAt = time + Phaser.Math.Between(700, 1600);
+    if (onFloor && isSafelyAhead && time >= this.catDecisionAt) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.cat.play("cat-idle", true);
+      this.catDecisionAt = time + Phaser.Math.Between(650, 1350);
+      return;
     }
 
-    if (this.cat.x < this.spawnPoint.x + 150) direction = 1;
+    if (this.cat.x < this.spawnPoint.x + 360 && this.player.x > this.cat.x - 40) {
+      direction = 1;
+    } else if (absDistance < CAT_SAFE_DISTANCE) {
+      direction = this.player.x <= this.cat.x ? 1 : Phaser.Math.Sign(this.cat.x - this.spawnPoint.x - 320) || 1;
+    } else if (time >= this.catDecisionAt) {
+      direction = this.player.x < this.cat.x ? 1 : -1;
+      this.catDecisionAt = time + Phaser.Math.Between(900, 1700);
+    }
+
+    if (this.cat.x < this.spawnPoint.x + 320) direction = 1;
     if (this.cat.x > this.levelWidth - 220) direction = -1;
     if (this.cat.body.blocked.left) direction = 1;
     if (this.cat.body.blocked.right) direction = -1;
 
     const groundAhead = this.hasGroundAhead(this.cat, direction);
+    const safeLandingAhead = this.hasSafeLandingAhead(this.cat, direction);
     if (onFloor && !groundAhead) {
-      if (Phaser.Math.Between(0, 100) < 58) {
+      if (safeLandingAhead) {
         this.cat.setVelocityY(-440);
       } else {
         direction *= -1;
       }
-    }
-
-    if (onFloor && (Math.abs(this.player.y - this.cat.y) > 40 || absDistance < CAT_PANIC_DISTANCE) && Phaser.Math.Between(0, 100) < 4) {
-      this.cat.setVelocityY(-430);
     }
 
     const panicBoost = absDistance < CAT_PANIC_DISTANCE ? 1.25 : 1;
@@ -1162,6 +1171,19 @@ class PlayScene extends Phaser.Scene {
     return this.movingPlatforms.children.entries.some((platform) => {
       const halfWidth = Math.max(TILE / 2, platform.body.width / 2);
       return aheadX >= platform.x - halfWidth && aheadX <= platform.x + halfWidth && Math.abs(platform.y - belowY) < 28;
+    });
+  }
+
+  hasSafeLandingAhead(actor, direction) {
+    const startX = actor.x + direction * 76;
+    const endX = actor.x + direction * 210;
+    const minY = actor.y + 42;
+    const maxY = actor.y + 122;
+    return this.platforms.children.entries.some((platform) => {
+      const betweenX = direction > 0
+        ? platform.x >= startX && platform.x <= endX
+        : platform.x <= startX && platform.x >= endX;
+      return betweenX && platform.y >= minY && platform.y <= maxY;
     });
   }
 
