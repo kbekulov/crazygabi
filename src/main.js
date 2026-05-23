@@ -38,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-level-2-confirm";
+const ASSET_VERSION = "20260523-level-2-gate-fix";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -231,7 +231,8 @@ const state = {
   hasDoubleJump: false,
   running: false,
   won: false,
-  resetProgressOnCreate: true
+  resetProgressOnCreate: true,
+  pendingLevelPrompt: null
 };
 
 const hud = {
@@ -417,6 +418,10 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
+    if (state.pendingLevelPrompt) {
+      setMessage(state.pendingLevelPrompt.title, state.pendingLevelPrompt.copy, state.pendingLevelPrompt.button);
+      state.pendingLevelPrompt = null;
+    }
   }
 
   createBackdrop() {
@@ -904,8 +909,9 @@ class PlayScene extends Phaser.Scene {
 
   startMusic() {
     const soundtrack = this.level.soundtrack || "bgm";
-    if (this.bgm?.isPlaying) return;
     this.resumeAudioContext();
+    if (this.bgm?.isPlaying && this.bgm.key === soundtrack) return;
+    this.sound.stopAll();
     if (this.bgm && this.bgm.key === soundtrack) {
       this.bgm.play();
       return;
@@ -1058,7 +1064,12 @@ class PlayScene extends Phaser.Scene {
 
   advanceToNextLevel() {
     state.levelIndex += 1;
-    setMessage("Level 2", "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.", "Go");
+    state.pendingLevelPrompt = {
+      title: "Level 2",
+      copy: "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.",
+      button: "Go"
+    };
+    this.sound.stopAll();
     this.scene.restart();
   }
 }
