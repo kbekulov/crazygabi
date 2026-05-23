@@ -38,7 +38,7 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-level-2";
+const ASSET_VERSION = "20260523-level-2-confirm";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -46,12 +46,18 @@ const LEVELS = [
     name: "Level 1",
     rows: createLevelOne(),
     timeLimit: TIME_LIMIT,
+    soundtrack: "bgm",
+    acornDelay: [450, 1800],
+    acornPace: [185, 295],
     showStartingHouse: true
   },
   {
     name: "Level 2",
     rows: createLevelTwo(),
-    timeLimit: 240,
+    timeLimit: 190,
+    soundtrack: "bgm2",
+    acornDelay: [260, 1100],
+    acornPace: [245, 370],
     showStartingHouse: false
   }
 ];
@@ -193,12 +199,16 @@ function createLevelTwo() {
     [4, 90, "g"],
     [2, 61, "g"],
     [2, 103, "g"],
+    [1, 20, "a"],
     [1, 28, "a"],
     [1, 37, "a"],
     [1, 48, "a"],
+    [1, 54, "a"],
     [1, 62, "a"],
+    [1, 68, "a"],
     [1, 74, "a"],
     [1, 88, "a"],
+    [1, 95, "a"],
     [1, 101, "a"],
     [1, 113, "a"],
     [1, 125, "a"],
@@ -351,6 +361,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("exit-door", `./public/assets/environment/exit_door.png?v=${ASSET_VERSION}`);
     this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
+    this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
   }
 
   create() {
@@ -537,8 +548,8 @@ class PlayScene extends Phaser.Scene {
           acorn.body.allowGravity = false;
           acorn.body.immovable = false;
           acorn.setData("homeX", x);
-          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(300, 1800));
-          acorn.setData("pace", Phaser.Math.Between(185, 295));
+          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
+          acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
           acorn.setVelocity(0, 0);
         }
         if (cell === "k") {
@@ -892,13 +903,15 @@ class PlayScene extends Phaser.Scene {
   }
 
   startMusic() {
+    const soundtrack = this.level.soundtrack || "bgm";
     if (this.bgm?.isPlaying) return;
     this.resumeAudioContext();
-    if (this.bgm) {
+    if (this.bgm && this.bgm.key === soundtrack) {
       this.bgm.play();
       return;
     }
-    this.bgm = this.sound.add("bgm", { loop: true, volume: 0.35 });
+    if (this.bgm) this.bgm.destroy();
+    this.bgm = this.sound.add(soundtrack, { loop: true, volume: 0.35 });
     this.bgm.play();
   }
 
@@ -1003,8 +1016,8 @@ class PlayScene extends Phaser.Scene {
     acorn.setAngularVelocity(0);
     acorn.setAngle(0);
     acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 70);
-    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(450, 1800));
-    acorn.setData("pace", Phaser.Math.Between(185, 295));
+    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
+    acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
   }
 
   loseLife() {
@@ -1046,13 +1059,7 @@ class PlayScene extends Phaser.Scene {
   advanceToNextLevel() {
     state.levelIndex += 1;
     setMessage("Level 2", "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.", "Go");
-    window.setTimeout(() => {
-      this.scene.restart();
-      window.setTimeout(() => {
-        const nextScene = this.game.scene.getScene("PlayScene");
-        if (nextScene?.scene?.isActive()) nextScene.startRun();
-      }, 80);
-    }, 700);
+    this.scene.restart();
   }
 }
 
