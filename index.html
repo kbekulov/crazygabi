@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260523-hard-reset-gameover" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260523-loading-gate" />
   </head>
   <body>
     <main id="shell">
@@ -18,10 +18,15 @@
           <div><span class="label">KEY</span><strong id="key">x00</strong></div>
         </div>
         <div id="game"></div>
-        <div id="message" class="panel">
+        <div id="loading" class="loading-panel" role="status" aria-live="polite">
+          <h1>Loading</h1>
+          <div class="loading-track"><span id="loading-bar"></span></div>
+          <p id="loading-text">Preparing assets...</p>
+        </div>
+        <div id="message" class="panel" hidden>
           <h1>Crazy Gabi</h1>
           <p>Collect the coins, grab the brass key, and reach the door before the city gets too wild.</p>
-          <button id="start-button" type="button">Start</button>
+          <button id="start-button" type="button" disabled>Start</button>
         </div>
         <div id="story-intro" class="story-intro" hidden>
           <div class="story-backdrop"></div>
@@ -37,6 +42,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260523-hard-reset-gameover"></script>
+    <script type="module" src="./src/main.js?v=20260523-loading-gate"></script>
   </body>
 </html>

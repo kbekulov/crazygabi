@@ -50,9 +50,10 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-hard-reset-gameover";
-const STORY_ASSET_VERSION = "20260523-hard-reset-gameover";
+const ASSET_VERSION = "20260523-loading-gate";
+const STORY_ASSET_VERSION = "20260523-loading-gate";
 let storyIntroRunId = 0;
+let gameAssetsReady = false;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -65,8 +66,8 @@ const LEVELS = [
     acornPace: [185, 295],
     actionAbility: null,
     storyFrames: [
-      ["./public/assets/story/level-1/frame-1.png", "./public/assets/story/level-1/frame_1.png"],
-      ["./public/assets/story/level-1/frame-2.png", "./public/assets/story/level-1/frame_2.png"]
+      { key: "story-level-1-frame-1", src: "./public/assets/story/level-1/frame_1.png" },
+      { key: "story-level-1-frame-2", src: "./public/assets/story/level-1/frame_2.png" }
     ],
     startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true,
@@ -84,8 +85,8 @@ const LEVELS = [
     acornPace: [245, 370],
     actionAbility: "throw-acorn",
     storyFrames: [
-      ["./public/assets/story/level-2/frame-1.png", "./public/assets/story/level-2/frame_1.png"],
-      ["./public/assets/story/level-2/frame-2.png", "./public/assets/story/level-2/frame_2.png"]
+      { key: "story-level-2-frame-1", src: "./public/assets/story/level-2/frame_1.png" },
+      { key: "story-level-2-frame-2", src: "./public/assets/story/level-2/frame_2.png" }
     ],
     startSpeech: "That cat looked strange...",
     showStartingHouse: false,
@@ -274,6 +275,9 @@ const hud = {
   lives: document.querySelector("#lives"),
   time: document.querySelector("#time"),
   key: document.querySelector("#key"),
+  loading: document.querySelector("#loading"),
+  loadingBar: document.querySelector("#loading-bar"),
+  loadingText: document.querySelector("#loading-text"),
   message: document.querySelector("#message"),
   startButton: document.querySelector("#start-button"),
   storyIntro: document.querySelector("#story-intro"),
@@ -284,11 +288,27 @@ const hud = {
   cheatClose: document.querySelector("#cheat-close")
 };
 
+function setLoadingVisible(visible) {
+  hud.loading.hidden = !visible;
+}
+
+function setGameAssetsReady(ready) {
+  gameAssetsReady = ready;
+  hud.startButton.disabled = !ready;
+}
+
+function updateLoadingProgress(progress, text = "Preparing assets...") {
+  const percentage = Phaser.Math.Clamp(progress || 0, 0, 1);
+  hud.loadingBar.style.width = `${Math.round(percentage * 100)}%`;
+  hud.loadingText.textContent = `${text} ${Math.round(percentage * 100)}%`;
+}
+
 function setMessage(title, copy, button = "Start") {
   hud.message.querySelector("h1").textContent = title;
   hud.message.querySelector("p").textContent = copy;
   hud.startButton.textContent = button;
-  hud.message.hidden = false;
+  hud.startButton.disabled = !gameAssetsReady;
+  hud.message.hidden = !gameAssetsReady;
 }
 
 function updateHud() {
@@ -330,18 +350,22 @@ function resetGameProgress() {
 
 function hardResetDocument() {
   // Full game-over uses a fresh browser boot because Phaser scene restarts left stale input state.
+  setGameAssetsReady(false);
   setStoryIntroVisible(false);
   setCheatMenuVisible(false);
   hud.message.hidden = true;
+  updateLoadingProgress(0, "Restarting...");
+  setLoadingVisible(true);
   window.location.replace(`${window.location.pathname}?reset=${Date.now()}`);
 }
 
 function loadStoryFrame(src) {
   return new Promise((resolve) => {
+    const storySrc = typeof src === "string" ? src : src.src;
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => resolve(null);
-    image.src = `${src}?v=${STORY_ASSET_VERSION}`;
+    image.src = `${storySrc}?v=${STORY_ASSET_VERSION}`;
   });
 }
 
@@ -447,6 +471,15 @@ class PlayScene extends Phaser.Scene {
   }
 
   preload() {
+    setGameAssetsReady(false);
+    hud.message.hidden = true;
+    setStoryIntroVisible(false);
+    setCheatMenuVisible(false);
+    setLoadingVisible(true);
+    updateLoadingProgress(0, "Loading assets...");
+    this.load.on("progress", (progress) => updateLoadingProgress(progress, "Loading assets..."));
+    this.load.once("complete", () => updateLoadingProgress(1, "Finalizing..."));
+
     this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}`, {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
@@ -482,6 +515,10 @@ class PlayScene extends Phaser.Scene {
     this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
     this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
+    LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
+      if (!frame?.key || !frame?.src || this.textures.exists(frame.key)) return;
+      this.load.image(frame.key, `${frame.src}?v=${STORY_ASSET_VERSION}`);
+    });
   }
 
   create() {
@@ -540,9 +577,11 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
+    setGameAssetsReady(true);
+    setLoadingVisible(false);
     this.prepareLevelIntro();
     this.time.delayedCall(120, () => {
-      if (!state.running && !this.introInProgress && hud.message.hidden && hud.storyIntro.hidden) {
+      if (gameAssetsReady && !state.running && !this.introInProgress && hud.message.hidden && hud.storyIntro.hidden) {
         this.prepareLevelIntro();
       }
     });
@@ -1761,6 +1800,7 @@ const game = new Phaser.Game({
 });
 
 hud.startButton.addEventListener("click", () => {
+  if (!gameAssetsReady) return;
   const scene = game.scene.getScene("PlayScene");
   if (!scene.scene.isActive()) return;
   setCheatMenuVisible(false);
@@ -1785,6 +1825,7 @@ LEVELS.forEach((level, index) => {
   button.type = "button";
   button.textContent = level.name;
   button.addEventListener("click", () => {
+    if (!gameAssetsReady) return;
     const scene = game.scene.getScene("PlayScene");
     if (!scene.scene.isActive()) return;
     setCheatMenuVisible(false);
@@ -1811,6 +1852,7 @@ LEVELS.forEach((level, index) => {
 window.addEventListener("keydown", (event) => {
   if (event.key !== "0") return;
   event.preventDefault();
+  if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
   setCheatMenuVisible(hud.cheatMenu.hidden);
 });

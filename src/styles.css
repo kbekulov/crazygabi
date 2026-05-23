@@ -29,6 +29,12 @@ button {
   box-shadow: 0 5px 0 #a46d25;
 }
 
+button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+  transform: none;
+}
+
 button:active {
   transform: translateY(3px);
   box-shadow: 0 2px 0 #a46d25;
@@ -152,6 +158,55 @@ button:active {
   color: #ffffff;
   font-size: clamp(0.95rem, 2.4vw, 1.18rem);
   line-height: 1.45;
+}
+
+.loading-panel {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  padding: 24px;
+  text-align: center;
+  background: #000;
+}
+
+.loading-panel[hidden] {
+  display: none;
+}
+
+.loading-panel h1 {
+  margin: 0;
+  color: #fff200;
+  font-size: clamp(2.2rem, 7vw, 4.8rem);
+  line-height: 0.9;
+  text-shadow: 4px 4px 0 #ff2020, 8px 8px 0 #124cff;
+}
+
+.loading-track {
+  width: min(520px, 76vw);
+  height: 18px;
+  overflow: hidden;
+  border: 3px solid #124cff;
+  background: #050505;
+  box-shadow: 0 0 0 3px #000;
+}
+
+.loading-track span {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #30f048, #fff200);
+  transition: width 120ms linear;
+}
+
+.loading-panel p {
+  width: min(520px, 82vw);
+  margin: 0 auto;
+  color: #ffffff;
+  font-size: clamp(0.9rem, 2.2vw, 1.05rem);
+  line-height: 1.35;
 }
 
 .story-intro {
