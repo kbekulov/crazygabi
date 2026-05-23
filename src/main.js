@@ -35,8 +35,8 @@ const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
 const CAT_SAFE_DISTANCE = 210;
-const CAT_RUN_SPEED = 168;
-const CAT_JUMP_SPEED = 430;
+const CAT_RUN_SPEED = 238;
+const CAT_JUMP_SPEED = 520;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
 const CAT_EDGE_LOOKAHEAD = 42;
@@ -48,8 +48,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-physics-guide";
-const STORY_ASSET_VERSION = "20260523-cat-physics-guide";
+const ASSET_VERSION = "20260523-cat-gap-jump";
+const STORY_ASSET_VERSION = "20260523-cat-gap-jump";
 let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -680,15 +680,15 @@ class PlayScene extends Phaser.Scene {
       });
       this.anims.create({
         key: "cat-pounce",
-        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [4, 5] }),
-        frameRate: 8,
-        repeat: -1
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [4] }),
+        frameRate: 1,
+        repeat: 0
       });
       this.anims.create({
         key: "cat-land",
-        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [6, 7] }),
-        frameRate: 8,
-        repeat: -1
+        frames: this.anims.generateFrameNumbers("grey-cat", { frames: [7] }),
+        frameRate: 1,
+        repeat: 0
       });
       this.anims.create({
         key: "cat-idle",
@@ -1151,6 +1151,8 @@ class PlayScene extends Phaser.Scene {
     this.catWaiting = false;
     this.catWaitAnchorX = this.cat.x;
     this.catNextDecisionAt = 0;
+    this.catWasOnFloor = true;
+    this.catJumpPoseUntil = 0;
     this.cat.play("cat-idle", true);
   }
 
@@ -1167,6 +1169,12 @@ class PlayScene extends Phaser.Scene {
       this.rescueCatToNearestPlatform();
       return;
     }
+
+    const onFloor = this.cat.body.blocked.down;
+    if (onFloor && this.catWasOnFloor === false) {
+      this.catJumpPoseUntil = time + 140;
+    }
+    this.catWasOnFloor = onFloor;
 
     const goal = state.hasKey ? this.doorPoint : this.keyPoint;
     if (!goal) return;
@@ -1201,7 +1209,7 @@ class PlayScene extends Phaser.Scene {
       this.catNextDecisionAt = time + Phaser.Math.Between(700, 1300);
     }
 
-    this.moveCatTowardTarget();
+    this.moveCatTowardTarget(time);
   }
 
   pickCatTarget(goal, screenRightX) {
@@ -1234,26 +1242,29 @@ class PlayScene extends Phaser.Scene {
     };
   }
 
-  moveCatTowardTarget() {
+  moveCatTowardTarget(time = 0) {
     const target = this.catTarget;
     if (!target) return;
     const direction = target.x >= this.cat.x ? 1 : -1;
     const onFloor = this.cat.body.blocked.down;
     const groundAhead = this.hasCatGroundAhead(direction);
     const nearTarget = Math.abs(target.x - this.cat.x) < 140;
+    const landingAhead = this.hasCatLandingAhead(direction);
     const needsJump = onFloor && (!groundAhead || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
 
-    if (needsJump && this.hasCatLandingAhead(direction)) {
+    if (needsJump && landingAhead) {
+      this.catJumpPoseUntil = time + 130;
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
 
-    if (onFloor && !groundAhead && !this.hasCatLandingAhead(direction)) {
+    if (onFloor && !groundAhead && !landingAhead) {
       const nextRun = this.findNextCatPlatform(direction);
       if (nextRun) {
         this.catTarget = {
           x: Phaser.Math.Clamp(this.cat.x + direction * 190, nextRun.startX + 46, nextRun.endX - 46),
           y: nextRun.topY - CAT_PLATFORM_Y
         };
+        this.catJumpPoseUntil = time + 130;
         this.cat.setVelocityY(-CAT_JUMP_SPEED);
       } else {
         this.cat.setAccelerationX(0);
@@ -1266,7 +1277,7 @@ class PlayScene extends Phaser.Scene {
     this.cat.setAccelerationX(direction * 1050);
     this.cat.setVelocityX(direction * CAT_RUN_SPEED);
     this.cat.setFlipX(direction < 0);
-    this.updateCatAnimation(onFloor);
+    this.updateCatAnimation(onFloor, time);
   }
 
   hasCatGroundAhead(direction) {
@@ -1277,7 +1288,9 @@ class PlayScene extends Phaser.Scene {
   hasCatLandingAhead(direction) {
     const startX = this.cat.x + direction * 70;
     const endX = this.cat.x + direction * CAT_LANDING_LOOKAHEAD;
+    const currentRun = this.findPlatformUnder(this.cat.x);
     return this.platformRuns.some((run) => {
+      if (run === currentRun) return false;
       const xMatches = direction > 0
         ? run.startX <= endX && run.endX >= startX && run.endX > this.cat.x + 36
         : run.endX >= endX && run.startX <= startX && run.startX < this.cat.x - 36;
@@ -1288,6 +1301,7 @@ class PlayScene extends Phaser.Scene {
 
   findNextCatPlatform(direction = 1) {
     return this.platformRuns.find((run) => {
+      if (run === this.findPlatformUnder(this.cat.x)) return false;
       const targetY = run.topY - CAT_PLATFORM_Y;
       const ahead = direction > 0 ? run.endX > this.cat.x + 80 : run.startX < this.cat.x - 80;
       const closeEnough = direction > 0
@@ -1308,12 +1322,23 @@ class PlayScene extends Phaser.Scene {
     this.cat.setPosition(Phaser.Math.Clamp(this.player.x + 240, run.startX + 50, run.endX - 50), run.topY - CAT_PLATFORM_Y);
     this.cat.setVelocity(0, 0);
     this.catWaiting = true;
+    this.catWasOnFloor = true;
+    this.catJumpPoseUntil = 0;
   }
 
-  updateCatAnimation(onFloor) {
+  updateCatAnimation(onFloor, time = 0) {
     if (!this.cat) return;
     if (!onFloor) {
-      this.cat.play(this.cat.body.velocity.y < -40 ? "cat-pounce" : "cat-land", true);
+      if (time < this.catJumpPoseUntil) {
+        this.cat.anims.stop();
+        this.cat.setFrame(4);
+      } else {
+        this.cat.anims.stop();
+        this.cat.setFrame(this.cat.body.velocity.y < -20 ? 5 : 6);
+      }
+    } else if (time < this.catJumpPoseUntil) {
+      this.cat.anims.stop();
+      this.cat.setFrame(7);
     } else if (Math.abs(this.cat.body.velocity.x) > 28) {
       this.cat.play("cat-run", true);
     } else {
