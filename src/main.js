@@ -50,6 +50,7 @@ const ENEMY_NAMES = [
 ];
 const ASSET_VERSION = "20260523-cat-physics-guide";
 const STORY_ASSET_VERSION = "20260523-cat-physics-guide";
+let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -301,6 +302,7 @@ function setCheatMenuVisible(visible) {
 }
 
 function setStoryIntroVisible(visible) {
+  storyIntroRunId += 1;
   hud.storyIntro.hidden = !visible;
   hud.storyIntro.classList.toggle("leaving", false);
   if (!visible) {
@@ -534,21 +536,26 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(false);
     hud.message.hidden = true;
     this.startMusic();
-    const frames = await loadStoryFrames(this.level.storyFrames);
-    if (!this.scene.isActive("PlayScene")) return;
-    if (frames.length < 2) {
-      this.beginGameplay();
-      return;
-    }
+    try {
+      const frames = await loadStoryFrames(this.level.storyFrames);
+      if (!this.scene.isActive("PlayScene")) return;
+      if (frames.length < 2) {
+        this.beginGameplay();
+        return;
+      }
 
-    hud.message.hidden = true;
-    setCheatMenuVisible(false);
-    await this.renderStoryIntro(frames);
-    if (!this.scene.isActive("PlayScene")) return;
-    this.beginGameplay();
+      hud.message.hidden = true;
+      setCheatMenuVisible(false);
+      await this.renderStoryIntro(frames);
+      if (!this.scene.isActive("PlayScene")) return;
+      this.beginGameplay();
+    } catch (_error) {
+      if (this.scene.isActive("PlayScene")) this.beginGameplay();
+    }
   }
 
   renderStoryIntro(frames) {
+    const introRunId = storyIntroRunId + 1;
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
     hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
     hud.storyPanels.replaceChildren();
@@ -564,13 +571,13 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(true);
     return new Promise((resolve) => {
       window.setTimeout(() => {
-        if (hud.storyIntro.hidden) {
+        if (hud.storyIntro.hidden || introRunId !== storyIntroRunId) {
           resolve();
           return;
         }
         hud.storyIntro.classList.add("leaving");
         window.setTimeout(() => {
-          setStoryIntroVisible(false);
+          if (introRunId === storyIntroRunId) setStoryIntroVisible(false);
           resolve();
         }, 820);
       }, 3650);
@@ -1392,16 +1399,20 @@ class PlayScene extends Phaser.Scene {
 
   startMusic() {
     const soundtrack = this.level.soundtrack || "bgm";
-    this.resumeAudioContext();
-    if (this.bgm?.isPlaying && this.bgm.key === soundtrack) return;
-    this.sound.stopAll();
-    if (this.bgm && this.bgm.key === soundtrack) {
+    try {
+      this.resumeAudioContext();
+      if (this.bgm?.isPlaying && this.bgm.key === soundtrack) return;
+      this.sound.stopAll();
+      if (this.bgm && this.bgm.key === soundtrack) {
+        this.bgm.play();
+        return;
+      }
+      if (this.bgm) this.bgm.destroy();
+      this.bgm = this.sound.add(soundtrack, { loop: true, volume: 0.35 });
       this.bgm.play();
-      return;
+    } catch (_error) {
+      this.bgm = null;
     }
-    if (this.bgm) this.bgm.destroy();
-    this.bgm = this.sound.add(soundtrack, { loop: true, volume: 0.35 });
-    this.bgm.play();
   }
 
   registerAudioLifecycle() {
@@ -1456,7 +1467,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   resumeAudioContext() {
-    if (this.sound?.context?.state === "suspended") this.sound.context.resume();
+    if (this.sound?.context?.state === "suspended") {
+      this.sound.context.resume().catch(() => {});
+    }
   }
 
   collectGem(_player, gem) {
