@@ -44,8 +44,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-guide";
-const STORY_ASSET_VERSION = "20260523-cat-guide";
+const ASSET_VERSION = "20260523-reset-underground";
+const STORY_ASSET_VERSION = "20260523-reset-underground";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -63,7 +63,10 @@ const LEVELS = [
     ],
     startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true,
-    doorYOffset: -30
+    doorYOffset: -30,
+    parallax: "parallax-city",
+    introTitle: "Crazy Gabi",
+    introCopy: "Collect the coins, grab the brass key, and reach the door before the city gets too wild."
   },
   {
     name: "Level 2",
@@ -80,7 +83,8 @@ const LEVELS = [
     startSpeech: "That cat looked strange...",
     showStartingHouse: false,
     catNpc: true,
-    doorYOffset: -16
+    doorYOffset: -16,
+    parallax: "parallax-underground"
   }
 ];
 
@@ -311,6 +315,26 @@ function loadStoryFrame(src) {
   });
 }
 
+function pixelateStoryFrame(frame) {
+  const pixelScale = 0.42;
+  const lowWidth = Math.max(1, Math.round(frame.naturalWidth * pixelScale));
+  const lowHeight = Math.max(1, Math.round(frame.naturalHeight * pixelScale));
+  const lowCanvas = document.createElement("canvas");
+  const highCanvas = document.createElement("canvas");
+  lowCanvas.width = lowWidth;
+  lowCanvas.height = lowHeight;
+  highCanvas.width = frame.naturalWidth;
+  highCanvas.height = frame.naturalHeight;
+
+  const lowContext = lowCanvas.getContext("2d");
+  const highContext = highCanvas.getContext("2d");
+  lowContext.imageSmoothingEnabled = true;
+  lowContext.drawImage(frame, 0, 0, lowWidth, lowHeight);
+  highContext.imageSmoothingEnabled = false;
+  highContext.drawImage(lowCanvas, 0, 0, highCanvas.width, highCanvas.height);
+  return highCanvas.toDataURL("image/png");
+}
+
 async function loadStoryFrames(paths = []) {
   if (paths.length < 2) return [];
   const frames = await Promise.all(paths.slice(0, 2).map(async (path) => {
@@ -418,6 +442,7 @@ class PlayScene extends Phaser.Scene {
       frameHeight: CAT_FRAME_HEIGHT
     });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
+    this.load.image("parallax-underground", `./public/assets/environment/paralax_underground.png?v=${ASSET_VERSION}`);
     this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
     this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
     this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
@@ -432,6 +457,13 @@ class PlayScene extends Phaser.Scene {
   create() {
     makeTextures(this);
     this.physics.world.gravity.y = 1150;
+    if (state.resetProgressOnCreate) {
+      state.levelIndex = 0;
+      state.score = 0;
+      state.lives = 3;
+      state.pendingLevelPrompt = null;
+      state.resetProgressOnCreate = false;
+    }
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     this.levelRows = this.level.rows;
     this.spawnPoint = { x: 96, y: 120 };
@@ -472,12 +504,6 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
 
-    if (state.resetProgressOnCreate) {
-      state.levelIndex = 0;
-      state.score = 0;
-      state.lives = 3;
-      state.resetProgressOnCreate = false;
-    }
     state.gems = 0;
     state.timeLeft = this.level.timeLimit;
     state.hasKey = false;
@@ -490,8 +516,8 @@ class PlayScene extends Phaser.Scene {
 
   prepareLevelIntro() {
     const intro = state.pendingLevelPrompt || {
-      title: this.level.name,
-      copy: "Collect the coins, grab the key, and reach the door.",
+      title: this.level.introTitle || this.level.name,
+      copy: this.level.introCopy || "Collect the coins, grab the key, and reach the door.",
       button: "Start"
     };
     state.pendingLevelPrompt = null;
@@ -526,7 +552,7 @@ class PlayScene extends Phaser.Scene {
       image.className = tallFrames
         ? `story-frame frame-${index + 1} ${index === 0 ? "from-top" : "from-bottom delay"}`
         : `story-frame frame-${index + 1} from-left ${index === 1 ? "delay" : ""}`;
-      image.src = frame.src;
+      image.src = pixelateStoryFrame(frame);
       image.alt = `${this.level.name} manga frame ${index + 1}`;
       hud.storyPanels.appendChild(image);
     });
@@ -547,12 +573,14 @@ class PlayScene extends Phaser.Scene {
   }
 
   createBackdrop() {
-    const sourceHeight = 1314;
+    const textureKey = this.level.parallax || "parallax-city";
+    const source = this.textures.get(textureKey).getSourceImage();
+    const sourceHeight = source.height;
     const scale = PLAY_HEIGHT / sourceHeight;
     const tileWidth = Math.ceil(VIEW_WIDTH / scale);
     this.parallaxLayers = [
       {
-        sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, "parallax-city"),
+        sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, textureKey),
         speed: 0.18
       }
     ];
@@ -1441,8 +1469,15 @@ class PlayScene extends Phaser.Scene {
       state.running = false;
       this.resetPlayerMotion({ freeze: true });
       this.setGabiAnimation("hurt");
-      if (this.timerEvent) this.timerEvent.remove(false);
-      setMessage("Try Again", "Gabi ran out of lives. Press Start for another run through the city.", "Restart");
+      if (this.timerEvent) {
+        this.timerEvent.remove(false);
+        this.timerEvent = null;
+      }
+      state.levelIndex = 0;
+      state.resetProgressOnCreate = true;
+      state.pendingLevelPrompt = null;
+      this.sound.stopAll();
+      this.scene.restart();
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
