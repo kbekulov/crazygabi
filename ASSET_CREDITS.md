@@ -1,12 +1,7 @@
 # Asset Credits
 
-The game uses original procedural art plus the following permissively licensed assets:
+The game's visual and audio direction is user-created and directed by Kiril Bekulov.
 
-- `public/assets/environment/paralax_city.png` is a user-provided city parallax background used as the main scrolling backdrop.
-- `public/assets/environment/platform.png` and `public/assets/environment/platform_fence.png` are user-provided platform and fence strip sprites.
-- `public/assets/character/robot.png` is a user-provided 3-frame robot enemy sprite.
-- `public/assets/environment/falling_acorn.png`, `golden-coin.png`, `double_jump_item.png`, `door_key.png`, and `exit_door.png` are user-provided item and hazard sprites.
-- `public/assets/character/main_char_sprite_with_double_jump.png` is a user-provided winged variant for Gabi's secondary jump.
-- `public/assets/sound/bgm.mp3` and `public/assets/sound/bgm2.mp3` are user-provided background music.
+All remaining runtime assets in `public/assets/` are user-created or user-directed using tools such as ChatGPT, Gemini, Photoshop, and Suno. This includes the Gabi character sprites, robot sprite, city parallax, platforms, fences, house, water, items, hazards, exit door, and background music.
 
-The downloaded source files are kept in `public/assets/source/` for traceability. The current Gabi runtime sprite uses `public/assets/character/main_char_sprite.png`.
+The game's art direction, character design, environment style, item language, and music choices are dictated by Kiril Bekulov's ideas.
