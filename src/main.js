@@ -40,6 +40,7 @@ const CAT_JUMP_SPEED = 430;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
 const CAT_EDGE_LOOKAHEAD = 42;
+const CAT_LANDING_LOOKAHEAD = 390;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -1205,9 +1206,13 @@ class PlayScene extends Phaser.Scene {
       const inCamera = centerX <= screenRightX + 80;
       const reachableHeight = Math.abs(targetY - this.cat.y) < 190;
       return ahead && inCamera && reachableHeight && run.endX - run.startX > 96;
+    }).sort((a, b) => {
+      const aX = Phaser.Math.Clamp(desiredX, a.startX + 46, a.endX - 46);
+      const bX = Phaser.Math.Clamp(desiredX, b.startX + 46, b.endX - 46);
+      return Math.abs(aX - desiredX) - Math.abs(bX - desiredX);
     });
 
-    const fallbackRun = this.findPlatformUnder(this.cat.x) || this.platformRuns.find((run) => run.endX > this.cat.x + 120);
+    const fallbackRun = this.findNextCatPlatform() || this.findPlatformUnder(this.cat.x);
     if (!candidates.length) {
       const fallbackX = fallbackRun
         ? Phaser.Math.Clamp(Math.max(this.cat.x + 80, Math.min(screenRightX, goal.x - 70)), fallbackRun.startX + 46, fallbackRun.endX - 46)
@@ -1236,9 +1241,18 @@ class PlayScene extends Phaser.Scene {
     }
 
     if (onFloor && !groundAhead && !this.hasCatLandingAhead(direction)) {
-      this.cat.setAccelerationX(0);
-      this.cat.setVelocityX(0);
-      this.catWaiting = true;
+      const nextRun = this.findNextCatPlatform(direction);
+      if (nextRun) {
+        this.catTarget = {
+          x: Phaser.Math.Clamp(this.cat.x + direction * 190, nextRun.startX + 46, nextRun.endX - 46),
+          y: nextRun.topY - CAT_PLATFORM_Y
+        };
+        this.cat.setVelocityY(-CAT_JUMP_SPEED);
+      } else {
+        this.cat.setAccelerationX(0);
+        this.cat.setVelocityX(0);
+        this.catWaiting = true;
+      }
       return;
     }
 
@@ -1255,13 +1269,25 @@ class PlayScene extends Phaser.Scene {
 
   hasCatLandingAhead(direction) {
     const startX = this.cat.x + direction * 70;
-    const endX = this.cat.x + direction * 235;
+    const endX = this.cat.x + direction * CAT_LANDING_LOOKAHEAD;
     return this.platformRuns.some((run) => {
       const xMatches = direction > 0
-        ? run.endX >= startX && run.startX <= endX
-        : run.startX <= startX && run.endX >= endX;
+        ? run.startX <= endX && run.endX >= startX && run.endX > this.cat.x + 36
+        : run.endX >= endX && run.startX <= startX && run.startX < this.cat.x - 36;
       const targetY = run.topY - CAT_PLATFORM_Y;
       return xMatches && targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
+    });
+  }
+
+  findNextCatPlatform(direction = 1) {
+    return this.platformRuns.find((run) => {
+      const targetY = run.topY - CAT_PLATFORM_Y;
+      const ahead = direction > 0 ? run.endX > this.cat.x + 80 : run.startX < this.cat.x - 80;
+      const closeEnough = direction > 0
+        ? run.startX < this.cat.x + CAT_LANDING_LOOKAHEAD
+        : run.endX > this.cat.x - CAT_LANDING_LOOKAHEAD;
+      const reachableHeight = targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
+      return ahead && closeEnough && reachableHeight && run.endX - run.startX > 80;
     });
   }
 
