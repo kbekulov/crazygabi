@@ -50,8 +50,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-cat-guide-reset-key";
-const STORY_ASSET_VERSION = "20260523-cat-guide-reset-key";
+const ASSET_VERSION = "20260523-restart-lifecycle";
+const STORY_ASSET_VERSION = "20260523-restart-lifecycle";
 let storyIntroRunId = 0;
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -314,6 +314,20 @@ function setStoryIntroVisible(visible) {
   }
 }
 
+function resetGameProgress() {
+  state.levelIndex = 0;
+  state.score = 0;
+  state.gems = 0;
+  state.lives = 3;
+  state.timeLeft = TIME_LIMIT;
+  state.hasKey = false;
+  state.hasDoubleJump = false;
+  state.running = false;
+  state.won = false;
+  state.resetProgressOnCreate = false;
+  state.pendingLevelPrompt = null;
+}
+
 function loadStoryFrame(src) {
   return new Promise((resolve) => {
     const image = new Image();
@@ -468,11 +482,7 @@ class PlayScene extends Phaser.Scene {
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
     if (state.resetProgressOnCreate) {
-      state.levelIndex = 0;
-      state.score = 0;
-      state.lives = 3;
-      state.pendingLevelPrompt = null;
-      state.resetProgressOnCreate = false;
+      resetGameProgress();
     }
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     this.levelRows = this.level.rows;
@@ -1498,8 +1508,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   registerAudioLifecycle() {
-    if (this.audioLifecycleRegistered) return;
-    this.audioLifecycleRegistered = true;
+    this.unregisterAudioLifecycle();
 
     this.handlePageHidden = () => {
       this.wasMusicPlayingBeforeHidden = this.wasMusicPlayingBeforeHidden || Boolean(this.bgm?.isPlaying);
@@ -1527,21 +1536,41 @@ class PlayScene extends Phaser.Scene {
     window.addEventListener("blur", this.handlePageHidden);
     window.addEventListener("focus", this.handlePageVisible);
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+    this.handleSceneShutdown = () => {
+      this.unregisterAudioLifecycle();
+      this.cancelLevelRuntime();
+      this.stopGameAudio();
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown, this);
+  }
+
+  unregisterAudioLifecycle() {
+    if (this.handleSceneShutdown) {
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown, this);
+      this.handleSceneShutdown = null;
+    }
+    if (this.handleVisibilityChange) document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+    if (this.handlePageHidden) {
       window.removeEventListener("pagehide", this.handlePageHidden);
       window.removeEventListener("beforeunload", this.handlePageHidden);
       window.removeEventListener("unload", this.handlePageHidden);
       window.removeEventListener("blur", this.handlePageHidden);
-      window.removeEventListener("focus", this.handlePageVisible);
-      if (this.timerEvent) {
-        this.timerEvent.remove(false);
-        this.timerEvent = null;
-      }
-      this.activeIntroToken = (this.activeIntroToken || 0) + 1;
-      this.introInProgress = false;
-      this.stopGameAudio();
-    });
+    }
+    if (this.handlePageVisible) window.removeEventListener("focus", this.handlePageVisible);
+    this.handleVisibilityChange = null;
+    this.handlePageHidden = null;
+    this.handlePageVisible = null;
+  }
+
+  cancelLevelRuntime() {
+    this.activeIntroToken = (this.activeIntroToken || 0) + 1;
+    this.introInProgress = false;
+    state.running = false;
+    setStoryIntroVisible(false);
+    if (this.timerEvent) {
+      this.timerEvent.remove(false);
+      this.timerEvent = null;
+    }
   }
 
   stopGameAudio() {
@@ -1648,19 +1677,10 @@ class PlayScene extends Phaser.Scene {
     updateHud();
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
-      state.running = false;
       this.resetPlayerMotion({ freeze: true });
       this.setGabiAnimation("hurt");
-      if (this.timerEvent) {
-        this.timerEvent.remove(false);
-        this.timerEvent = null;
-      }
-      this.activeIntroToken = (this.activeIntroToken || 0) + 1;
-      this.introInProgress = false;
-      setStoryIntroVisible(false);
-      state.levelIndex = 0;
-      state.resetProgressOnCreate = true;
-      state.pendingLevelPrompt = null;
+      this.cancelLevelRuntime();
+      resetGameProgress();
       this.sound.stopAll();
       this.scene.restart();
       return;
@@ -1735,12 +1755,8 @@ hud.startButton.addEventListener("click", () => {
   setCheatMenuVisible(false);
   setStoryIntroVisible(false);
   if (state.won || state.lives <= 0) {
-    state.levelIndex = 0;
-    state.resetProgressOnCreate = true;
-    if (scene.timerEvent) {
-      scene.timerEvent.remove(false);
-      scene.timerEvent = null;
-    }
+    scene.cancelLevelRuntime();
+    resetGameProgress();
     scene.scene.restart();
     return;
   }
