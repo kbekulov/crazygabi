@@ -38,8 +38,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-speech-readability";
-const STORY_ASSET_VERSION = "20260523-speech-readability";
+const ASSET_VERSION = "20260523-story-layout";
+const STORY_ASSET_VERSION = "20260523-story-layout";
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -505,8 +505,8 @@ class PlayScene extends Phaser.Scene {
     frames.forEach((frame, index) => {
       const image = document.createElement("img");
       image.className = tallFrames
-        ? `story-frame ${index === 0 ? "from-top" : "from-bottom"}`
-        : `story-frame from-left ${index === 1 ? "delay" : ""}`;
+        ? `story-frame frame-${index + 1} ${index === 0 ? "from-top" : "from-bottom delay"}`
+        : `story-frame frame-${index + 1} from-left ${index === 1 ? "delay" : ""}`;
       image.src = frame.src;
       image.alt = `${this.level.name} manga frame ${index + 1}`;
       hud.storyPanels.appendChild(image);
@@ -515,7 +515,7 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(true);
     window.setTimeout(() => {
       if (!hud.storyIntro.hidden) hud.storyStart.hidden = false;
-    }, 900);
+    }, 1650);
   }
 
   createBackdrop() {
@@ -936,11 +936,8 @@ class PlayScene extends Phaser.Scene {
     const container = this.add.container(this.player.x, this.player.y - 62);
     const bubble = this.add.graphics();
     bubble.fillStyle(0x050505, 0.86);
-    bubble.lineStyle(1, 0x2c2c2c, 0.95);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.strokeRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
-    bubble.strokeTriangle(-7, -1, 7, -1, 0, 7);
     const label = this.add.text(0, -bubbleHeight / 2, text, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "11px",
