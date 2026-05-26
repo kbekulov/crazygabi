@@ -26,6 +26,7 @@ const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const HEART_DROP_CHANCE = 0.28;
+const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
@@ -54,8 +55,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-heart-drops";
-const STORY_ASSET_VERSION = "20260526-heart-drops";
+const ASSET_VERSION = "20260526-heart-popout";
+const STORY_ASSET_VERSION = "20260526-heart-popout";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const LEVEL_WIDTH_TILES = 148;
@@ -1785,6 +1786,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   collectHeart(_player, heart) {
+    if (this.time.now < (heart.getData("armedAt") || 0)) return;
     heart.disableBody(true, true);
     state.lives += 1;
     state.score += 150;
@@ -1849,13 +1851,26 @@ class PlayScene extends Phaser.Scene {
     heart.setCircle(58, 61, 58);
     heart.body.allowGravity = false;
     heart.body.immovable = true;
+    heart.setData("armedAt", this.time.now + HEART_PICKUP_DELAY);
+    const startY = heart.y;
+    const settleX = heart.x + Phaser.Math.RND.pick([-1, 1]) * Phaser.Math.Between(42, 64);
+    const settleY = startY - Phaser.Math.Between(8, 18);
     this.tweens.add({
       targets: heart,
-      y: heart.y - 9,
-      duration: 520,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.inOut"
+      x: settleX,
+      y: settleY,
+      duration: 360,
+      ease: "Quad.out",
+      onComplete: () => {
+        this.tweens.add({
+          targets: heart,
+          y: heart.y - 9,
+          duration: 520,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.inOut"
+        });
+      }
     });
   }
 
