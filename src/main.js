@@ -38,6 +38,7 @@ const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
 const BRICK_SCALE = 0.27;
 const FALLING_OBJECT_SPAWN_OFFSET = 140;
+const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
@@ -1215,6 +1216,20 @@ class PlayScene extends Phaser.Scene {
       this.physics.add.collider(this.cat, this.movingPlatforms);
     }
     this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.collider(
+      this.thrownItems,
+      this.platforms,
+      this.handleThrownItemPlatformBounce,
+      this.canThrownItemBounce,
+      this
+    );
+    this.physics.add.collider(
+      this.thrownItems,
+      this.movingPlatforms,
+      this.handleThrownItemPlatformBounce,
+      this.canThrownItemBounce,
+      this
+    );
     this.physics.add.overlap(this.thrownItems, this.enemies, this.hitEnemyWithThrownItem, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
@@ -1347,10 +1362,14 @@ class PlayScene extends Phaser.Scene {
     acorn.setCircle(70, 47, 52);
     acorn.body.allowGravity = true;
     acorn.body.setGravityY(-360);
+    acorn.setBounce(0.62, 0.52);
+    acorn.setDragX(30);
     acorn.setVelocity(direction * 430, -295);
     acorn.setAngularVelocity(direction * 520);
     acorn.setData("spawnedAt", time);
     acorn.setData("thrown", true);
+    acorn.setData("bouncesLeft", THROWN_ACORN_MAX_BOUNCES);
+    acorn.setData("lastBounceAt", -Infinity);
     return true;
   }
 
@@ -1932,6 +1951,41 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  canThrownItemBounce(item) {
+    return Boolean(item?.active && (item.getData("bouncesLeft") || 0) > 0);
+  }
+
+  handleThrownItemPlatformBounce(item) {
+    this.consumeThrownItemBounce(item);
+  }
+
+  consumeThrownItemBounce(item) {
+    if (!item?.active) return false;
+    const now = this.time.now;
+    if (now - (item.getData("lastBounceAt") || -Infinity) < 120) return true;
+    const bouncesLeft = item.getData("bouncesLeft") || 0;
+    if (bouncesLeft <= 0) return false;
+
+    const remaining = bouncesLeft - 1;
+    item.setData("bouncesLeft", remaining);
+    item.setData("lastBounceAt", now);
+    item.setAngularVelocity(Phaser.Math.Clamp(item.body.velocity.x * 2.2, -720, 720));
+    if (remaining <= 0) {
+      item.setBounce(0, 0);
+      item.body.checkCollision.none = true;
+    }
+    return true;
+  }
+
+  ricochetThrownItemFromEnemy(item, enemy) {
+    if (!item?.active) return;
+    const direction = item.x < enemy.x ? -1 : 1;
+    this.consumeThrownItemBounce(item);
+    item.body.checkCollision.none = (item.getData("bouncesLeft") || 0) <= 0;
+    item.setVelocity(direction * 260, -260);
+    item.setAngularVelocity(direction * 640);
+  }
+
   updateParallax() {
     if (!this.parallaxLayers) return;
     const scrollX = this.cameras.main.scrollX;
@@ -2180,7 +2234,7 @@ class PlayScene extends Phaser.Scene {
 
   hitEnemyWithThrownItem(item, enemy) {
     if (!state.running || !item.active || !enemy.active) return;
-    item.disableBody(true, true);
+    this.ricochetThrownItemFromEnemy(item, enemy);
     this.defeatEnemy(enemy);
     state.score += 350;
     updateHud();
