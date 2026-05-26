@@ -57,8 +57,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-level-two-ghosts";
-const STORY_ASSET_VERSION = "20260526-level-two-ghosts";
+const ASSET_VERSION = "20260526-level-two-ghosts-v2";
+const STORY_ASSET_VERSION = "20260526-level-two-ghosts-v2";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -94,7 +94,7 @@ const LEVELS = [
     acornDelay: [260, 1100],
     acornPace: [245, 370],
     fallingHazard: "falling-brick",
-    enemySprite: "robot-ghost",
+    enemySprite: "robot-ghost-lv2",
     actionAbility: "throw-acorn",
     storyFrames: [
       { key: "story-level-2-frame-1", src: "./public/assets/story/level-2/frame_1.png" },
@@ -540,7 +540,7 @@ class PlayScene extends Phaser.Scene {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
-    this.load.spritesheet("robot-ghost", `./public/assets/character/robot_ghost.png?v=${ASSET_VERSION}`, {
+    this.load.spritesheet("robot-ghost-lv2", `./public/assets/character/robot_ghost_lv2.png?v=${ASSET_VERSION}`, {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
@@ -842,8 +842,8 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
       this.anims.create({
-        key: "robot-ghost-move",
-        frames: this.anims.generateFrameNumbers("robot-ghost", { frames: [0, 1, 2] }),
+        key: "robot-ghost-lv2-move",
+        frames: this.anims.generateFrameNumbers("robot-ghost-lv2", { frames: [0, 1, 2] }),
         frameRate: 8,
         repeat: -1
       });
@@ -908,7 +908,7 @@ class PlayScene extends Phaser.Scene {
           enemy.setScale(ROBOT_SCALE);
           enemy.setDepth(5);
           enemy.body.setSize(112, 110).setOffset(58, 82);
-          enemy.play(enemySprite === "robot-ghost" ? "robot-ghost-move" : "robot-move");
+          enemy.play(enemySprite === "robot-ghost-lv2" ? "robot-ghost-lv2-move" : "robot-move");
           this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
           this.attachEnemyLabel(enemy);
         }
