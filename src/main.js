@@ -24,7 +24,7 @@ const WATER_Y_OFFSET = 18;
 const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const STARTING_BILLBOARD_DEPTH = FENCE_DEPTH + 0.5;
-const STARTING_BILLBOARD_SCALE = 0.24;
+const STARTING_BILLBOARD_SCALE = 0.36;
 const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
@@ -866,7 +866,7 @@ class PlayScene extends Phaser.Scene {
     house.setScale(STARTING_HOUSE_SCALE);
     house.setDepth(STARTING_HOUSE_DEPTH);
 
-    this.levelSelectBoard = this.add.image(456, 16 * TILE - 2, "starting-billboard");
+    this.levelSelectBoard = this.add.image(523, 16 * TILE - 2, "starting-billboard");
     this.levelSelectBoard.setOrigin(0.5, 1);
     this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
     this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
