@@ -43,6 +43,8 @@ const CAT_EDGE_LOOKAHEAD = 58;
 const CAT_LANDING_LOOKAHEAD = 520;
 const CAT_EDGE_JUMP_DISTANCE = 118;
 const CAT_START_OFFSET = 74;
+const CAT_MOVING_PLATFORM_WAIT_SECONDS = 2.4;
+const CAT_MOVING_PLATFORM_CHECK_STEP = 0.18;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -50,8 +52,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260523-loading-gate";
-const STORY_ASSET_VERSION = "20260523-loading-gate";
+const ASSET_VERSION = "20260526-story-skip";
+const STORY_ASSET_VERSION = "20260526-story-skip";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const LEVEL_WIDTH_TILES = 148;
@@ -604,7 +606,7 @@ class PlayScene extends Phaser.Scene {
     hud.message.hidden = true;
     this.startMusic();
     try {
-      const frames = await loadStoryFrames(this.level.storyFrames);
+      const frames = this.getPreloadedStoryFrames();
       if (!this.isCurrentIntro(introToken)) return;
       if (frames.length < 2) {
         this.beginGameplay(introToken);
@@ -619,6 +621,14 @@ class PlayScene extends Phaser.Scene {
     } catch (_error) {
       if (this.isCurrentIntro(introToken)) this.beginGameplay(introToken);
     }
+  }
+
+  getPreloadedStoryFrames() {
+    const frames = (this.level.storyFrames || []).slice(0, 2).map((frame) => {
+      if (!frame?.key || !this.textures.exists(frame.key)) return null;
+      return this.textures.get(frame.key).getSourceImage();
+    });
+    return frames.every(Boolean) ? frames : [];
   }
 
   renderStoryIntro(frames, introToken) {
@@ -637,15 +647,55 @@ class PlayScene extends Phaser.Scene {
     });
     setStoryIntroVisible(true);
     return new Promise((resolve) => {
-      window.setTimeout(() => {
-        if (!this.isCurrentIntro(introToken) || hud.storyIntro.hidden || introRunId !== storyIntroRunId) {
-          resolve();
+      let resolved = false;
+      let displayTimer = null;
+      let exitTimer = null;
+      const skipOptions = { capture: true };
+      const touchOptions = { capture: true, passive: false };
+      const isActiveIntro = () => this.isCurrentIntro(introToken) && introRunId === storyIntroRunId && !hud.storyIntro.hidden;
+      const cleanup = () => {
+        window.clearTimeout(displayTimer);
+        window.clearTimeout(exitTimer);
+        window.removeEventListener("keydown", skipIntro, true);
+        window.removeEventListener("pointerdown", skipIntro, true);
+        window.removeEventListener("mousedown", skipIntro, true);
+        window.removeEventListener("touchstart", skipIntro, true);
+        this.events.off(Phaser.Scenes.Events.SHUTDOWN, finish, this);
+      };
+      const finish = () => {
+        if (resolved) return;
+        resolved = true;
+        const shouldHide = isActiveIntro();
+        cleanup();
+        if (shouldHide) setStoryIntroVisible(false);
+        resolve();
+      };
+      const skipIntro = (event) => {
+        if (!isActiveIntro()) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+        finish();
+      };
+
+      window.addEventListener("keydown", skipIntro, skipOptions);
+      window.addEventListener("pointerdown", skipIntro, skipOptions);
+      window.addEventListener("mousedown", skipIntro, skipOptions);
+      window.addEventListener("touchstart", skipIntro, touchOptions);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, finish, this);
+
+      displayTimer = window.setTimeout(() => {
+        if (!isActiveIntro()) {
+          finish();
           return;
         }
         hud.storyIntro.classList.add("leaving");
-        window.setTimeout(() => {
-          if (this.isCurrentIntro(introToken) && introRunId === storyIntroRunId) setStoryIntroVisible(false);
-          resolve();
+        exitTimer = window.setTimeout(() => {
+          if (!isActiveIntro()) {
+            finish();
+            return;
+          }
+          finish();
         }, 820);
       }, 3650);
     });
@@ -947,6 +997,9 @@ class PlayScene extends Phaser.Scene {
     this.movingPlatformRuns.push({
       body,
       visuals,
+      width: worldWidth,
+      topY,
+      rowIndex,
       minX: centerX - 130,
       maxX: centerX + 130,
       speed: Phaser.Math.Between(0, 1) ? 72 : -72
@@ -1226,6 +1279,51 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  predictMovingPlatform(platform, seconds = 0) {
+    let x = platform.body.x;
+    let speed = platform.speed || 0;
+    let remaining = Math.max(0, seconds);
+
+    for (let index = 0; index < 8 && remaining > 0 && speed !== 0; index += 1) {
+      const boundary = speed > 0 ? platform.maxX : platform.minX;
+      const timeToBoundary = Math.abs(boundary - x) / Math.abs(speed);
+      if (remaining <= timeToBoundary) {
+        x += speed * remaining;
+        remaining = 0;
+      } else {
+        x = boundary;
+        remaining -= timeToBoundary;
+        speed *= -1;
+      }
+    }
+
+    return { x, speed };
+  }
+
+  getMovingPlatformRun(platform, predictSeconds = 0) {
+    const prediction = this.predictMovingPlatform(platform, predictSeconds);
+    const halfWidth = platform.width / 2;
+    return {
+      startX: prediction.x - halfWidth,
+      endX: prediction.x + halfWidth,
+      topY: platform.topY,
+      rowIndex: platform.rowIndex,
+      moving: true,
+      speed: prediction.speed,
+      platform
+    };
+  }
+
+  getCatNavRuns(predictSeconds = 0) {
+    const staticRuns = this.platformRuns.map((run) => ({
+      ...run,
+      moving: false,
+      speed: 0
+    }));
+    const movingRuns = this.movingPlatformRuns.map((platform) => this.getMovingPlatformRun(platform, predictSeconds));
+    return [...staticRuns, ...movingRuns];
+  }
+
   updateWater(delta = 0) {
     if (!this.waterTiles?.length || !delta) return;
     const movement = (WATER_SPEED * delta) / 1000;
@@ -1282,6 +1380,7 @@ class PlayScene extends Phaser.Scene {
       this.catJumpPoseUntil = time + 140;
     }
     this.catWasOnFloor = onFloor;
+    const floorRun = onFloor ? this.findPlatformUnder(this.cat.x) : null;
 
     const goal = state.hasKey ? this.doorPoint : this.keyPoint;
     if (!goal) return;
@@ -1299,7 +1398,7 @@ class PlayScene extends Phaser.Scene {
       this.catWaiting = true;
       this.catTarget = null;
       this.cat.setAccelerationX(0);
-      this.cat.setVelocityX(0);
+      this.cat.setVelocityX(floorRun?.moving ? floorRun.speed : 0);
       this.cat.play("cat-idle", true);
       return;
     }
@@ -1307,7 +1406,7 @@ class PlayScene extends Phaser.Scene {
     if (reachedGoal && (state.hasKey || Math.abs(this.player.x - this.cat.x) < CAT_SAFE_DISTANCE)) {
       this.catWaiting = true;
       this.cat.setAccelerationX(0);
-      this.cat.setVelocityX(0);
+      this.cat.setVelocityX(floorRun?.moving ? floorRun.speed : 0);
       this.cat.play("cat-idle", true);
       return;
     }
@@ -1331,7 +1430,7 @@ class PlayScene extends Phaser.Scene {
       }
     }
 
-    const candidates = this.platformRuns.filter((run) => {
+    const candidates = this.getCatNavRuns().filter((run) => {
       const centerX = Phaser.Math.Clamp(desiredX, run.startX + 46, run.endX - 46);
       const targetY = run.topY - CAT_PLATFORM_Y;
       const ahead = centerX > this.cat.x + 80;
@@ -1341,7 +1440,8 @@ class PlayScene extends Phaser.Scene {
     }).sort((a, b) => {
       const aX = Phaser.Math.Clamp(desiredX, a.startX + 46, a.endX - 46);
       const bX = Phaser.Math.Clamp(desiredX, b.startX + 46, b.endX - 46);
-      return Math.abs(aX - desiredX) - Math.abs(bX - desiredX);
+      const movingPenalty = (a.moving ? 80 : 0) - (b.moving ? 80 : 0);
+      return Math.abs(aX - desiredX) - Math.abs(bX - desiredX) || movingPenalty;
     });
 
     const fallbackRun = this.findNextCatPlatform() || this.findPlatformUnder(this.cat.x);
@@ -1374,6 +1474,15 @@ class PlayScene extends Phaser.Scene {
     const landingAhead = Boolean(landingRun);
     const approachingGap = onFloor && currentRun && distanceToEdge < CAT_EDGE_JUMP_DISTANCE;
     const needsJump = onFloor && (!groundAhead || approachingGap || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
+    const incomingMovingRun = needsJump && !landingAhead ? this.findIncomingMovingPlatform(direction) : null;
+
+    if (incomingMovingRun) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
+      this.cat.setFlipX(direction < 0);
+      this.cat.play("cat-idle", true);
+      return;
+    }
 
     if (needsJump && landingAhead) {
       const landingX = direction > 0 ? landingRun.startX + 104 : landingRun.endX - 104;
@@ -1382,14 +1491,14 @@ class PlayScene extends Phaser.Scene {
         y: landingRun.topY - CAT_PLATFORM_Y
       };
       this.catJumpPoseUntil = time + 130;
-      this.cat.setVelocityX(direction * CAT_RUN_SPEED);
+      this.cat.setVelocityX(direction * CAT_RUN_SPEED + (currentRun?.moving ? currentRun.speed : 0));
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
 
     if (onFloor && !groundAhead && !landingAhead) {
       this.cat.setAccelerationX(0);
-      this.cat.setVelocityX(0);
-      this.catWaiting = true;
+      this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
+      this.catWaiting = false;
       return;
     }
 
@@ -1408,10 +1517,34 @@ class PlayScene extends Phaser.Scene {
     return Boolean(this.findNextCatPlatform(direction));
   }
 
-  findNextCatPlatform(direction = 1) {
+  estimateCatJumpSeconds(targetY) {
+    const gravity = this.physics.world.gravity.y || 1150;
+    const deltaY = targetY - this.cat.y;
+    const discriminant = Math.max(0, CAT_JUMP_SPEED * CAT_JUMP_SPEED + 2 * gravity * deltaY);
+    return Phaser.Math.Clamp((CAT_JUMP_SPEED + Math.sqrt(discriminant)) / gravity, 0.42, 1.15);
+  }
+
+  isSameCatRun(a, b) {
+    if (!a || !b) return false;
+    if (a.moving || b.moving) return a.platform && a.platform === b.platform;
+    return a.startX === b.startX && a.endX === b.endX && a.topY === b.topY;
+  }
+
+  findIncomingMovingPlatform(direction = 1) {
+    for (let seconds = CAT_MOVING_PLATFORM_CHECK_STEP; seconds <= CAT_MOVING_PLATFORM_WAIT_SECONDS; seconds += CAT_MOVING_PLATFORM_CHECK_STEP) {
+      const candidate = this.findNextCatPlatform(direction, seconds);
+      if (candidate?.moving) return candidate;
+    }
+    return null;
+  }
+
+  findNextCatPlatform(direction = 1, forcedFlightSeconds = null) {
     const currentRun = this.findPlatformUnder(this.cat.x);
-    const candidates = this.platformRuns.filter((run) => {
-      if (run === currentRun) return false;
+    const candidates = this.getCatNavRuns().map((run) => {
+      const flightSeconds = forcedFlightSeconds ?? this.estimateCatJumpSeconds(run.topY - CAT_PLATFORM_Y);
+      return run.moving ? this.getMovingPlatformRun(run.platform, flightSeconds) : run;
+    }).filter((run) => {
+      if (this.isSameCatRun(run, currentRun)) return false;
       const targetY = run.topY - CAT_PLATFORM_Y;
       const gap = direction > 0 ? run.startX - this.cat.x : this.cat.x - run.endX;
       const ahead = gap > 24;
@@ -1425,14 +1558,15 @@ class PlayScene extends Phaser.Scene {
       const gapB = direction > 0 ? b.startX - this.cat.x : this.cat.x - b.endX;
       const heightA = Math.abs((a.topY - CAT_PLATFORM_Y) - this.cat.y);
       const heightB = Math.abs((b.topY - CAT_PLATFORM_Y) - this.cat.y);
-      return gapA - gapB || heightA - heightB;
+      const movingPenalty = (a.moving ? 70 : 0) - (b.moving ? 70 : 0);
+      return gapA - gapB || movingPenalty || heightA - heightB;
     });
 
     return candidates[0] || null;
   }
 
   findPlatformUnder(x) {
-    return this.platformRuns.find((run) => x >= run.startX + 6 && x <= run.endX - 6 && Math.abs(this.cat.y - (run.topY - CAT_PLATFORM_Y)) < 76);
+    return this.getCatNavRuns().find((run) => x >= run.startX + 6 && x <= run.endX - 6 && Math.abs(this.cat.y - (run.topY - CAT_PLATFORM_Y)) < 76);
   }
 
   rescueCatToNearestPlatform() {
