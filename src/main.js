@@ -25,7 +25,7 @@ const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
-const BASKET_SCALE = 0.26;
+const BASKET_SCALE = 0.208;
 const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
@@ -58,8 +58,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-level-two-basket";
-const STORY_ASSET_VERSION = "20260526-level-two-basket";
+const ASSET_VERSION = "20260526-level-two-shaft";
+const STORY_ASSET_VERSION = "20260526-level-two-shaft";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -186,69 +186,107 @@ function createLevelOne() {
 }
 
 function createLevelTwo() {
-  const { rows, put, run } = createLevelRows(32);
+  const { rows, put, run } = createLevelRows(86);
 
-  run(5, 0, 13);
-  run(8, 10, 13);
-  run(11, 3, 12);
-  run(14, 16, 12);
-  run(17, 8, 12);
-  run(20, 23, 15);
-  run(23, 37, 10);
-  run(20, 52, 10);
-  run(17, 66, 10);
-  run(14, 79, 10);
-  run(11, 92, 13);
-  run(11, 108, 13);
-  run(13, 124, 4, "=");
-  run(13, 133, 15);
-  run(8, 118, 4, "=");
-  run(8, 128, 12);
-  run(5, 139, 9);
+  for (let row = 3; row <= 74; row += 1) {
+    run(row, 0, 2, "w");
+    run(row, 24, 3, "w");
+  }
+  run(75, 0, 42);
+  run(69, 8, 34, "w");
+  run(70, 39, 3, "w");
+  run(71, 39, 3, "w");
+
+  run(5, 2, 12);
+  run(9, 3, 5);
+  run(13, 10, 4);
+  run(18, 4, 4);
+  run(23, 13, 4);
+  run(28, 5, 5);
+  run(33, 16, 4);
+  run(38, 7, 4);
+  run(43, 14, 5);
+  run(48, 4, 4);
+  run(53, 16, 4);
+  run(58, 7, 5);
+  run(63, 14, 5);
+  run(68, 3, 10);
+
+  run(74, 28, 4);
+  run(72, 34, 4);
+  run(69, 41, 8);
+  run(64, 45, 4);
+  run(59, 37, 4);
+  run(54, 47, 4);
+  run(49, 39, 5);
+  run(44, 50, 5);
+  run(39, 42, 5);
+  run(34, 53, 5);
+  run(29, 45, 5);
+  run(24, 56, 6);
+  run(20, 62, 10);
+
+  run(20, 76, 9);
+  run(22, 90, 8);
+  run(19, 103, 9);
+  run(22, 119, 8);
+  run(18, 134, 12);
+  run(15, 79, 4, "=");
+  run(15, 91, 4, "=");
+  run(14, 105, 5, "=");
+  run(13, 121, 5, "=");
+  run(11, 134, 12);
+  run(8, 92, 9);
+  run(7, 113, 10);
+  run(5, 132, 16);
 
   [
     [3, 4, "p"],
-    [4, 8, "g"],
-    [7, 15, "g"],
-    [10, 8, "g"],
-    [13, 22, "g"],
-    [16, 13, "g"],
-    [19, 31, "b"],
-    [19, 34, "j"],
-    [22, 42, "g"],
-    [19, 57, "g"],
-    [16, 71, "g"],
-    [13, 84, "g"],
-    [10, 97, "g"],
-    [10, 101, "m"],
-    [10, 109, "m"],
-    [10, 116, "m"],
-    [12, 136, "m"],
-    [12, 143, "m"],
-    [7, 132, "m"],
-    [7, 138, "m"],
-    [4, 143, "m"],
-    [10, 112, "g"],
-    [10, 119, "g"],
-    [12, 137, "g"],
-    [12, 145, "g"],
-    [7, 134, "g"],
+    [8, 8, "g"],
+    [12, 12, "g"],
+    [22, 15, "g"],
+    [32, 19, "g"],
+    [42, 16, "g"],
+    [52, 18, "g"],
+    [62, 17, "g"],
+    [67, 5, "b"],
+    [72, 29, "m"],
+    [72, 35, "j"],
+    [68, 45, "g"],
+    [58, 40, "g"],
+    [48, 42, "g"],
+    [38, 45, "g"],
+    [28, 48, "g"],
+    [23, 59, "g"],
+    [19, 67, "g"],
+    [19, 80, "m"],
+    [21, 92, "m"],
+    [18, 106, "m"],
+    [21, 122, "m"],
+    [17, 137, "m"],
+    [10, 137, "m"],
+    [4, 141, "m"],
+    [19, 83, "g"],
+    [21, 95, "g"],
+    [18, 110, "g"],
+    [21, 125, "g"],
+    [17, 140, "g"],
+    [10, 139, "g"],
     [4, 142, "k"],
     [4, 145, "d"],
-    [1, 10, "a"],
-    [1, 18, "a"],
-    [1, 26, "a"],
-    [1, 36, "a"],
-    [1, 48, "a"],
-    [1, 60, "a"],
-    [1, 72, "a"],
-    [1, 84, "a"],
-    [1, 96, "a"],
-    [1, 108, "a"],
+    [1, 8, "a"],
+    [1, 16, "a"],
+    [1, 30, "a"],
+    [1, 43, "a"],
+    [1, 56, "a"],
+    [1, 69, "a"],
+    [1, 82, "a"],
+    [1, 94, "a"],
+    [1, 106, "a"],
     [1, 118, "a"],
-    [1, 127, "a"],
-    [1, 136, "a"],
-    [1, 144, "a"]
+    [1, 129, "a"],
+    [1, 139, "a"],
+    [1, 146, "a"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -633,6 +671,7 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
+    this.pixelatedBasketImage = pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage());
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
@@ -889,9 +928,14 @@ class PlayScene extends Phaser.Scene {
       [...row].forEach((cell, columnIndex) => {
         const x = columnIndex * TILE + TILE / 2;
         const y = rowIndex * TILE + TILE / 2;
-        if (cell === "#") {
+        if (cell === "#" || cell === "w") {
           const block = this.platforms.create(x, y, "tile-ground");
           block.setVisible(false);
+          if (cell === "w") {
+            const wall = this.add.rectangle(x, y, TILE + 1, TILE + 1, 0x020202, 1);
+            wall.setDepth(0);
+            this.platformVisuals.add(wall);
+          }
         }
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "coin");
@@ -1511,6 +1555,37 @@ class PlayScene extends Phaser.Scene {
   }
 
   pickCatTarget(goal, screenRightX) {
+    if (goal === this.basketPoint && !state.hasAcornBasket) {
+      const currentRun = this.findPlatformUnder(this.cat.x);
+      const descendCandidates = this.getCatNavRuns().filter((run) => {
+        if (this.isSameCatRun(run, currentRun)) return false;
+        const targetY = run.topY - CAT_PLATFORM_Y;
+        const centerX = Phaser.Math.Clamp(goal.x, run.startX + 46, run.endX - 46);
+        const horizontalGap = Math.abs(centerX - this.cat.x);
+        const verticalDelta = targetY - this.cat.y;
+        const reachableStep = verticalDelta > -170 && verticalDelta < 260;
+        const nearEnough = horizontalGap < CAT_LANDING_LOOKAHEAD;
+        const visibleEnough = centerX < screenRightX + 120;
+        return reachableStep && nearEnough && visibleEnough && run.endX - run.startX > 96;
+      }).sort((a, b) => {
+        const ax = Phaser.Math.Clamp(goal.x, a.startX + 46, a.endX - 46);
+        const bx = Phaser.Math.Clamp(goal.x, b.startX + 46, b.endX - 46);
+        const aDownBonus = (a.topY - CAT_PLATFORM_Y) > this.cat.y + 20 ? -90 : 0;
+        const bDownBonus = (b.topY - CAT_PLATFORM_Y) > this.cat.y + 20 ? -90 : 0;
+        const aScore = Math.abs(ax - goal.x) + Math.abs((a.topY - CAT_PLATFORM_Y) - goal.y) + Math.abs(ax - this.cat.x) * 0.4 + aDownBonus;
+        const bScore = Math.abs(bx - goal.x) + Math.abs((b.topY - CAT_PLATFORM_Y) - goal.y) + Math.abs(bx - this.cat.x) * 0.4 + bDownBonus;
+        return aScore - bScore;
+      });
+
+      const chosenRun = descendCandidates[0] || currentRun;
+      if (chosenRun) {
+        return {
+          x: Phaser.Math.Clamp(goal.x + Phaser.Math.Between(-22, 22), chosenRun.startX + 46, chosenRun.endX - 46),
+          y: chosenRun.topY - CAT_PLATFORM_Y
+        };
+      }
+    }
+
     const desiredX = Math.min(goal.x - 80, screenRightX, this.cat.x + Phaser.Math.Between(220, 430));
     const currentRun = this.findPlatformUnder(this.cat.x);
     if (currentRun && currentRun.endX - currentRun.startX > CAT_EDGE_JUMP_DISTANCE + 96) {
@@ -1585,7 +1660,7 @@ class PlayScene extends Phaser.Scene {
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
 
-    if (onFloor && !groundAhead && !landingAhead) {
+    if (onFloor && !groundAhead && !landingAhead && target.y < this.cat.y - 22) {
       this.cat.setAccelerationX(0);
       this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
       this.catWaiting = false;
@@ -1636,16 +1711,16 @@ class PlayScene extends Phaser.Scene {
     }).filter((run) => {
       if (this.isSameCatRun(run, currentRun)) return false;
       const targetY = run.topY - CAT_PLATFORM_Y;
-      const gap = direction > 0 ? run.startX - this.cat.x : this.cat.x - run.endX;
-      const ahead = gap > 24;
+      const gap = direction > 0 ? Math.max(0, run.startX - this.cat.x) : Math.max(0, this.cat.x - run.endX);
+      const ahead = direction > 0 ? run.endX > this.cat.x + 24 : run.startX < this.cat.x - 24;
       const closeEnough = gap < CAT_LANDING_LOOKAHEAD;
-      const reachableHeight = targetY > this.cat.y - 190 && targetY < this.cat.y + 150;
+      const reachableHeight = targetY > this.cat.y - 190 && targetY < this.cat.y + 240;
       return ahead && closeEnough && reachableHeight && run.endX - run.startX > 80;
     });
 
     candidates.sort((a, b) => {
-      const gapA = direction > 0 ? a.startX - this.cat.x : this.cat.x - a.endX;
-      const gapB = direction > 0 ? b.startX - this.cat.x : this.cat.x - b.endX;
+      const gapA = direction > 0 ? Math.max(0, a.startX - this.cat.x) : Math.max(0, this.cat.x - a.endX);
+      const gapB = direction > 0 ? Math.max(0, b.startX - this.cat.x) : Math.max(0, this.cat.x - b.endX);
       const heightA = Math.abs((a.topY - CAT_PLATFORM_Y) - this.cat.y);
       const heightB = Math.abs((b.topY - CAT_PLATFORM_Y) - this.cat.y);
       const movingPenalty = (a.moving ? 70 : 0) - (b.moving ? 70 : 0);
@@ -1896,7 +1971,7 @@ class PlayScene extends Phaser.Scene {
     setItemPickupVisible(true, {
       name: "Acorn Basket",
       instruction: "Press Enter to throw acorns",
-      image: `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
+      image: this.pixelatedBasketImage || `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
     });
     this.cameras.main.flash(120, 255, 220, 90, false);
     updateHud();

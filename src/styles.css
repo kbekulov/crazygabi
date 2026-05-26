@@ -360,8 +360,8 @@ button:active {
 
 .item-card img {
   display: block;
-  width: min(160px, 28vw);
-  height: min(160px, 28vw);
+  width: min(240px, 42vw);
+  height: min(240px, 42vw);
   object-fit: contain;
   image-rendering: pixelated;
 }
