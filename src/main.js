@@ -28,7 +28,7 @@ const STARTING_BILLBOARD_SCALE = 0.36;
 const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
-const BASKET_SCALE = 0.208;
+const BASKET_SCALE = 0.17;
 const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
@@ -96,7 +96,7 @@ const LEVELS = [
   {
     name: "Level 2",
     rows: createLevelTwo(),
-    timeLimit: 190,
+    timeLimit: 260,
     soundtrack: "bgm2",
     acornDelay: [260, 1100],
     acornPace: [245, 370],
@@ -194,107 +194,104 @@ function createLevelOne() {
 }
 
 function createLevelTwo() {
-  const { rows, put, run } = createLevelRows(86);
+  const { rows, put, run } = createLevelRows(82);
 
-  for (let row = 3; row <= 74; row += 1) {
+  for (let row = 3; row <= 64; row += 1) {
     run(row, 0, 2, "w");
-    run(row, 24, 3, "w");
+    run(row, 26, 3, "w");
   }
-  run(75, 0, 42);
-  run(69, 8, 34, "w");
-  run(70, 39, 3, "w");
-  run(71, 39, 3, "w");
 
+  run(63, 9, 31, "w");
+  run(69, 0, 55);
   run(5, 2, 12);
-  run(9, 3, 5);
-  run(13, 10, 4);
-  run(18, 4, 4);
-  run(23, 13, 4);
-  run(28, 5, 5);
-  run(33, 16, 4);
-  run(38, 7, 4);
-  run(43, 14, 5);
-  run(48, 4, 4);
-  run(53, 16, 4);
-  run(58, 7, 5);
-  run(63, 14, 5);
-  run(68, 3, 10);
+  run(9, 15, 8);
+  run(13, 5, 9);
+  run(17, 16, 8);
+  run(21, 4, 9);
+  run(25, 15, 9);
+  run(29, 5, 9);
+  run(33, 16, 8);
+  run(37, 4, 9);
+  run(41, 15, 9);
+  run(45, 5, 9);
+  run(49, 16, 8);
+  run(53, 4, 10);
+  run(57, 15, 9);
+  run(61, 4, 11);
 
-  run(74, 28, 4);
-  run(72, 34, 4);
-  run(69, 41, 8);
-  run(64, 45, 4);
-  run(59, 37, 4);
-  run(54, 47, 4);
-  run(49, 39, 5);
-  run(44, 50, 5);
-  run(39, 42, 5);
-  run(34, 53, 5);
-  run(29, 45, 5);
-  run(24, 56, 6);
-  run(20, 62, 10);
+  run(67, 33, 6);
+  run(64, 42, 7);
+  run(59, 48, 6);
+  run(54, 39, 7);
+  run(49, 51, 7);
+  run(44, 42, 8);
+  run(39, 55, 7);
+  run(34, 47, 8);
+  run(29, 61, 8);
+  run(24, 68, 10);
+  run(21, 84, 14);
 
-  run(20, 76, 9);
-  run(22, 90, 8);
-  run(19, 103, 9);
-  run(22, 119, 8);
-  run(18, 134, 12);
-  run(15, 79, 4, "=");
-  run(15, 91, 4, "=");
-  run(14, 105, 5, "=");
-  run(13, 121, 5, "=");
-  run(11, 134, 12);
-  run(8, 92, 9);
-  run(7, 113, 10);
+  run(18, 101, 4, "=");
+  run(18, 110, 12);
+  run(21, 126, 10);
+  run(17, 139, 9);
+  run(14, 113, 10);
+  run(11, 129, 10);
+  run(8, 139, 9);
   run(5, 132, 16);
 
   [
     [3, 4, "p"],
-    [8, 8, "g"],
-    [12, 12, "g"],
-    [22, 15, "g"],
-    [32, 19, "g"],
-    [42, 16, "g"],
-    [52, 18, "g"],
-    [62, 17, "g"],
-    [67, 5, "b"],
-    [72, 29, "m"],
-    [72, 35, "j"],
-    [68, 45, "g"],
-    [58, 40, "g"],
-    [48, 42, "g"],
-    [38, 45, "g"],
-    [28, 48, "g"],
-    [23, 59, "g"],
-    [19, 67, "g"],
-    [19, 80, "m"],
-    [21, 92, "m"],
-    [18, 106, "m"],
-    [21, 122, "m"],
-    [17, 137, "m"],
-    [10, 137, "m"],
-    [4, 141, "m"],
-    [19, 83, "g"],
-    [21, 95, "g"],
-    [18, 110, "g"],
-    [21, 125, "g"],
-    [17, 140, "g"],
-    [10, 139, "g"],
+    [8, 19, "g"],
+    [12, 9, "g"],
+    [16, 20, "g"],
+    [20, 8, "g"],
+    [24, 19, "g"],
+    [28, 9, "g"],
+    [32, 20, "g"],
+    [36, 8, "g"],
+    [40, 19, "g"],
+    [44, 9, "g"],
+    [48, 20, "g"],
+    [52, 8, "g"],
+    [56, 19, "g"],
+    [60, 9, "g"],
+    [68, 5, "b"],
+    [67, 35, "m"],
+    [66, 45, "j"],
+    [63, 47, "g"],
+    [58, 51, "g"],
+    [53, 43, "g"],
+    [48, 55, "g"],
+    [43, 46, "g"],
+    [38, 59, "g"],
+    [33, 51, "g"],
+    [28, 65, "g"],
+    [23, 73, "g"],
+    [20, 91, "g"],
+    [17, 114, "m"],
+    [17, 119, "m"],
+    [20, 130, "m"],
+    [16, 143, "m"],
+    [13, 119, "m"],
+    [10, 134, "m"],
+    [7, 143, "m"],
+    [17, 116, "g"],
+    [20, 133, "g"],
+    [16, 145, "g"],
+    [13, 116, "g"],
+    [10, 132, "g"],
+    [7, 141, "g"],
     [4, 142, "k"],
     [4, 145, "d"],
-    [1, 8, "a"],
-    [1, 16, "a"],
-    [1, 30, "a"],
-    [1, 43, "a"],
-    [1, 56, "a"],
-    [1, 69, "a"],
-    [1, 82, "a"],
-    [1, 94, "a"],
-    [1, 106, "a"],
+    [1, 18, "a"],
+    [1, 42, "a"],
+    [1, 61, "a"],
+    [1, 84, "a"],
+    [1, 103, "a"],
     [1, 118, "a"],
-    [1, 129, "a"],
-    [1, 139, "a"],
-    [1, 146, "a"]
+    [1, 132, "a"],
+    [1, 144, "a"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1242,6 +1239,7 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
     this.basketPromptActive = false;
+    this.releaseBasketPromptControlLock();
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
@@ -1292,6 +1290,14 @@ class PlayScene extends Phaser.Scene {
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action);
     const onFloor = this.player.body.blocked.down;
 
+    if (this.basketPromptActive) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocity(0, 0);
+      this.setGabiAnimation("idle");
+      if (action) this.performAction(time);
+      return;
+    }
+
     if (left) {
       this.player.setAccelerationX(-1250);
       this.setGabiFlip(true);
@@ -1327,6 +1333,7 @@ class PlayScene extends Phaser.Scene {
     if (this.throwAcorn(time) && this.basketPromptActive) {
       this.basketPromptActive = false;
       setItemPickupVisible(false);
+      this.releaseBasketPromptControlLock();
     }
   }
 
@@ -1345,6 +1352,21 @@ class PlayScene extends Phaser.Scene {
     acorn.setData("spawnedAt", time);
     acorn.setData("thrown", true);
     return true;
+  }
+
+  lockPlayerForBasketPrompt() {
+    if (!this.player?.body) return;
+    this.player.setAcceleration(0, 0);
+    this.player.setVelocity(0, 0);
+    this.player.body.moves = false;
+    this.player.body.setAllowGravity(false);
+    this.setGabiAnimation("idle");
+  }
+
+  releaseBasketPromptControlLock() {
+    if (!this.player?.body) return;
+    this.player.body.moves = true;
+    this.player.body.setAllowGravity(true);
   }
 
   setGabiFlip(flipX) {
@@ -1643,7 +1665,7 @@ class PlayScene extends Phaser.Scene {
         const reachableStep = verticalDelta > -170 && verticalDelta < 260;
         const nearEnough = horizontalGap < CAT_LANDING_LOOKAHEAD;
         const visibleEnough = centerX < screenRightX + 120;
-        return reachableStep && nearEnough && visibleEnough && run.endX - run.startX > 96;
+        return reachableStep && nearEnough && visibleEnough && run.endX - run.startX >= 96;
       }).sort((a, b) => {
         const ax = Phaser.Math.Clamp(goal.x, a.startX + 46, a.endX - 46);
         const bx = Phaser.Math.Clamp(goal.x, b.startX + 46, b.endX - 46);
@@ -1678,7 +1700,7 @@ class PlayScene extends Phaser.Scene {
       const ahead = centerX > this.cat.x + 80;
       const inCamera = centerX <= screenRightX + 80;
       const reachableHeight = Math.abs(targetY - this.cat.y) < 190;
-      return ahead && inCamera && reachableHeight && run.endX - run.startX > 96;
+      return ahead && inCamera && reachableHeight && run.endX - run.startX >= 96;
     }).sort((a, b) => {
       const aX = Phaser.Math.Clamp(desiredX, a.startX + 46, a.endX - 46);
       const bX = Phaser.Math.Clamp(desiredX, b.startX + 46, b.endX - 46);
@@ -1996,6 +2018,7 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
+    this.releaseBasketPromptControlLock();
     if (this.timerEvent) {
       this.timerEvent.remove(false);
       this.timerEvent = null;
@@ -2043,8 +2066,10 @@ class PlayScene extends Phaser.Scene {
     state.hasAcornBasket = true;
     state.score += 400;
     this.basketPromptActive = true;
+    this.lastActionAt = -Infinity;
     this.catWaiting = false;
     this.catTarget = null;
+    this.lockPlayerForBasketPrompt();
     setItemPickupVisible(true, {
       name: "Acorn Basket",
       instruction: "Press Enter to throw acorns",
@@ -2182,6 +2207,7 @@ class PlayScene extends Phaser.Scene {
     this.usingWingJump = false;
     this.basketPromptActive = false;
     setItemPickupVisible(false);
+    this.releaseBasketPromptControlLock();
     this.thrownItems.clear(true, true);
     if (!state.hasKey) this.resetKeyReveal();
     this.resetCatNpc();
