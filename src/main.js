@@ -110,7 +110,7 @@ const LEVELS = [
     startSpeech: "That cat looked strange...",
     showStartingHouse: false,
     catNpc: true,
-    doorYOffset: -16,
+    doorYOffset: -30,
     parallax: "parallax-underground",
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground"
@@ -204,20 +204,20 @@ function createLevelTwo() {
   run(63, 9, 31, "w");
   run(69, 0, 55);
   run(5, 2, 12);
-  run(9, 15, 8);
-  run(13, 5, 9);
-  run(17, 16, 8);
-  run(21, 4, 9);
-  run(25, 15, 9);
-  run(29, 5, 9);
-  run(33, 16, 8);
-  run(37, 4, 9);
-  run(41, 15, 9);
-  run(45, 5, 9);
-  run(49, 16, 8);
-  run(53, 4, 10);
-  run(57, 15, 9);
-  run(61, 4, 11);
+  run(9, 16, 6);
+  run(12, 7, 5);
+  run(16, 18, 4);
+  run(20, 3, 8);
+  run(24, 14, 5);
+  run(28, 8, 4);
+  run(31, 18, 6);
+  run(36, 5, 5);
+  run(40, 14, 8);
+  run(45, 3, 5);
+  run(49, 17, 5);
+  run(54, 8, 7);
+  run(58, 18, 4);
+  run(62, 5, 9);
 
   run(67, 33, 6);
   run(64, 42, 7);
@@ -243,20 +243,20 @@ function createLevelTwo() {
   [
     [3, 4, "p"],
     [8, 19, "g"],
-    [12, 9, "g"],
-    [16, 20, "g"],
-    [20, 8, "g"],
-    [24, 19, "g"],
-    [28, 9, "g"],
-    [32, 20, "g"],
-    [36, 8, "g"],
-    [40, 19, "g"],
-    [44, 9, "g"],
-    [48, 20, "g"],
-    [52, 8, "g"],
-    [56, 19, "g"],
-    [60, 9, "g"],
-    [68, 5, "b"],
+    [11, 10, "g"],
+    [15, 20, "g"],
+    [19, 6, "g"],
+    [23, 16, "g"],
+    [27, 10, "g"],
+    [30, 21, "g"],
+    [35, 7, "g"],
+    [39, 19, "g"],
+    [44, 5, "g"],
+    [48, 19, "g"],
+    [53, 12, "g"],
+    [57, 20, "g"],
+    [61, 9, "g"],
+    [68, 18, "b"],
     [67, 35, "m"],
     [66, 45, "j"],
     [63, 47, "g"],
@@ -1640,7 +1640,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.catWaiting = false;
-    if (!this.catTarget || time >= this.catNextDecisionAt || Math.abs(this.cat.x - this.catTarget.x) < 28) {
+    if (onFloor && (!this.catTarget || time >= this.catNextDecisionAt || Math.abs(this.cat.x - this.catTarget.x) < 28)) {
       this.catTarget = this.pickCatTarget(goal, screenRightX);
       this.catNextDecisionAt = time + Phaser.Math.Between(700, 1300);
     }
