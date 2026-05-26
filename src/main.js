@@ -37,6 +37,7 @@ const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
 const BRICK_SCALE = 0.27;
+const FALLING_OBJECT_SPAWN_OFFSET = 140;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
@@ -1733,12 +1734,15 @@ class PlayScene extends Phaser.Scene {
     const distanceToEdge = currentRun
       ? (direction > 0 ? currentRun.endX - this.cat.x : this.cat.x - currentRun.startX)
       : 0;
-    const nearTarget = Math.abs(target.x - this.cat.x) < 140;
-    const landingRun = this.findNextCatPlatform(direction);
+    const nearEdge = onFloor && currentRun && distanceToEdge < CAT_EDGE_JUMP_DISTANCE;
+    const landingRun = nearEdge ? this.findNextCatPlatform(direction) : null;
     const landingAhead = Boolean(landingRun);
-    const approachingGap = onFloor && currentRun && distanceToEdge < CAT_EDGE_JUMP_DISTANCE;
-    const needsJump = onFloor && (!groundAhead || approachingGap || this.cat.body.blocked.right || (nearTarget && target.y < this.cat.y - 28));
-    const incomingMovingRun = needsJump && !landingAhead ? this.findIncomingMovingPlatform(direction) : null;
+    const targetAbove = target.y < this.cat.y - 28;
+    const targetBelow = target.y > this.cat.y + 28;
+    const landingIsHigher = landingRun && currentRun && landingRun.topY < currentRun.topY - 12;
+    const landingIsLevel = landingRun && currentRun && Math.abs(landingRun.topY - currentRun.topY) <= 12;
+    const shouldJump = nearEdge && landingAhead && (landingIsHigher || (landingIsLevel && !targetBelow));
+    const incomingMovingRun = nearEdge && !landingAhead && targetAbove ? this.findIncomingMovingPlatform(direction) : null;
 
     if (incomingMovingRun) {
       this.cat.setAccelerationX(0);
@@ -1748,7 +1752,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (needsJump && landingAhead) {
+    if (shouldJump) {
       const landingX = direction > 0 ? landingRun.startX + 104 : landingRun.endX - 104;
       this.catTarget = {
         x: Phaser.Math.Clamp(landingX, landingRun.startX + 46, landingRun.endX - 46),
@@ -1759,7 +1763,23 @@ class PlayScene extends Phaser.Scene {
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
 
-    if (onFloor && !groundAhead && !landingAhead && target.y < this.cat.y - 22) {
+    if (onFloor && this.cat.body.blocked.right && direction > 0 && !nearEdge) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
+      this.cat.setFlipX(direction < 0);
+      this.cat.play("cat-idle", true);
+      return;
+    }
+
+    if (onFloor && this.cat.body.blocked.left && direction < 0 && !nearEdge) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
+      this.cat.setFlipX(direction < 0);
+      this.cat.play("cat-idle", true);
+      return;
+    }
+
+    if (onFloor && !groundAhead && !landingAhead && targetAbove) {
       this.cat.setAccelerationX(0);
       this.cat.setVelocityX(currentRun?.moving ? currentRun.speed : 0);
       this.catWaiting = false;
@@ -1890,10 +1910,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateAcorns(time) {
+    if (this.basketPromptActive) return;
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
       if (time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
-        acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 60);
+        acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
         acorn.setVelocity(0, acorn.getData("pace"));
         acorn.setAngularVelocity(Phaser.Math.Between(-140, 140));
       }
@@ -2070,6 +2091,7 @@ class PlayScene extends Phaser.Scene {
     this.catWaiting = false;
     this.catTarget = null;
     this.lockPlayerForBasketPrompt();
+    this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     setItemPickupVisible(true, {
       name: "Acorn Basket",
       instruction: "Press Enter to throw acorns",
@@ -2118,9 +2140,10 @@ class PlayScene extends Phaser.Scene {
     if (Phaser.Math.FloatBetween(0, 1) > HEART_DROP_CHANCE) return;
 
     this.heartDropsCreated += 1;
+    const settleY = y + 26;
     const heart = this.heartDrops.create(
       x + Phaser.Math.Between(-12, 12),
-      y - Phaser.Math.Between(6, 18),
+      settleY + Phaser.Math.Between(-4, 4),
       "life-heart"
     );
     heart.setScale(HEART_SCALE);
@@ -2129,9 +2152,7 @@ class PlayScene extends Phaser.Scene {
     heart.body.allowGravity = false;
     heart.body.immovable = true;
     heart.setData("armedAt", this.time.now + HEART_PICKUP_DELAY);
-    const startY = heart.y;
     const settleX = heart.x + Phaser.Math.RND.pick([-1, 1]) * Phaser.Math.Between(42, 64);
-    const settleY = startY - Phaser.Math.Between(8, 18);
     this.tweens.add({
       targets: heart,
       x: settleX,
@@ -2172,7 +2193,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   hitAcorn(_player, acorn) {
-    if (!state.running || acorn.getData("armed")) return;
+    if (!state.running || this.basketPromptActive || acorn.getData("armed")) return;
     this.resetAcorn(acorn);
     this.loseLife();
   }
@@ -2184,7 +2205,7 @@ class PlayScene extends Phaser.Scene {
     acorn.setVelocity(0, 0);
     acorn.setAngularVelocity(0);
     acorn.setAngle(0);
-    acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - 70);
+    acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
     acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
     acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
   }
