@@ -2214,7 +2214,7 @@ class PlayScene extends Phaser.Scene {
     if (Phaser.Math.FloatBetween(0, 1) > HEART_DROP_CHANCE) return;
 
     this.heartDropsCreated += 1;
-    const settleY = y + 26;
+    const settleY = this.findPickupYOnPlatform(x, y);
     const heart = this.heartDrops.create(
       x + Phaser.Math.Between(-12, 12),
       settleY + Phaser.Math.Between(-4, 4),
@@ -2244,6 +2244,13 @@ class PlayScene extends Phaser.Scene {
         });
       }
     });
+  }
+
+  findPickupYOnPlatform(x, y) {
+    const platform = this.platformRuns
+      .filter((run) => x >= run.startX - 10 && x <= run.endX + 10 && run.topY >= y - 24)
+      .sort((a, b) => a.topY - b.topY)[0];
+    return platform ? platform.topY - TILE / 2 : y;
   }
 
   hitEnemy(player, enemy) {
