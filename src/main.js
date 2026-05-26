@@ -66,7 +66,6 @@ const ASSET_VERSION = "20260526-billboard-underground";
 const STORY_ASSET_VERSION = "20260526-billboard-underground";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
-let levelSelectUnlocked = false;
 const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -1464,17 +1463,12 @@ class PlayScene extends Phaser.Scene {
     const shouldShow =
       state.running &&
       !state.won &&
-      !levelSelectUnlocked &&
       hud.cheatMenu.hidden &&
       this.isPlayerNearLevelSelectBoard();
     this.levelSelectPrompt.setVisible(shouldShow);
     if (shouldShow) {
       this.levelSelectPrompt.setPosition(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
     }
-  }
-
-  canOpenLevelSelectFromBoard() {
-    return Boolean(this.levelSelectBoard && this.isPlayerNearLevelSelectBoard());
   }
 
   moveEnemies() {
@@ -2345,11 +2339,5 @@ window.addEventListener("keydown", (event) => {
   event.preventDefault();
   if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
-  const scene = game.scene.getScene("PlayScene");
-  if (!levelSelectUnlocked) {
-    if (!scene?.scene?.isActive() || !scene.canOpenLevelSelectFromBoard()) return;
-    levelSelectUnlocked = true;
-    scene.levelSelectPrompt?.setVisible(false);
-  }
   setCheatMenuVisible(hud.cheatMenu.hidden);
 });
