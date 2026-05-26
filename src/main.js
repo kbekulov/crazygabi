@@ -55,10 +55,11 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-heart-popout";
-const STORY_ASSET_VERSION = "20260526-heart-popout";
+const ASSET_VERSION = "20260526-story-once-bricks";
+const STORY_ASSET_VERSION = "20260526-story-once-bricks";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
+const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
@@ -69,6 +70,7 @@ const LEVELS = [
     soundtrack: "bgm",
     acornDelay: [450, 1800],
     acornPace: [185, 295],
+    fallingHazard: "falling-acorn",
     actionAbility: null,
     storyFrames: [
       { key: "story-level-1-frame-1", src: "./public/assets/story/level-1/frame_1.png" },
@@ -88,6 +90,7 @@ const LEVELS = [
     soundtrack: "bgm2",
     acornDelay: [260, 1100],
     acornPace: [245, 370],
+    fallingHazard: "falling-brick",
     actionAbility: "throw-acorn",
     storyFrames: [
       { key: "story-level-2-frame-1", src: "./public/assets/story/level-2/frame_1.png" },
@@ -364,6 +367,34 @@ function hardResetDocument() {
   window.location.replace(`${window.location.pathname}?reset=${Date.now()}`);
 }
 
+function getStorySeenKey(level) {
+  return `crazy-gabi:story-seen:${level.name}`;
+}
+
+function hasStoryPlayedOnce(level) {
+  const key = getStorySeenKey(level);
+  if (storySeenLevels.has(key)) return true;
+  try {
+    if (window.localStorage.getItem(key) === "1") {
+      storySeenLevels.add(key);
+      return true;
+    }
+  } catch (_error) {
+    return false;
+  }
+  return false;
+}
+
+function markStoryPlayedOnce(level) {
+  const key = getStorySeenKey(level);
+  storySeenLevels.add(key);
+  try {
+    window.localStorage.setItem(key, "1");
+  } catch (_error) {
+    // In-memory state still allows skipping later in this browser session.
+  }
+}
+
 function loadStoryFrame(src) {
   return new Promise((resolve) => {
     const storySrc = typeof src === "string" ? src : src.src;
@@ -518,6 +549,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
     this.load.image("exit-door", `./public/assets/environment/exit_door.png?v=${ASSET_VERSION}`);
     this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
+    this.load.image("falling-brick", `./public/assets/environment/brick.png?v=${ASSET_VERSION}`);
     this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
     this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
@@ -639,6 +671,7 @@ class PlayScene extends Phaser.Scene {
 
   renderStoryIntro(frames, introToken) {
     const introRunId = storyIntroRunId + 1;
+    const skipAllowed = hasStoryPlayedOnce(this.level);
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
     hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
     hud.storyPanels.replaceChildren();
@@ -668,10 +701,11 @@ class PlayScene extends Phaser.Scene {
         window.removeEventListener("touchstart", skipIntro, true);
         this.events.off(Phaser.Scenes.Events.SHUTDOWN, finish, this);
       };
-      const finish = () => {
+      const finish = (completedNaturally = false) => {
         if (resolved) return;
         resolved = true;
         const shouldHide = isActiveIntro();
+        if (completedNaturally && shouldHide) markStoryPlayedOnce(this.level);
         cleanup();
         if (shouldHide) setStoryIntroVisible(false);
         resolve();
@@ -684,10 +718,12 @@ class PlayScene extends Phaser.Scene {
         finish();
       };
 
-      window.addEventListener("keydown", skipIntro, skipOptions);
-      window.addEventListener("pointerdown", skipIntro, skipOptions);
-      window.addEventListener("mousedown", skipIntro, skipOptions);
-      window.addEventListener("touchstart", skipIntro, touchOptions);
+      if (skipAllowed) {
+        window.addEventListener("keydown", skipIntro, skipOptions);
+        window.addEventListener("pointerdown", skipIntro, skipOptions);
+        window.addEventListener("mousedown", skipIntro, skipOptions);
+        window.addEventListener("touchstart", skipIntro, touchOptions);
+      }
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, finish, this);
 
       displayTimer = window.setTimeout(() => {
@@ -701,7 +737,7 @@ class PlayScene extends Phaser.Scene {
             finish();
             return;
           }
-          finish();
+          finish(true);
         }, 820);
       }, 3650);
     });
@@ -862,7 +898,7 @@ class PlayScene extends Phaser.Scene {
           this.attachEnemyLabel(enemy);
         }
         if (cell === "a") {
-          const acorn = this.acorns.create(x, -80, "falling-acorn");
+          const acorn = this.acorns.create(x, -80, this.level.fallingHazard || "falling-acorn");
           acorn.setScale(ACORN_SCALE);
           acorn.setDepth(ITEM_DEPTH);
           acorn.setCircle(70, 47, 52);
