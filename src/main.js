@@ -23,6 +23,8 @@ const WATER_SPEED = 6;
 const WATER_Y_OFFSET = 18;
 const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
+const STARTING_BILLBOARD_SCALE = 0.24;
+const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const BASKET_SCALE = 0.208;
@@ -58,10 +60,11 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-level-two-shaft";
-const STORY_ASSET_VERSION = "20260526-level-two-shaft";
+const ASSET_VERSION = "20260526-billboard-underground";
+const STORY_ASSET_VERSION = "20260526-billboard-underground";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
+let levelSelectUnlocked = false;
 const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -84,6 +87,8 @@ const LEVELS = [
     showStartingHouse: true,
     doorYOffset: -30,
     parallax: "parallax-city",
+    platformTexture: "platform-strip",
+    fenceTexture: "platform-fence",
     introTitle: "Crazy Gabi",
     introCopy: "Collect the coins, grab the brass key, and reach the door before the city gets too wild."
   },
@@ -105,7 +110,9 @@ const LEVELS = [
     showStartingHouse: false,
     catNpc: true,
     doorYOffset: -16,
-    parallax: "parallax-underground"
+    parallax: "parallax-underground",
+    platformTexture: "platform-underground",
+    fenceTexture: "platform-fence-underground"
   }
 ];
 
@@ -578,6 +585,14 @@ class PlayScene extends Phaser.Scene {
       frameWidth: PLATFORM_FRAME_WIDTH,
       frameHeight: PLATFORM_FRAME_HEIGHT
     });
+    this.load.spritesheet("platform-underground", `./public/assets/environment/platform_underground.png?v=${ASSET_VERSION}`, {
+      frameWidth: PLATFORM_FRAME_WIDTH,
+      frameHeight: PLATFORM_FRAME_HEIGHT
+    });
+    this.load.spritesheet("platform-fence-underground", `./public/assets/environment/platform_fence_underground.png?v=${ASSET_VERSION}`, {
+      frameWidth: PLATFORM_FRAME_WIDTH,
+      frameHeight: PLATFORM_FRAME_HEIGHT
+    });
     this.load.spritesheet("robot", `./public/assets/character/robot.png?v=${ASSET_VERSION}`, {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
@@ -594,6 +609,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("parallax-underground", `./public/assets/environment/paralax_underground.png?v=${ASSET_VERSION}`);
     this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
     this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
+    this.load.image("starting-billboard", `./public/assets/environment/starting_billboard.png?v=${ASSET_VERSION}`);
     this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
     this.load.image("jump-item", `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`);
     this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
@@ -848,6 +864,33 @@ class PlayScene extends Phaser.Scene {
     house.setOrigin(0, 1);
     house.setScale(STARTING_HOUSE_SCALE);
     house.setDepth(STARTING_HOUSE_DEPTH);
+
+    this.levelSelectBoard = this.add.image(330, 16 * TILE + 8, "starting-billboard");
+    this.levelSelectBoard.setOrigin(0.5, 1);
+    this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
+    this.levelSelectBoard.setDepth(STARTING_HOUSE_DEPTH);
+    this.createBillboardPrompt();
+  }
+
+  createBillboardPrompt() {
+    const bubbleWidth = 132;
+    const bubbleHeight = 30;
+    const prompt = this.add.container(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
+    const background = this.add.graphics();
+    background.fillStyle(0x050505, 0.88);
+    background.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    background.fillTriangle(-6, -1, 6, -1, 0, 7);
+    const label = this.add.text(0, -bubbleHeight / 2, "Press 0 to interact", {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "9px",
+      color: "#f4f0dc",
+      align: "center"
+    });
+    label.setOrigin(0.5, 0.5);
+    prompt.add([background, label]);
+    prompt.setDepth(12);
+    prompt.setVisible(false);
+    this.levelSelectPrompt = prompt;
   }
 
   createAnimations() {
@@ -1057,12 +1100,14 @@ class PlayScene extends Phaser.Scene {
     const worldWidth = length * TILE;
     const topY = rowIndex * TILE;
     const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
+    const platformTexture = this.level.platformTexture || "platform-strip";
+    const fenceTexture = this.level.fenceTexture || "platform-fence";
 
     for (let index = 0; index < segments; index += 1) {
       const segmentWidth = Math.min(PLATFORM_SEGMENT_WIDTH, worldWidth - index * PLATFORM_SEGMENT_WIDTH);
       const x = worldStart + index * PLATFORM_SEGMENT_WIDTH + segmentWidth / 2;
       const platformFrame = Phaser.Math.Between(0, 2);
-      const platform = this.add.image(x, topY + PLATFORM_Y_OFFSET, "platform-strip", platformFrame);
+      const platform = this.add.image(x, topY + PLATFORM_Y_OFFSET, platformTexture, platformFrame);
       platform.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
       platform.setDepth(PLATFORM_DEPTH);
       this.platformVisuals.add(platform);
@@ -1070,7 +1115,7 @@ class PlayScene extends Phaser.Scene {
       if (Phaser.Math.Between(0, 100) < 68) {
         const fenceRoll = Phaser.Math.Between(0, 100);
         const fenceFrame = fenceRoll < 6 ? 2 : Phaser.Math.Between(0, 1);
-        const fence = this.add.image(x, topY + FENCE_Y_OFFSET, "platform-fence", fenceFrame);
+        const fence = this.add.image(x, topY + FENCE_Y_OFFSET, fenceTexture, fenceFrame);
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);
         this.platformVisuals.add(fence);
@@ -1084,6 +1129,8 @@ class PlayScene extends Phaser.Scene {
     const centerX = worldStart + worldWidth / 2;
     const centerY = rowIndex * TILE + TILE / 2;
     const topY = rowIndex * TILE;
+    const platformTexture = this.level.platformTexture || "platform-strip";
+    const fenceTexture = this.level.fenceTexture || "platform-fence";
     const body = this.movingPlatforms.create(centerX, centerY, "tile-ground");
     body.setVisible(false);
     body.body.allowGravity = false;
@@ -1098,14 +1145,14 @@ class PlayScene extends Phaser.Scene {
       const segmentWidth = Math.min(PLATFORM_SEGMENT_WIDTH, worldWidth - index * PLATFORM_SEGMENT_WIDTH);
       const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + segmentWidth / 2;
       const platformFrame = Phaser.Math.Between(0, 2);
-      const platform = this.add.image(centerX + offsetX, topY + PLATFORM_Y_OFFSET, "platform-strip", platformFrame);
+      const platform = this.add.image(centerX + offsetX, topY + PLATFORM_Y_OFFSET, platformTexture, platformFrame);
       platform.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
       platform.setDepth(PLATFORM_DEPTH);
       visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
 
       if (Phaser.Math.Between(0, 100) < 54) {
         const fenceFrame = Phaser.Math.Between(0, 100) < 5 ? 2 : Phaser.Math.Between(0, 1);
-        const fence = this.add.image(centerX + offsetX, topY + FENCE_Y_OFFSET, "platform-fence", fenceFrame);
+        const fence = this.add.image(centerX + offsetX, topY + FENCE_Y_OFFSET, fenceTexture, fenceFrame);
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);
         visuals.push({ sprite: fence, offsetX, offsetY: FENCE_Y_OFFSET - TILE / 2 });
@@ -1232,6 +1279,7 @@ class PlayScene extends Phaser.Scene {
     this.updateWater(delta);
     this.updateCatNpc(time, delta);
     this.updateGabiSpeechPosition();
+    this.updateBillboardPrompt();
     if (!state.running || state.won) return;
 
     const left = this.cursors.left.isDown || this.keysInput.left.isDown;
@@ -1375,6 +1423,34 @@ class PlayScene extends Phaser.Scene {
   updateGabiSpeechPosition() {
     if (!this.speechBubble || !this.player) return;
     this.speechBubble.setPosition(this.player.x, this.player.y - 62);
+  }
+
+  isPlayerNearLevelSelectBoard() {
+    if (!this.levelSelectBoard || !this.player) return false;
+    return Phaser.Math.Distance.Between(
+      this.player.x,
+      this.player.y,
+      this.levelSelectBoard.x,
+      this.levelSelectBoard.y - 48
+    ) < BILLBOARD_INTERACT_DISTANCE;
+  }
+
+  updateBillboardPrompt() {
+    if (!this.levelSelectPrompt) return;
+    const shouldShow =
+      state.running &&
+      !state.won &&
+      !levelSelectUnlocked &&
+      hud.cheatMenu.hidden &&
+      this.isPlayerNearLevelSelectBoard();
+    this.levelSelectPrompt.setVisible(shouldShow);
+    if (shouldShow) {
+      this.levelSelectPrompt.setPosition(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
+    }
+  }
+
+  canOpenLevelSelectFromBoard() {
+    return Boolean(this.levelSelectBoard && this.isPlayerNearLevelSelectBoard());
   }
 
   moveEnemies() {
@@ -2221,5 +2297,11 @@ window.addEventListener("keydown", (event) => {
   event.preventDefault();
   if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
+  const scene = game.scene.getScene("PlayScene");
+  if (!levelSelectUnlocked) {
+    if (!scene?.scene?.isActive() || !scene.canOpenLevelSelectFromBoard()) return;
+    levelSelectUnlocked = true;
+    scene.levelSelectPrompt?.setVisible(false);
+  }
   setCheatMenuVisible(hud.cheatMenu.hidden);
 });
