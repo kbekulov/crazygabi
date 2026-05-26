@@ -25,6 +25,8 @@ const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
+const HEART_DROP_CHANCE = 0.28;
+const MAX_HEART_DROPS_PER_LEVEL = 2;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -52,8 +54,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-story-skip";
-const STORY_ASSET_VERSION = "20260526-story-skip";
+const ASSET_VERSION = "20260526-heart-drops";
+const STORY_ASSET_VERSION = "20260526-heart-drops";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const LEVEL_WIDTH_TILES = 148;
@@ -515,6 +517,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
     this.load.image("exit-door", `./public/assets/environment/exit_door.png?v=${ASSET_VERSION}`);
     this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
+    this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
     this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
     LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
@@ -546,6 +549,7 @@ class PlayScene extends Phaser.Scene {
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.heartDrops = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
@@ -556,6 +560,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
     this.lastActionAt = -Infinity;
+    this.heartDropsCreated = 0;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -1055,6 +1060,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.thrownItems, this.enemies, this.hitEnemyWithThrownItem, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
+    this.physics.add.overlap(this.player, this.heartDrops, this.collectHeart, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
@@ -1778,6 +1784,14 @@ class PlayScene extends Phaser.Scene {
     updateHud();
   }
 
+  collectHeart(_player, heart) {
+    heart.disableBody(true, true);
+    state.lives += 1;
+    state.score += 150;
+    this.cameras.main.flash(90, 255, 96, 150, false);
+    updateHud();
+  }
+
   collectDoubleJump(_player, doubleJump) {
     doubleJump.disableBody(true, true);
     state.hasDoubleJump = true;
@@ -1814,9 +1828,35 @@ class PlayScene extends Phaser.Scene {
   }
 
   defeatEnemy(enemy) {
+    this.tryDropHeart(enemy.x, enemy.y);
     enemy.disableBody(true, true);
     const label = this.enemyLabels.get(enemy);
     if (label) label.setVisible(false);
+  }
+
+  tryDropHeart(x, y) {
+    if (this.heartDropsCreated >= MAX_HEART_DROPS_PER_LEVEL) return;
+    if (Phaser.Math.FloatBetween(0, 1) > HEART_DROP_CHANCE) return;
+
+    this.heartDropsCreated += 1;
+    const heart = this.heartDrops.create(
+      x + Phaser.Math.Between(-12, 12),
+      y - Phaser.Math.Between(6, 18),
+      "life-heart"
+    );
+    heart.setScale(ITEM_SCALE);
+    heart.setDepth(ITEM_DEPTH);
+    heart.setCircle(58, 61, 58);
+    heart.body.allowGravity = false;
+    heart.body.immovable = true;
+    this.tweens.add({
+      targets: heart,
+      y: heart.y - 9,
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut"
+    });
   }
 
   hitEnemy(player, enemy) {
