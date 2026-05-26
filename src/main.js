@@ -25,12 +25,14 @@ const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
+const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
+const BRICK_SCALE = 0.27;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
@@ -55,8 +57,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-story-once-bricks";
-const STORY_ASSET_VERSION = "20260526-story-once-bricks";
+const ASSET_VERSION = "20260526-smaller-brick-heart";
+const STORY_ASSET_VERSION = "20260526-smaller-brick-heart";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -898,8 +900,9 @@ class PlayScene extends Phaser.Scene {
           this.attachEnemyLabel(enemy);
         }
         if (cell === "a") {
-          const acorn = this.acorns.create(x, -80, this.level.fallingHazard || "falling-acorn");
-          acorn.setScale(ACORN_SCALE);
+          const hazardKey = this.level.fallingHazard || "falling-acorn";
+          const acorn = this.acorns.create(x, -80, hazardKey);
+          acorn.setScale(hazardKey === "falling-brick" ? BRICK_SCALE : ACORN_SCALE);
           acorn.setDepth(ITEM_DEPTH);
           acorn.setCircle(70, 47, 52);
           acorn.body.allowGravity = false;
@@ -1882,7 +1885,7 @@ class PlayScene extends Phaser.Scene {
       y - Phaser.Math.Between(6, 18),
       "life-heart"
     );
-    heart.setScale(ITEM_SCALE);
+    heart.setScale(HEART_SCALE);
     heart.setDepth(ITEM_DEPTH);
     heart.setCircle(58, 61, 58);
     heart.body.allowGravity = false;
