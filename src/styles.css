@@ -332,6 +332,59 @@ button:active {
   display: none;
 }
 
+.item-pickup {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.item-pickup[hidden] {
+  display: none;
+}
+
+.item-card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  min-width: min(360px, 72vw);
+  padding: 22px 30px 20px;
+  border: 3px solid #1b1b1b;
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.62);
+  animation: itemPickupIn 420ms cubic-bezier(0.2, 0.86, 0.25, 1) both;
+}
+
+.item-card img {
+  display: block;
+  width: min(160px, 28vw);
+  height: min(160px, 28vw);
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.item-card h2,
+.item-card p {
+  margin: 0;
+  text-align: center;
+}
+
+.item-card h2 {
+  color: #fff200;
+  font-size: clamp(1.15rem, 3vw, 1.75rem);
+  line-height: 1;
+  text-shadow: 2px 2px 0 #6c3000;
+}
+
+.item-card p {
+  color: #f4f0dc;
+  font-size: clamp(0.9rem, 2.4vw, 1.18rem);
+  line-height: 1.25;
+}
+
 .cheat-panel {
   z-index: 4;
   background: rgba(0, 0, 0, 0.74);
@@ -423,6 +476,18 @@ button:active {
   to {
     opacity: 0;
     transform: translateX(115%);
+  }
+}
+
+@keyframes itemPickupIn {
+  from {
+    opacity: 0;
+    transform: translateY(72%) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

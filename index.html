@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260526-level-two-ghosts-v2" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260526-level-two-basket" />
   </head>
   <body>
     <main id="shell">
@@ -33,6 +33,13 @@
           <div id="story-panels" class="story-panels"></div>
           <button id="story-start" class="story-start" type="button" hidden>Start</button>
         </div>
+        <div id="item-pickup" class="item-pickup" hidden>
+          <div class="item-card">
+            <img id="item-pickup-image" alt="" />
+            <h2 id="item-pickup-name">Acorn Basket</h2>
+            <p id="item-pickup-instruction">Press Enter to throw acorns</p>
+          </div>
+        </div>
         <div id="cheat-menu" class="panel cheat-panel" hidden>
           <h1>Level Select</h1>
           <p>Jump directly to a level for testing.</p>
@@ -42,6 +49,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260526-level-two-ghosts-v2"></script>
+    <script type="module" src="./src/main.js?v=20260526-level-two-basket"></script>
   </body>
 </html>

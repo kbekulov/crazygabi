@@ -25,6 +25,7 @@ const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
+const BASKET_SCALE = 0.26;
 const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
@@ -57,8 +58,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-level-two-ghosts-v2";
-const STORY_ASSET_VERSION = "20260526-level-two-ghosts-v2";
+const ASSET_VERSION = "20260526-level-two-basket";
+const STORY_ASSET_VERSION = "20260526-level-two-basket";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -108,8 +109,8 @@ const LEVELS = [
   }
 ];
 
-function createLevelRows() {
-  const rows = Array.from({ length: LEVEL_HEIGHT_TILES }, () => Array(LEVEL_WIDTH_TILES).fill("."));
+function createLevelRows(height = LEVEL_HEIGHT_TILES) {
+  const rows = Array.from({ length: height }, () => Array(LEVEL_WIDTH_TILES).fill("."));
   const put = (row, column, value) => {
     if (rows[row] && column >= 0 && column < LEVEL_WIDTH_TILES) rows[row][column] = value;
   };
@@ -121,7 +122,7 @@ function createLevelRows() {
 }
 
 function createLevelOne() {
-  const { rows, put, run } = createLevelRows();
+  const { rows, put, run } = createLevelRows(18);
 
   run(16, 0, 28);
   run(16, 34, 46);
@@ -185,82 +186,69 @@ function createLevelOne() {
 }
 
 function createLevelTwo() {
-  const { rows, put, run } = createLevelRows();
+  const { rows, put, run } = createLevelRows(32);
 
-  run(16, 0, 16);
-  run(16, 24, 20);
-  run(16, 52, 13);
-  run(16, 75, 18);
-  run(16, 105, 16);
-  run(16, 132, 16);
-  run(14, 19, 4, "=");
-  run(13, 31, 9);
-  run(13, 46, 4, "=");
-  run(13, 60, 12);
-  run(13, 86, 4, "=");
-  run(13, 99, 12);
-  run(13, 121, 4, "=");
-  run(12, 136, 9);
-  run(10, 28, 8);
-  run(10, 43, 4, "=");
-  run(10, 57, 10);
-  run(10, 76, 8);
-  run(10, 94, 4, "=");
-  run(10, 110, 10);
-  run(9, 130, 12);
-  run(7, 38, 7);
-  run(7, 51, 4, "=");
-  run(7, 64, 8);
-  run(7, 83, 8);
-  run(7, 102, 4, "=");
-  run(7, 116, 8);
-  run(5, 47, 8);
-  run(5, 67, 4, "=");
-  run(5, 87, 8);
-  run(5, 108, 8);
-  run(3, 58, 7);
-  run(3, 78, 4, "=");
-  run(3, 99, 9);
-  run(2, 127, 11);
+  run(5, 0, 13);
+  run(8, 10, 13);
+  run(11, 3, 12);
+  run(14, 16, 12);
+  run(17, 8, 12);
+  run(20, 23, 15);
+  run(23, 37, 10);
+  run(20, 52, 10);
+  run(17, 66, 10);
+  run(14, 79, 10);
+  run(11, 92, 13);
+  run(11, 108, 13);
+  run(13, 124, 4, "=");
+  run(13, 133, 15);
+  run(8, 118, 4, "=");
+  run(8, 128, 12);
+  run(5, 139, 9);
 
   [
-    [14, 4, "p"],
-    [15, 30, "g"],
-    [15, 33, "g"],
-    [12, 38, "j"],
-    [12, 64, "g"],
-    [12, 67, "g"],
-    [12, 104, "m"],
-    [11, 141, "g"],
-    [9, 31, "m"],
-    [9, 61, "g"],
-    [9, 80, "m"],
-    [9, 115, "g"],
-    [8, 136, "m"],
-    [6, 42, "g"],
-    [6, 69, "m"],
-    [6, 87, "g"],
-    [6, 119, "g"],
-    [4, 52, "g"],
-    [4, 90, "g"],
-    [2, 61, "g"],
-    [2, 103, "g"],
-    [1, 20, "a"],
-    [1, 28, "a"],
-    [1, 37, "a"],
+    [3, 4, "p"],
+    [4, 8, "g"],
+    [7, 15, "g"],
+    [10, 8, "g"],
+    [13, 22, "g"],
+    [16, 13, "g"],
+    [19, 31, "b"],
+    [19, 34, "j"],
+    [22, 42, "g"],
+    [19, 57, "g"],
+    [16, 71, "g"],
+    [13, 84, "g"],
+    [10, 97, "g"],
+    [10, 101, "m"],
+    [10, 109, "m"],
+    [10, 116, "m"],
+    [12, 136, "m"],
+    [12, 143, "m"],
+    [7, 132, "m"],
+    [7, 138, "m"],
+    [4, 143, "m"],
+    [10, 112, "g"],
+    [10, 119, "g"],
+    [12, 137, "g"],
+    [12, 145, "g"],
+    [7, 134, "g"],
+    [4, 142, "k"],
+    [4, 145, "d"],
+    [1, 10, "a"],
+    [1, 18, "a"],
+    [1, 26, "a"],
+    [1, 36, "a"],
     [1, 48, "a"],
-    [1, 54, "a"],
-    [1, 62, "a"],
-    [1, 68, "a"],
-    [1, 74, "a"],
-    [1, 88, "a"],
-    [1, 95, "a"],
-    [1, 101, "a"],
-    [1, 113, "a"],
-    [1, 125, "a"],
+    [1, 60, "a"],
+    [1, 72, "a"],
+    [1, 84, "a"],
+    [1, 96, "a"],
+    [1, 108, "a"],
+    [1, 118, "a"],
+    [1, 127, "a"],
     [1, 136, "a"],
-    [1, 133, "k"],
-    [8, 134, "d"]
+    [1, 144, "a"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -275,6 +263,7 @@ const state = {
   timeLeft: TIME_LIMIT,
   hasKey: false,
   hasDoubleJump: false,
+  hasAcornBasket: false,
   running: false,
   won: false,
   resetProgressOnCreate: true,
@@ -295,6 +284,10 @@ const hud = {
   storyIntro: document.querySelector("#story-intro"),
   storyPanels: document.querySelector("#story-panels"),
   storyStart: document.querySelector("#story-start"),
+  itemPickup: document.querySelector("#item-pickup"),
+  itemPickupImage: document.querySelector("#item-pickup-image"),
+  itemPickupName: document.querySelector("#item-pickup-name"),
+  itemPickupInstruction: document.querySelector("#item-pickup-instruction"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatClose: document.querySelector("#cheat-close")
@@ -346,6 +339,15 @@ function setStoryIntroVisible(visible) {
   }
 }
 
+function setItemPickupVisible(visible, details = {}) {
+  hud.itemPickup.hidden = !visible;
+  if (!visible) return;
+  hud.itemPickupImage.src = details.image || "";
+  hud.itemPickupImage.alt = details.name || "";
+  hud.itemPickupName.textContent = details.name || "Item";
+  hud.itemPickupInstruction.textContent = details.instruction || "";
+}
+
 function resetGameProgress() {
   state.levelIndex = 0;
   state.score = 0;
@@ -354,6 +356,7 @@ function resetGameProgress() {
   state.timeLeft = TIME_LIMIT;
   state.hasKey = false;
   state.hasDoubleJump = false;
+  state.hasAcornBasket = false;
   state.running = false;
   state.won = false;
   state.resetProgressOnCreate = false;
@@ -365,6 +368,7 @@ function hardResetDocument() {
   setGameAssetsReady(false);
   setStoryIntroVisible(false);
   setCheatMenuVisible(false);
+  setItemPickupVisible(false);
   hud.message.hidden = true;
   updateLoadingProgress(0, "Restarting...");
   setLoadingVisible(true);
@@ -559,6 +563,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
     this.load.image("falling-brick", `./public/assets/environment/brick.png?v=${ASSET_VERSION}`);
     this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
+    this.load.image("acorn-basket", `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
     this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
     LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
@@ -590,6 +595,7 @@ class PlayScene extends Phaser.Scene {
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.acornBaskets = this.physics.add.group({ allowGravity: false, immovable: true });
     this.heartDrops = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -602,6 +608,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyNames = [...ENEMY_NAMES];
     this.lastActionAt = -Infinity;
     this.heartDropsCreated = 0;
+    this.basketPromptActive = false;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -622,6 +629,7 @@ class PlayScene extends Phaser.Scene {
     state.timeLeft = this.level.timeLimit;
     state.hasKey = false;
     state.hasDoubleJump = false;
+    state.hasAcornBasket = false;
     state.running = false;
     state.won = false;
     updateHud();
@@ -900,6 +908,14 @@ class PlayScene extends Phaser.Scene {
           doubleJump.setCircle(60, 59, 60);
           this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
+        if (cell === "b") {
+          const basket = this.acornBaskets.create(x, y, "acorn-basket");
+          basket.setScale(BASKET_SCALE);
+          basket.setDepth(ITEM_DEPTH);
+          basket.setCircle(75, 64, 54);
+          this.basketPoint = { x, y };
+          this.tweens.add({ targets: basket, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        }
         if (cell === "m") {
           const enemySprite = this.level.enemySprite || "robot";
           const enemy = this.enemies.create(x, y, enemySprite, 0);
@@ -1113,6 +1129,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.thrownItems, this.enemies, this.hitEnemyWithThrownItem, null, this);
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
+    this.physics.add.overlap(this.player, this.acornBaskets, this.collectAcornBasket, null, this);
     this.physics.add.overlap(this.player, this.heartDrops, this.collectHeart, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
@@ -1131,6 +1148,8 @@ class PlayScene extends Phaser.Scene {
     this.introInProgress = true;
     hud.message.hidden = true;
     setStoryIntroVisible(false);
+    setItemPickupVisible(false);
+    this.basketPromptActive = false;
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
@@ -1211,11 +1230,15 @@ class PlayScene extends Phaser.Scene {
   }
 
   performAction(time = 0) {
-    if (this.level.actionAbility === "throw-acorn") this.throwAcorn(time);
+    if (this.level.actionAbility !== "throw-acorn" || !state.hasAcornBasket) return;
+    if (this.throwAcorn(time) && this.basketPromptActive) {
+      this.basketPromptActive = false;
+      setItemPickupVisible(false);
+    }
   }
 
   throwAcorn(time = 0) {
-    if (time - this.lastActionAt < 450) return;
+    if (time - this.lastActionAt < 450) return false;
     this.lastActionAt = time;
     const direction = this.player.flipX ? -1 : 1;
     const acorn = this.thrownItems.create(this.player.x + direction * 28, this.player.y - 20, "falling-acorn");
@@ -1228,6 +1251,7 @@ class PlayScene extends Phaser.Scene {
     acorn.setAngularVelocity(direction * 520);
     acorn.setData("spawnedAt", time);
     acorn.setData("thrown", true);
+    return true;
   }
 
   setGabiFlip(flipX) {
@@ -1441,17 +1465,19 @@ class PlayScene extends Phaser.Scene {
     this.catWasOnFloor = onFloor;
     const floorRun = onFloor ? this.findPlatformUnder(this.cat.x) : null;
 
-    const goal = state.hasKey ? this.doorPoint : this.keyPoint;
+    const goal = this.getCatGoal();
     if (!goal) return;
 
-    const reachedGoal = Math.abs(this.cat.x - goal.x) < 115;
-    const gabiReachedCat = this.player.x >= this.cat.x - CAT_SAFE_DISTANCE;
+    const reachedGoal = Phaser.Math.Distance.Between(this.cat.x, this.cat.y, goal.x, goal.y) < 150;
+    const gabiReachedCat =
+      Phaser.Math.Distance.Between(this.player.x, this.player.y, this.cat.x, this.cat.y) < CAT_SAFE_DISTANCE ||
+      this.player.x >= this.cat.x - CAT_SAFE_DISTANCE;
     const screenRightX = this.cameras.main.scrollX + VIEW_WIDTH - CAT_SCREEN_MARGIN;
     const shouldWait =
       reachedGoal ||
       (this.cat.x >= screenRightX - 12 && this.cat.x > this.player.x + CAT_SAFE_DISTANCE && !gabiReachedCat);
 
-    if (!state.hasKey && reachedGoal) this.revealKey();
+    if (goal === this.keyPoint && !state.hasKey && reachedGoal) this.revealKey();
 
     if ((this.catWaiting || shouldWait) && !gabiReachedCat) {
       this.catWaiting = true;
@@ -1477,6 +1503,11 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.moveCatTowardTarget(time);
+  }
+
+  getCatGoal() {
+    if (this.basketPoint && !state.hasAcornBasket) return this.basketPoint;
+    return state.hasKey ? this.doorPoint : this.keyPoint;
   }
 
   pickCatTarget(goal, screenRightX) {
@@ -1812,6 +1843,7 @@ class PlayScene extends Phaser.Scene {
     this.introInProgress = false;
     state.running = false;
     setStoryIntroVisible(false);
+    setItemPickupVisible(false);
     if (this.timerEvent) {
       this.timerEvent.remove(false);
       this.timerEvent = null;
@@ -1851,6 +1883,22 @@ class PlayScene extends Phaser.Scene {
     state.hasDoubleJump = true;
     state.score += 300;
     this.cameras.main.flash(130, 139, 220, 255, false);
+    updateHud();
+  }
+
+  collectAcornBasket(_player, basket) {
+    basket.disableBody(true, true);
+    state.hasAcornBasket = true;
+    state.score += 400;
+    this.basketPromptActive = true;
+    this.catWaiting = false;
+    this.catTarget = null;
+    setItemPickupVisible(true, {
+      name: "Acorn Basket",
+      instruction: "Press Enter to throw acorns",
+      image: `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
+    });
+    this.cameras.main.flash(120, 255, 220, 90, false);
     updateHud();
   }
 
@@ -1980,6 +2028,8 @@ class PlayScene extends Phaser.Scene {
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
+    this.basketPromptActive = false;
+    setItemPickupVisible(false);
     this.thrownItems.clear(true, true);
     if (!state.hasKey) this.resetKeyReveal();
     this.resetCatNpc();
@@ -2007,7 +2057,7 @@ class PlayScene extends Phaser.Scene {
     state.levelIndex += 1;
     state.pendingLevelPrompt = {
       title: "Level 2",
-      copy: "A tougher route opens up ahead: tighter platforms, busier acorns, and more robots.",
+      copy: "Follow the cat into the lower city, find the basket, then fight your way back across the rooftops.",
       button: "Start"
     };
     if (this.timerEvent) {
@@ -2074,6 +2124,7 @@ LEVELS.forEach((level, index) => {
     state.levelIndex = index;
     state.score = 0;
     state.lives = 3;
+    state.hasAcornBasket = false;
     state.resetProgressOnCreate = false;
     state.pendingLevelPrompt = {
       title: level.name,
