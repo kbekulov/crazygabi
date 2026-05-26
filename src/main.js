@@ -1676,7 +1676,7 @@ class PlayScene extends Phaser.Scene {
         const centerX = Phaser.Math.Clamp(goal.x, run.startX + 46, run.endX - 46);
         const horizontalGap = Math.abs(centerX - this.cat.x);
         const verticalDelta = targetY - this.cat.y;
-        const reachableStep = verticalDelta > -170 && verticalDelta < 260;
+        const reachableStep = verticalDelta > 10 && verticalDelta < 260;
         const nearEnough = horizontalGap < CAT_LANDING_LOOKAHEAD;
         const visibleEnough = centerX < screenRightX + 120;
         return reachableStep && nearEnough && visibleEnough && run.endX - run.startX >= 96;
@@ -1748,10 +1748,12 @@ class PlayScene extends Phaser.Scene {
       ? (direction > 0 ? currentRun.endX - this.cat.x : this.cat.x - currentRun.startX)
       : 0;
     const nearEdge = onFloor && currentRun && distanceToEdge < CAT_EDGE_JUMP_DISTANCE;
-    const landingRun = nearEdge ? this.findNextCatPlatform(direction) : null;
-    const landingAhead = Boolean(landingRun);
     const targetAbove = target.y < this.cat.y - 28;
     const targetBelow = target.y > this.cat.y + 28;
+    const landingRun = nearEdge
+      ? (targetBelow ? this.findNextLowerCatPlatform(direction) : this.findNextCatPlatform(direction))
+      : null;
+    const landingAhead = Boolean(landingRun);
     const landingIsHigher = landingRun && currentRun && landingRun.topY < currentRun.topY - 12;
     const landingIsLevel = landingRun && currentRun && Math.abs(landingRun.topY - currentRun.topY) <= 12;
     const shouldJump = nearEdge && landingAhead && (landingIsHigher || (landingIsLevel && !targetBelow));
@@ -1857,6 +1859,30 @@ class PlayScene extends Phaser.Scene {
       const heightB = Math.abs((b.topY - CAT_PLATFORM_Y) - this.cat.y);
       const movingPenalty = (a.moving ? 70 : 0) - (b.moving ? 70 : 0);
       return gapA - gapB || movingPenalty || heightA - heightB;
+    });
+
+    return candidates[0] || null;
+  }
+
+  findNextLowerCatPlatform(direction = 1) {
+    const currentRun = this.findPlatformUnder(this.cat.x);
+    if (!currentRun) return null;
+    const candidates = this.getCatNavRuns().filter((run) => {
+      if (this.isSameCatRun(run, currentRun)) return false;
+      const below = run.topY > currentRun.topY + 12;
+      const ahead = direction > 0 ? run.endX > this.cat.x + 20 : run.startX < this.cat.x - 20;
+      const gap = direction > 0 ? Math.max(0, run.startX - this.cat.x) : Math.max(0, this.cat.x - run.endX);
+      const reachableDrop = run.topY - currentRun.topY < 300;
+      return below && ahead && gap < CAT_LANDING_LOOKAHEAD && reachableDrop && run.endX - run.startX > 80;
+    });
+
+    candidates.sort((a, b) => {
+      const gapA = direction > 0 ? Math.max(0, a.startX - this.cat.x) : Math.max(0, this.cat.x - a.endX);
+      const gapB = direction > 0 ? Math.max(0, b.startX - this.cat.x) : Math.max(0, this.cat.x - b.endX);
+      const dropA = a.topY - currentRun.topY;
+      const dropB = b.topY - currentRun.topY;
+      const movingPenalty = (a.moving ? 90 : 0) - (b.moving ? 90 : 0);
+      return gapA - gapB || movingPenalty || dropA - dropB;
     });
 
     return candidates[0] || null;
