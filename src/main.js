@@ -866,7 +866,7 @@ class PlayScene extends Phaser.Scene {
     house.setScale(STARTING_HOUSE_SCALE);
     house.setDepth(STARTING_HOUSE_DEPTH);
 
-    this.levelSelectBoard = this.add.image(590, 16 * TILE - 26, "starting-billboard");
+    this.levelSelectBoard = this.add.image(456, 16 * TILE - 2, "starting-billboard");
     this.levelSelectBoard.setOrigin(0.5, 1);
     this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
     this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
