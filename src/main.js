@@ -1833,7 +1833,8 @@ class PlayScene extends Phaser.Scene {
       direction,
       startedAt: time,
       lastJumpAt: needsJump ? time : -Infinity,
-      needsJump
+      needsJump,
+      launched: true
     };
     this.cat.setAccelerationX(direction * 1050);
     this.cat.setVelocityX(velocityX);
@@ -1875,12 +1876,15 @@ class PlayScene extends Phaser.Scene {
       return false;
     }
 
-    const edgeX = transition.direction > 0
-      ? currentRun.endX - CAT_EDGE_TARGET_PADDING
-      : currentRun.startX + CAT_EDGE_TARGET_PADDING;
-    if (Math.abs(this.cat.x - edgeX) > 16) {
-      this.moveCatTowardX(edgeX, currentRun, time);
-      return true;
+    if (!transition.launched) {
+      const edgeX = transition.direction > 0
+        ? currentRun.endX - CAT_EDGE_TARGET_PADDING
+        : currentRun.startX + CAT_EDGE_TARGET_PADDING;
+      if (Math.abs(this.cat.x - edgeX) > 16) {
+        this.moveCatTowardX(edgeX, currentRun, time);
+        return true;
+      }
+      transition.launched = true;
     }
 
     this.catAirTargetX = Phaser.Math.Clamp(
@@ -1959,7 +1963,10 @@ class PlayScene extends Phaser.Scene {
   findCatRunIndexAt(x, runs = this.getCatNavRuns()) {
     const footY = this.cat.body?.bottom ?? this.cat.y + CAT_PLATFORM_Y;
     return runs.findIndex((run) => {
-      const horizontallyInside = x >= run.startX + 6 && x <= run.endX - 6;
+      const edgeSlack = this.catTransition && this.isSameCatRun(run, this.catTransition.fromRun)
+        ? CAT_EDGE_TARGET_PADDING + 18
+        : 6;
+      const horizontallyInside = x >= run.startX - edgeSlack && x <= run.endX + edgeSlack;
       const footOnTop = Math.abs(footY - run.topY) < 34;
       const spriteOnTop = Math.abs(this.cat.y - (run.topY - CAT_PLATFORM_Y)) < 76;
       return horizontallyInside && (footOnTop || spriteOnTop);
@@ -2034,6 +2041,7 @@ class PlayScene extends Phaser.Scene {
       this.catAirTargetX = goal.x;
       this.catJumpPoseUntil = time + 130;
       this.cat.setVelocity(direction * CAT_RUN_SPEED, -CAT_JUMP_SPEED * 0.58);
+      this.cat.setAccelerationX(direction * 1050);
       this.cat.setFlipX(direction < 0);
       this.catStuckSince = 0;
       this.resetCatProgressSample(time);
