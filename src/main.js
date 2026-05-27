@@ -57,6 +57,7 @@ const CAT_STUCK_SAMPLE_MS = 760;
 const CAT_STUCK_DISTANCE = 18;
 const CAT_RECOVERY_MS = 1250;
 const CAT_RESCUE_MS = 2800;
+const CAT_TRANSITION_TIMEOUT_MS = 2200;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -1596,6 +1597,7 @@ class PlayScene extends Phaser.Scene {
     this.catProgressX = this.cat.x;
     this.catProgressY = this.cat.y;
     this.catAirTargetX = undefined;
+    this.catTransition = null;
     this.cat.play("cat-idle", true);
   }
 
@@ -1627,6 +1629,7 @@ class PlayScene extends Phaser.Scene {
     }
     this.catWasOnFloor = onFloor;
     const floorRun = onFloor ? this.findPlatformUnder(this.cat.x) : null;
+    if (onFloor) this.completeCatTransitionIfLanded(floorRun, time);
 
     const goal = this.getCatGoal();
     if (!goal) return;
@@ -1644,6 +1647,8 @@ class PlayScene extends Phaser.Scene {
 
     if ((this.catWaiting || shouldWait) && !gabiReachedCat) {
       this.catWaiting = true;
+      this.catTransition = null;
+      this.catAirTargetX = undefined;
       this.cat.setAccelerationX(0);
       this.cat.setVelocityX(floorRun?.moving ? floorRun.speed : 0);
       this.cat.play("cat-idle", true);
@@ -1652,6 +1657,8 @@ class PlayScene extends Phaser.Scene {
 
     if (reachedGoal && (state.hasKey || Math.abs(this.player.x - this.cat.x) < CAT_SAFE_DISTANCE)) {
       this.catWaiting = true;
+      this.catTransition = null;
+      this.catAirTargetX = undefined;
       this.cat.setAccelerationX(0);
       this.cat.setVelocityX(floorRun?.moving ? floorRun.speed : 0);
       this.cat.play("cat-idle", true);
@@ -1664,6 +1671,8 @@ class PlayScene extends Phaser.Scene {
 
   followCatRoute(goal, time = 0, onFloor = false, floorRun = null) {
     this.watchCatProgress(time, onFloor);
+
+    if (this.catTransition && this.continueCatTransition(time, onFloor, floorRun)) return;
 
     if (time < this.catRecoveryUntil) {
       if (this.runCatRecovery(goal, time, onFloor, floorRun)) return;
@@ -1815,19 +1824,96 @@ class PlayScene extends Phaser.Scene {
     const nextIsHigher = nextRun.topY < currentRun.topY - 12;
     const horizontalGap = direction > 0 ? nextRun.startX - currentRun.endX : currentRun.startX - nextRun.endX;
     const needsLongDropHop = nextIsLower && horizontalGap > 92;
+    const needsJump = needsLongDropHop || (!nextIsLower && (nextIsHigher || Math.abs(nextRun.topY - currentRun.topY) <= 12));
     const velocityX = direction * CAT_RUN_SPEED + (currentRun.moving ? currentRun.speed : 0);
 
+    this.catTransition = {
+      fromRun: currentRun,
+      toRun: nextRun,
+      direction,
+      startedAt: time,
+      lastJumpAt: needsJump ? time : -Infinity,
+      needsJump
+    };
     this.cat.setAccelerationX(direction * 1050);
     this.cat.setVelocityX(velocityX);
     this.cat.setFlipX(direction < 0);
     if (needsLongDropHop) {
       this.catJumpPoseUntil = time + 110;
       this.cat.setVelocityY(-CAT_JUMP_SPEED * 0.62);
-    } else if (!nextIsLower && (nextIsHigher || Math.abs(nextRun.topY - currentRun.topY) <= 12)) {
+    } else if (needsJump) {
       this.catJumpPoseUntil = time + 130;
       this.cat.setVelocityY(-CAT_JUMP_SPEED);
     }
     this.updateCatAnimation(true, time);
+  }
+
+  continueCatTransition(time = 0, onFloor = false, floorRun = null) {
+    const transition = this.catTransition;
+    if (!transition) return false;
+
+    if (time - transition.startedAt > CAT_TRANSITION_TIMEOUT_MS) {
+      this.catTransition = null;
+      this.activateCatRecovery(time);
+      return false;
+    }
+
+    if (!onFloor) {
+      this.followCatAirTarget(time);
+      return true;
+    }
+
+    const currentRun = floorRun || this.findPlatformUnder(this.cat.x);
+    if (!currentRun) {
+      this.catTransition = null;
+      this.activateCatRecovery(time);
+      return false;
+    }
+
+    if (this.isSameCatRun(currentRun, transition.toRun) || !this.isSameCatRun(currentRun, transition.fromRun)) {
+      this.completeCatTransition();
+      return false;
+    }
+
+    const edgeX = transition.direction > 0
+      ? currentRun.endX - CAT_EDGE_TARGET_PADDING
+      : currentRun.startX + CAT_EDGE_TARGET_PADDING;
+    if (Math.abs(this.cat.x - edgeX) > 16) {
+      this.moveCatTowardX(edgeX, currentRun, time);
+      return true;
+    }
+
+    this.catAirTargetX = Phaser.Math.Clamp(
+      this.getCatRunCenterX(transition.toRun),
+      transition.toRun.startX + 46,
+      transition.toRun.endX - 46
+    );
+    this.cat.setAccelerationX(transition.direction * 1050);
+    this.cat.setVelocityX(transition.direction * CAT_RUN_SPEED + (currentRun.moving ? currentRun.speed : 0));
+    this.cat.setFlipX(transition.direction < 0);
+    if (transition.needsJump && time - transition.lastJumpAt > 360) {
+      transition.lastJumpAt = time;
+      this.catJumpPoseUntil = time + 120;
+      this.cat.setVelocityY(-CAT_JUMP_SPEED * 0.72);
+    }
+    this.updateCatAnimation(true, time);
+    return true;
+  }
+
+  completeCatTransitionIfLanded(floorRun, time = 0) {
+    if (!this.catTransition || !floorRun) return;
+    if (this.isSameCatRun(floorRun, this.catTransition.toRun) || !this.isSameCatRun(floorRun, this.catTransition.fromRun)) {
+      this.completeCatTransition(time);
+    }
+  }
+
+  completeCatTransition(time = this.time.now) {
+    this.catTransition = null;
+    this.catAirTargetX = undefined;
+    this.catRoute = null;
+    this.catRecoveryUntil = 0;
+    this.catStuckSince = 0;
+    this.resetCatProgressSample(time);
   }
 
   moveCatTowardX(targetX, currentRun, time = 0) {
@@ -1925,42 +2011,37 @@ class PlayScene extends Phaser.Scene {
       return true;
     }
 
-    if (this.catStuckSince && time - this.catStuckSince > CAT_RESCUE_MS) {
-      this.rescueCatToRoute(goal);
-      return true;
-    }
-
     const currentRun = floorRun || this.findPlatformUnder(this.cat.x);
     const route = this.buildCatRoute(goal);
-    if (!currentRun || !route?.length) {
-      this.rescueCatToRoute(goal);
+    if (!currentRun) {
+      this.cat.setAccelerationX(0);
+      this.cat.setVelocityX(0);
+      this.cat.play("cat-idle", true);
       return true;
     }
 
-    const nextRun = this.getNextCatRouteRun(route, currentRun);
+    const nextRun = route?.length ? this.getNextCatRouteRun(route, currentRun) : null;
     if (nextRun) {
       this.moveCatFromRunToRun(currentRun, nextRun, time);
       return true;
     }
 
-    this.moveCatTowardX(Phaser.Math.Clamp(goal.x, currentRun.startX + 46, currentRun.endX - 46), currentRun, time);
-    return true;
-  }
+    const direction = goal.x >= this.cat.x ? 1 : -1;
+    const recoveryEdgeX = direction > 0
+      ? currentRun.endX - CAT_EDGE_TARGET_PADDING
+      : currentRun.startX + CAT_EDGE_TARGET_PADDING;
+    if (this.catStuckSince && time - this.catStuckSince > CAT_RESCUE_MS && Math.abs(this.cat.x - recoveryEdgeX) < 34) {
+      this.catAirTargetX = goal.x;
+      this.catJumpPoseUntil = time + 130;
+      this.cat.setVelocity(direction * CAT_RUN_SPEED, -CAT_JUMP_SPEED * 0.58);
+      this.cat.setFlipX(direction < 0);
+      this.catStuckSince = 0;
+      this.resetCatProgressSample(time);
+      return true;
+    }
 
-  rescueCatToRoute(goal) {
-    const route = this.buildCatRoute(goal);
-    const run = route?.[1] || route?.[0] || this.platformRuns.find((candidate) => candidate.endX > this.player.x + 120) || this.platformRuns[0];
-    if (!run) return;
-    const x = Phaser.Math.Clamp(goal.x, run.startX + 54, run.endX - 54);
-    this.cat.setPosition(x, run.topY - CAT_PLATFORM_Y);
-    this.cat.setVelocity(0, 0);
-    this.cat.setAcceleration(0, 0);
-    this.catAirTargetX = undefined;
-    this.catRecoveryUntil = 0;
-    this.catStuckSince = 0;
-    this.catRoute = null;
-    this.resetCatProgressSample(this.time.now);
-    this.cat.play("cat-idle", true);
+    this.moveCatTowardX(recoveryEdgeX, currentRun, time);
+    return true;
   }
 
   getCatGoal() {
@@ -1990,6 +2071,7 @@ class PlayScene extends Phaser.Scene {
     this.catJumpPoseUntil = 0;
     this.catAirTargetX = undefined;
     this.catRoute = null;
+    this.catTransition = null;
     this.catRecoveryUntil = 0;
     this.catStuckSince = 0;
   }
