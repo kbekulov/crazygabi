@@ -1580,8 +1580,8 @@ class PlayScene extends Phaser.Scene {
   resetCatNpc() {
     if (!this.cat) return;
     this.cat.enableBody(true, this.spawnPoint.x + CAT_START_OFFSET, this.spawnPoint.y, true, true);
-    this.cat.body.allowGravity = true;
-    this.cat.body.moves = true;
+    this.cat.body.allowGravity = false;
+    this.cat.body.moves = false;
     this.cat.setVelocity(0, 0);
     this.cat.setAcceleration(0, 0);
     this.cat.setFlipX(true);
@@ -1598,6 +1598,9 @@ class PlayScene extends Phaser.Scene {
     this.catProgressY = this.cat.y;
     this.catAirTargetX = undefined;
     this.catTransition = null;
+    this.catGuidePath = this.buildCatGuidePath();
+    this.catGuideIndex = -1;
+    this.catGuideTravel = null;
     this.cat.play("cat-idle", true);
   }
 
@@ -1620,6 +1623,11 @@ class PlayScene extends Phaser.Scene {
       this.cat.setVelocityX(0);
       this.cat.setFlipX(this.player.x < this.cat.x);
       this.cat.play("cat-idle", true);
+      return;
+    }
+
+    if (this.level.catNpc) {
+      this.updateCatGuideNpc(time);
       return;
     }
 
@@ -1667,6 +1675,159 @@ class PlayScene extends Phaser.Scene {
 
     this.catWaiting = false;
     this.followCatRoute(goal, time, onFloor, floorRun);
+  }
+
+  buildCatGuidePath() {
+    if (!this.level.catNpc) return [];
+
+    const stops = [];
+    this.levelRows.forEach((row, rowIndex) => {
+      [...row].forEach((cell, columnIndex) => {
+        if (!["g", "j", "b", "k", "d"].includes(cell)) return;
+        const x = columnIndex * TILE + TILE / 2;
+        const itemY = rowIndex * TILE + TILE / 2;
+        const run = this.findGuidePlatformRun(x, itemY);
+        const minX = run ? run.startX + 46 : x;
+        const maxX = run ? run.endX - 46 : x;
+        stops.push({
+          kind: cell,
+          row: rowIndex,
+          column: columnIndex,
+          x: minX <= maxX ? Phaser.Math.Clamp(x, minX, maxX) : x,
+          y: run ? run.topY - CAT_PLATFORM_Y : itemY,
+          run
+        });
+      });
+    });
+
+    const basket = stops.find((stop) => stop.kind === "b");
+    if (!basket) return stops.sort((a, b) => a.column - b.column || a.row - b.row);
+
+    const beforeBasket = stops
+      .filter((stop) => stop === basket || (stop.column <= basket.column + 6 && stop.row < basket.row))
+      .sort((a, b) => a.row - b.row || a.column - b.column);
+    const afterBasket = stops
+      .filter((stop) => !beforeBasket.includes(stop))
+      .sort((a, b) => b.row - a.row || a.column - b.column);
+
+    return [...beforeBasket, ...afterBasket];
+  }
+
+  findGuidePlatformRun(x, y) {
+    return this.platformRuns
+      .filter((run) => x >= run.startX - 48 && x <= run.endX + 48 && run.topY >= y - 48)
+      .sort((a, b) => Math.abs(a.topY - y) - Math.abs(b.topY - y))[0] || null;
+  }
+
+  updateCatGuideNpc(time = 0) {
+    if (this.basketPromptActive) {
+      this.finishCatGuideTravel();
+      this.playCatGuideIdle();
+      return;
+    }
+
+    if (this.catGuideTravel) {
+      this.updateCatGuideTravel(time);
+      return;
+    }
+
+    const allowedIndex = this.getAllowedCatGuideIndex();
+    if (allowedIndex < 0) {
+      this.playCatGuideIdle();
+      return;
+    }
+
+    const currentIndex = Math.min(this.catGuideIndex, allowedIndex);
+    const currentStop = this.catGuidePath[currentIndex];
+    if (currentStop?.kind === "k" && !state.hasKey) this.revealKey();
+
+    const canAdvance = this.catGuideIndex < allowedIndex;
+    if (!canAdvance || !this.isGabiCloseToGuideCat()) {
+      this.playCatGuideIdle();
+      return;
+    }
+
+    this.startCatGuideTravel(this.catGuideIndex + 1, time);
+  }
+
+  getAllowedCatGuideIndex() {
+    if (!this.catGuidePath?.length) return -1;
+    const basketIndex = this.catGuidePath.findIndex((stop) => stop.kind === "b");
+    const keyIndex = this.catGuidePath.findIndex((stop) => stop.kind === "k");
+    const doorIndex = this.catGuidePath.findIndex((stop) => stop.kind === "d");
+
+    if (!state.hasAcornBasket && basketIndex >= 0) return basketIndex;
+    if (!state.hasKey && keyIndex >= 0) return keyIndex;
+    return doorIndex >= 0 ? doorIndex : this.catGuidePath.length - 1;
+  }
+
+  isGabiCloseToGuideCat() {
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.cat.x, this.cat.y);
+    const sameBand = Math.abs(this.player.y - this.cat.y) < 130 && this.player.x > this.cat.x - 170;
+    return distance < 185 || sameBand;
+  }
+
+  startCatGuideTravel(targetIndex, time = 0) {
+    const target = this.catGuidePath[targetIndex];
+    if (!target) return;
+
+    const fromX = this.cat.x;
+    const fromY = this.cat.y;
+    const distance = Phaser.Math.Distance.Between(fromX, fromY, target.x, target.y);
+    const sameRun = target.run && this.catGuideIndex >= 0 && this.isSameCatRun(target.run, this.catGuidePath[this.catGuideIndex]?.run);
+    this.catGuideTravel = {
+      targetIndex,
+      fromX,
+      fromY,
+      toX: target.x,
+      toY: target.y,
+      startedAt: time,
+      duration: Phaser.Math.Clamp((distance / CAT_RUN_SPEED) * 1000, 360, 1500),
+      arc: sameRun ? 0 : Phaser.Math.Clamp(36 + Math.abs(target.x - fromX) * 0.16 + Math.max(0, fromY - target.y) * 0.24, 42, 132)
+    };
+    this.cat.setFlipX(target.x < fromX);
+    this.cat.play("cat-run", true);
+  }
+
+  updateCatGuideTravel(time = 0) {
+    const travel = this.catGuideTravel;
+    if (!travel) return;
+
+    const progress = Phaser.Math.Clamp((time - travel.startedAt) / travel.duration, 0, 1);
+    const eased = Phaser.Math.Easing.Sine.InOut(progress);
+    const x = Phaser.Math.Linear(travel.fromX, travel.toX, eased);
+    const baseY = Phaser.Math.Linear(travel.fromY, travel.toY, eased);
+    const arcY = travel.arc * Math.sin(Math.PI * progress);
+    const y = baseY - arcY;
+
+    this.cat.setPosition(x, y);
+    this.cat.body?.reset(x, y);
+    if (travel.arc > 0) {
+      this.cat.anims.stop();
+      this.cat.setFrame(progress < 0.55 ? 5 : 6);
+    } else {
+      this.cat.play("cat-run", true);
+    }
+
+    if (progress < 1) return;
+    this.catGuideIndex = travel.targetIndex;
+    this.finishCatGuideTravel();
+    const stop = this.catGuidePath[this.catGuideIndex];
+    if (stop?.kind === "k" && !state.hasKey) this.revealKey();
+    this.playCatGuideIdle();
+  }
+
+  finishCatGuideTravel() {
+    if (!this.catGuideTravel) return;
+    this.cat.setPosition(this.catGuideTravel.toX, this.catGuideTravel.toY);
+    this.cat.body?.reset(this.catGuideTravel.toX, this.catGuideTravel.toY);
+    this.catGuideTravel = null;
+  }
+
+  playCatGuideIdle() {
+    this.cat.setAccelerationX(0);
+    this.cat.setVelocity(0, 0);
+    this.cat.play("cat-idle", true);
   }
 
   followCatRoute(goal, time = 0, onFloor = false, floorRun = null) {
