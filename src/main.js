@@ -51,6 +51,8 @@ const CAT_JUMP_SPEED = 545;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
 const CAT_GUIDE_PLATFORM_Y = Math.round((CAT_FRAME_HEIGHT * CAT_SCALE) / 2);
+const CAT_AHEAD_TRIGGER_DISTANCE = 240;
+const CAT_AHEAD_TARGET_STOPS = 1;
 const CAT_START_OFFSET = 74;
 const CAT_ROUTE_REPLAN_MS = 420;
 const CAT_EDGE_TARGET_PADDING = 38;
@@ -1756,13 +1758,13 @@ class PlayScene extends Phaser.Scene {
     const currentStop = this.catGuidePath[currentIndex];
     if (currentStop?.kind === "k" && !state.hasKey) this.revealKey();
 
-    const canAdvance = this.catGuideIndex < allowedIndex;
-    if (!canAdvance || !this.isGabiCloseToGuideCat()) {
+    const nextIndex = this.getNextCatGuideIndex(allowedIndex);
+    if (nextIndex <= this.catGuideIndex) {
       this.playCatGuideIdle();
       return;
     }
 
-    this.startCatGuideTravel(this.catGuideIndex + 1, time);
+    this.startCatGuideTravel(nextIndex, time);
   }
 
   getAllowedCatGuideIndex() {
@@ -1780,6 +1782,46 @@ class PlayScene extends Phaser.Scene {
     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.cat.x, this.cat.y);
     const sameBand = Math.abs(this.player.y - this.cat.y) < 130 && this.player.x > this.cat.x - 170;
     return distance < 185 || sameBand;
+  }
+
+  getNextCatGuideIndex(allowedIndex) {
+    const canAdvance = this.catGuideIndex < allowedIndex;
+    if (!canAdvance) return this.catGuideIndex;
+    if (this.isGabiCloseToGuideCat()) return this.catGuideIndex + 1;
+
+    const playerProgressIndex = this.getPlayerCatGuideProgressIndex(allowedIndex);
+    if (playerProgressIndex <= this.catGuideIndex) return this.catGuideIndex;
+
+    const playerStop = this.catGuidePath[playerProgressIndex];
+    const catStop = this.catGuidePath[Math.max(0, this.catGuideIndex)];
+    const playerNearPath = Phaser.Math.Distance.Between(this.player.x, this.player.y, playerStop.x, playerStop.y) < CAT_AHEAD_TRIGGER_DISTANCE;
+    const playerPastCat =
+      this.player.x > this.cat.x + CAT_AHEAD_TRIGGER_DISTANCE ||
+      this.player.y > this.cat.y + CAT_AHEAD_TRIGGER_DISTANCE ||
+      playerProgressIndex > this.catGuideIndex + 1;
+    const catBehindCurrentStop = !catStop || Phaser.Math.Distance.Between(this.cat.x, this.cat.y, catStop.x, catStop.y) < CAT_AHEAD_TRIGGER_DISTANCE;
+
+    if (!playerNearPath || !playerPastCat || !catBehindCurrentStop) return this.catGuideIndex;
+    return Phaser.Math.Clamp(playerProgressIndex + CAT_AHEAD_TARGET_STOPS, this.catGuideIndex + 1, allowedIndex);
+  }
+
+  getPlayerCatGuideProgressIndex(allowedIndex) {
+    let bestIndex = Math.max(0, this.catGuideIndex);
+    let bestScore = Infinity;
+    const maxIndex = Math.min(allowedIndex, this.catGuidePath.length - 1);
+
+    for (let index = 0; index <= maxIndex; index += 1) {
+      const stop = this.catGuidePath[index];
+      const dx = Math.abs(this.player.x - stop.x);
+      const dy = Math.abs(this.player.y - stop.y);
+      const score = dx + dy * 1.15;
+      if (score < bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+
+    return bestIndex;
   }
 
   startCatGuideTravel(targetIndex, time = 0) {
