@@ -53,6 +53,8 @@ const CAT_PLATFORM_Y = 48;
 const CAT_GUIDE_PLATFORM_Y = Math.round((CAT_FRAME_HEIGHT * CAT_SCALE) / 2);
 const CAT_AHEAD_TRIGGER_DISTANCE = 240;
 const CAT_AHEAD_TARGET_STOPS = 1;
+const CAT_ITEM_STOP_OFFSET = 70;
+const CAT_GUIDE_RUN_PADDING = 12;
 const CAT_START_OFFSET = 74;
 const CAT_ROUTE_REPLAN_MS = 420;
 const CAT_EDGE_TARGET_PADDING = 38;
@@ -1700,7 +1702,7 @@ class PlayScene extends Phaser.Scene {
           kind: cell,
           row: rowIndex,
           column: columnIndex,
-          x: run ? this.getCatGuideXInRun(x, run) : x,
+          x: run ? this.getCatGuideXBesideItem(x, run, cell) : x,
           y: run ? this.getCatGuideY(run) : itemY,
           run
         });
@@ -1731,9 +1733,21 @@ class PlayScene extends Phaser.Scene {
   }
 
   getCatGuideXInRun(x, run) {
-    const minX = run.startX + 46;
-    const maxX = run.endX - 46;
+    const minX = run.startX + CAT_GUIDE_RUN_PADDING;
+    const maxX = run.endX - CAT_GUIDE_RUN_PADDING;
     return minX <= maxX ? Phaser.Math.Clamp(x, minX, maxX) : (run.startX + run.endX) / 2;
+  }
+
+  getCatGuideXBesideItem(itemX, run, kind = "g") {
+    const preferredDirection = kind === "d" ? -1 : 1;
+    const preferredX = itemX + preferredDirection * CAT_ITEM_STOP_OFFSET;
+    const fallbackX = itemX - preferredDirection * CAT_ITEM_STOP_OFFSET;
+    const minX = run.startX + CAT_GUIDE_RUN_PADDING;
+    const maxX = run.endX - CAT_GUIDE_RUN_PADDING;
+    if (minX > maxX) return (run.startX + run.endX) / 2;
+    if (preferredX >= minX && preferredX <= maxX) return preferredX;
+    if (fallbackX >= minX && fallbackX <= maxX) return fallbackX;
+    return Phaser.Math.Clamp(preferredX, minX, maxX);
   }
 
   updateCatGuideNpc(time = 0) {
@@ -1887,6 +1901,7 @@ class PlayScene extends Phaser.Scene {
   playCatGuideIdle() {
     this.cat.setAccelerationX(0);
     this.cat.setVelocity(0, 0);
+    this.cat.setFlipX(this.player.x < this.cat.x);
     this.cat.play("cat-idle", true);
   }
 
