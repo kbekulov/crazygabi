@@ -50,6 +50,7 @@ const CAT_RUN_SPEED = 276;
 const CAT_JUMP_SPEED = 545;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
+const CAT_GUIDE_PLATFORM_Y = Math.round((CAT_FRAME_HEIGHT * CAT_SCALE) / 2);
 const CAT_START_OFFSET = 74;
 const CAT_ROUTE_REPLAN_MS = 420;
 const CAT_EDGE_TARGET_PADDING = 38;
@@ -116,7 +117,8 @@ const LEVELS = [
     doorYOffset: -30,
     parallax: "parallax-underground",
     platformTexture: "platform-underground",
-    fenceTexture: "platform-fence-underground"
+    fenceTexture: "platform-fence-underground",
+    introCopy: "Follow the strange cat through the lower city, collect coins, claim the acorn basket, and fight your way to the brass key and exit."
   }
 ];
 
@@ -1601,6 +1603,11 @@ class PlayScene extends Phaser.Scene {
     this.catGuidePath = this.buildCatGuidePath();
     this.catGuideIndex = -1;
     this.catGuideTravel = null;
+    const spawnRun = this.findGuidePlatformRun(this.spawnPoint.x, this.spawnPoint.y);
+    if (spawnRun) {
+      const x = this.getCatGuideXInRun(this.spawnPoint.x + CAT_START_OFFSET, spawnRun);
+      this.setCatGuidePosition(x, this.getCatGuideY(spawnRun));
+    }
     this.cat.play("cat-idle", true);
   }
 
@@ -1687,14 +1694,12 @@ class PlayScene extends Phaser.Scene {
         const x = columnIndex * TILE + TILE / 2;
         const itemY = rowIndex * TILE + TILE / 2;
         const run = this.findGuidePlatformRun(x, itemY);
-        const minX = run ? run.startX + 46 : x;
-        const maxX = run ? run.endX - 46 : x;
         stops.push({
           kind: cell,
           row: rowIndex,
           column: columnIndex,
-          x: minX <= maxX ? Phaser.Math.Clamp(x, minX, maxX) : x,
-          y: run ? run.topY - CAT_PLATFORM_Y : itemY,
+          x: run ? this.getCatGuideXInRun(x, run) : x,
+          y: run ? this.getCatGuideY(run) : itemY,
           run
         });
       });
@@ -1717,6 +1722,16 @@ class PlayScene extends Phaser.Scene {
     return this.platformRuns
       .filter((run) => x >= run.startX - 48 && x <= run.endX + 48 && run.topY >= y - 48)
       .sort((a, b) => Math.abs(a.topY - y) - Math.abs(b.topY - y))[0] || null;
+  }
+
+  getCatGuideY(run) {
+    return run.topY - CAT_GUIDE_PLATFORM_Y;
+  }
+
+  getCatGuideXInRun(x, run) {
+    const minX = run.startX + 46;
+    const maxX = run.endX - 46;
+    return minX <= maxX ? Phaser.Math.Clamp(x, minX, maxX) : (run.startX + run.endX) / 2;
   }
 
   updateCatGuideNpc(time = 0) {
@@ -1800,8 +1815,7 @@ class PlayScene extends Phaser.Scene {
     const arcY = travel.arc * Math.sin(Math.PI * progress);
     const y = baseY - arcY;
 
-    this.cat.setPosition(x, y);
-    this.cat.body?.reset(x, y);
+    this.setCatGuidePosition(x, y);
     if (travel.arc > 0) {
       this.cat.anims.stop();
       this.cat.setFrame(progress < 0.55 ? 5 : 6);
@@ -1819,9 +1833,13 @@ class PlayScene extends Phaser.Scene {
 
   finishCatGuideTravel() {
     if (!this.catGuideTravel) return;
-    this.cat.setPosition(this.catGuideTravel.toX, this.catGuideTravel.toY);
-    this.cat.body?.reset(this.catGuideTravel.toX, this.catGuideTravel.toY);
+    this.setCatGuidePosition(this.catGuideTravel.toX, this.catGuideTravel.toY);
     this.catGuideTravel = null;
+  }
+
+  setCatGuidePosition(x, y) {
+    this.cat.setPosition(x, y);
+    this.cat.body?.reset(x, y);
   }
 
   playCatGuideIdle() {
@@ -2678,9 +2696,10 @@ class PlayScene extends Phaser.Scene {
 
   advanceToNextLevel() {
     state.levelIndex += 1;
+    const level = LEVELS[state.levelIndex] || LEVELS[0];
     state.pendingLevelPrompt = {
-      title: "Level 2",
-      copy: "Follow the cat into the lower city, find the basket, then fight your way back across the rooftops.",
+      title: level.name,
+      copy: level.introCopy || "Collect the coins, grab the key, and reach the door.",
       button: "Start"
     };
     if (this.timerEvent) {
@@ -2751,7 +2770,7 @@ LEVELS.forEach((level, index) => {
     state.resetProgressOnCreate = false;
     state.pendingLevelPrompt = {
       title: level.name,
-      copy: "Testing route loaded. Press Start when ready.",
+      copy: level.introCopy || "Collect the coins, grab the key, and reach the door.",
       button: "Start"
     };
     if (scene.timerEvent) {
