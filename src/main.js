@@ -17,6 +17,7 @@ const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
+const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
 const WATER_SPEED = 6;
@@ -70,8 +71,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260526-billboard-underground";
-const STORY_ASSET_VERSION = "20260526-billboard-underground";
+const ASSET_VERSION = "20260528-lantern-labyrinth";
+const STORY_ASSET_VERSION = "20260528-lantern-labyrinth";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -104,6 +105,33 @@ const LEVELS = [
   {
     name: "Level 2",
     rows: createLevelTwo(),
+    timeLimit: 205,
+    soundtrack: "bgm2",
+    acornDelay: [900, 1600],
+    acornPace: [210, 300],
+    fallingHazard: "falling-brick",
+    enemySprite: "robot-ghost-lv2",
+    actionAbility: null,
+    startSpeech: "It's too dark to see far...",
+    showStartingHouse: false,
+    showWater: false,
+    doorYOffset: -30,
+    parallax: "parallax-underground",
+    platformTexture: "platform-underground",
+    fenceTexture: "platform-fence-underground",
+    playerSheet: "gabi-lantern-sheet",
+    playerAnimationPrefix: "gabi-lantern",
+    darkness: {
+      alpha: 0.9,
+      radius: 126,
+      fringe: 34,
+      yOffset: -18
+    },
+    introCopy: "Carry the lantern through the tunnel maze, find the brass key in the dark, and reach the exit before the shadows close in."
+  },
+  {
+    name: "Level 3",
+    rows: createLevelThree(),
     timeLimit: 260,
     soundtrack: "bgm2",
     acornDelay: [260, 1100],
@@ -112,8 +140,8 @@ const LEVELS = [
     enemySprite: "robot-ghost-lv2",
     actionAbility: "throw-acorn",
     storyFrames: [
-      { key: "story-level-2-frame-1", src: "./public/assets/story/level-2/frame_1.png" },
-      { key: "story-level-2-frame-2", src: "./public/assets/story/level-2/frame_2.png" }
+      { key: "story-level-3-frame-1", src: "./public/assets/story/level-3/frame_1.png" },
+      { key: "story-level-3-frame-2", src: "./public/assets/story/level-3/frame_2.png" }
     ],
     startSpeech: "That cat looked strange...",
     showStartingHouse: false,
@@ -203,6 +231,59 @@ function createLevelOne() {
 }
 
 function createLevelTwo() {
+  const { rows, put, run } = createLevelRows(26);
+
+  run(0, 0, LEVEL_WIDTH_TILES, "w");
+  for (let row = 1; row < 25; row += 1) {
+    run(row, 0, 2, "w");
+    run(row, LEVEL_WIDTH_TILES - 2, 2, "w");
+  }
+
+  run(18, 2, 20);
+  run(15, 20, 13);
+  run(12, 8, 17);
+  run(9, 26, 17);
+  run(6, 14, 17);
+  run(8, 34, 10);
+  run(10, 45, 15);
+  run(13, 60, 15);
+  run(16, 76, 17);
+  run(13, 92, 16);
+  run(10, 108, 17);
+  run(16, 124, 22);
+
+  run(21, 10, 3, "w");
+  run(22, 10, 3, "w");
+  run(18, 34, 3, "w");
+  run(19, 34, 3, "w");
+  run(20, 64, 3, "w");
+  run(21, 64, 3, "w");
+  run(19, 100, 4, "w");
+  run(20, 100, 4, "w");
+
+  [
+    [16, 4, "p"],
+    [17, 9, "g"],
+    [14, 24, "g"],
+    [11, 13, "g"],
+    [8, 34, "g"],
+    [5, 20, "g"],
+    [7, 39, "g"],
+    [9, 52, "g"],
+    [12, 67, "g"],
+    [15, 84, "g"],
+    [12, 101, "g"],
+    [9, 116, "k"],
+    [15, 132, "g"],
+    [15, 140, "d"],
+    [14, 29, "m"],
+    [12, 69, "m"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
+
+function createLevelThree() {
   const { rows, put, run } = createLevelRows(82);
 
   for (let row = 3; row <= 64; row += 1) {
@@ -584,6 +665,10 @@ class PlayScene extends Phaser.Scene {
       frameWidth: GABI_FRAME_WIDTH,
       frameHeight: GABI_FRAME_HEIGHT
     });
+    this.load.spritesheet("gabi-lantern-sheet", `./public/assets/character/main_char_lantern_sprite.png?v=${ASSET_VERSION}`, {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
     this.load.spritesheet("platform-strip", `./public/assets/environment/platform.png?v=${ASSET_VERSION}`, {
       frameWidth: PLATFORM_FRAME_WIDTH,
       frameHeight: PLATFORM_FRAME_HEIGHT
@@ -648,7 +733,7 @@ class PlayScene extends Phaser.Scene {
     this.levelHeight = this.levelRows.length * TILE;
 
     this.createBackdrop();
-    this.createWaterBelow();
+    if (this.level.showWater !== false) this.createWaterBelow();
     if (this.level.showStartingHouse) this.createStartingHouse();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -675,6 +760,7 @@ class PlayScene extends Phaser.Scene {
     this.createAnimations();
     this.buildLevel();
     this.createPlayer();
+    this.createLanternOverlay();
     this.createCatNpc();
     this.createInput();
     this.setupPhysics();
@@ -866,6 +952,56 @@ class PlayScene extends Phaser.Scene {
     this.waterStartX = startX;
   }
 
+  createLanternOverlay() {
+    this.lanternOverlay = null;
+    this.lanternOverlayConfig = null;
+    if (!this.level.darkness) return;
+
+    this.lanternOverlayConfig = {
+      alpha: this.level.darkness.alpha ?? 0.88,
+      radius: this.level.darkness.radius ?? 126,
+      fringe: this.level.darkness.fringe ?? 32,
+      yOffset: this.level.darkness.yOffset ?? -18
+    };
+    this.lanternOverlay = this.add.graphics();
+    this.lanternOverlay.setScrollFactor(0);
+    this.lanternOverlay.setDepth(DARKNESS_DEPTH);
+    this.updateLanternOverlay();
+  }
+
+  updateLanternOverlay() {
+    if (!this.lanternOverlay || !this.player || !this.lanternOverlayConfig) return;
+
+    const { alpha, radius, fringe, yOffset } = this.lanternOverlayConfig;
+    const camera = this.cameras.main;
+    const centerX = Phaser.Math.Clamp(this.player.x - camera.scrollX + (this.player.flipX ? -18 : 18), -radius, VIEW_WIDTH + radius);
+    const centerY = Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, -radius, PLAY_HEIGHT + radius);
+    const bandTop = Phaser.Math.Clamp(centerY - radius, 0, PLAY_HEIGHT);
+    const bandBottom = Phaser.Math.Clamp(centerY + radius, 0, PLAY_HEIGHT);
+    const graphics = this.lanternOverlay;
+
+    graphics.clear();
+    graphics.fillStyle(0x000000, alpha);
+    graphics.fillRect(0, 0, VIEW_WIDTH, bandTop);
+    graphics.fillRect(0, bandBottom, VIEW_WIDTH, PLAY_HEIGHT - bandBottom);
+
+    for (let y = bandTop; y < bandBottom; y += 4) {
+      const midY = y + 2;
+      const dy = midY - centerY;
+      const halfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
+      const leftWidth = Phaser.Math.Clamp(centerX - halfWidth, 0, VIEW_WIDTH);
+      const rightX = Phaser.Math.Clamp(centerX + halfWidth, 0, VIEW_WIDTH);
+      graphics.fillRect(0, y, leftWidth, 4);
+      graphics.fillRect(rightX, y, VIEW_WIDTH - rightX, 4);
+    }
+
+    for (let offset = 0; offset < fringe; offset += 6) {
+      const ringAlpha = alpha * 0.08 * (1 - offset / fringe);
+      graphics.lineStyle(6, 0x000000, ringAlpha);
+      graphics.strokeCircle(centerX, centerY, radius - offset);
+    }
+  }
+
   createStartingHouse() {
     const house = this.add.image(24, 16 * TILE + 4, "starting-house");
     house.setOrigin(0, 1);
@@ -929,6 +1065,30 @@ class PlayScene extends Phaser.Scene {
       this.anims.create({
         key: "gabi-hurt",
         frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-lantern-idle",
+        frames: this.anims.generateFrameNumbers("gabi-lantern-sheet", { frames: [4, 5] }),
+        frameRate: 3,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-lantern-walk",
+        frames: this.anims.generateFrameNumbers("gabi-lantern-sheet", { frames: [0, 1] }),
+        frameRate: 8,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-lantern-jump",
+        frames: this.anims.generateFrameNumbers("gabi-lantern-sheet", { frames: [2, 3] }),
+        frameRate: 6,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "gabi-lantern-hurt",
+        frames: this.anims.generateFrameNumbers("gabi-lantern-sheet", { frames: [4, 5] }),
         frameRate: 6,
         repeat: -1
       });
@@ -1179,7 +1339,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   createPlayer() {
-    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, "gabi-sheet", 0);
+    const playerSheet = this.level.playerSheet || "gabi-sheet";
+    this.playerAnimationPrefix = this.level.playerAnimationPrefix || "gabi";
+    this.player = this.physics.add.sprite(this.spawnPoint.x, this.spawnPoint.y, playerSheet, 0);
     this.player.setCollideWorldBounds(true);
     this.player.body.setSize(68, 162).setOffset(82, 58);
     this.player.setDragX(1200);
@@ -1299,6 +1461,7 @@ class PlayScene extends Phaser.Scene {
     this.updateThrownItems();
     this.updateParallax();
     this.updateWater(delta);
+    this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateGabiSpeechPosition();
     this.updateBillboardPrompt();
@@ -1403,7 +1566,8 @@ class PlayScene extends Phaser.Scene {
   setGabiAnimation(name) {
     if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
-    this.player.play(`gabi-${name}`, true);
+    const animationKey = name === "wing-jump" ? "gabi-wing-jump" : `${this.playerAnimationPrefix || "gabi"}-${name}`;
+    this.player.play(animationKey, true);
   }
 
   updateGabiAnimation(isMoving, onFloor) {

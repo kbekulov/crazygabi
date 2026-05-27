@@ -10,7 +10,7 @@ Gabi is the player character and should consistently read as Kiril Bekulov's ori
 
 ## Runtime Sprites
 
-The current implementation uses `public/assets/character/main_char_sprite.png` for Gabi.
+The default implementation uses `public/assets/character/main_char_sprite.png` for Gabi.
 
 The sheet is arranged horizontally with six 238px frames:
 
@@ -21,6 +21,8 @@ The sheet is arranged horizontally with six 238px frames:
 The Phaser runtime flips the sprite left when Gabi moves left, so future sprite updates only need right-facing frames unless a later animation specifically needs custom left-facing art.
 
 `public/assets/character/main_char_sprite_with_double_jump.png` mirrors the same layout and is used only for the winged secondary jump animation after Gabi has collected the double-jump item.
+
+`public/assets/character/main_char_lantern_sprite.png` mirrors the same layout and is used for the Level 2 lantern maze, where Gabi carries the light source through a dark tunnel.
 
 ## Gameplay Readability
 
@@ -36,11 +38,11 @@ Important animation states:
 
 ## Action Direction
 
-`Enter` is the general action button. Current Level 2 action behavior lets Gabi throw acorns in a ballistic arc. Future action animations should still preserve her core identity: long brown hair, fair skin, stylish outfit, and confident movement.
+`Enter` is the general action button. Current Level 3 action behavior lets Gabi throw acorns in a ballistic arc. Future action animations should still preserve her core identity: long brown hair, fair skin, stylish outfit, and confident movement.
 
 ## Grey Cat NPC
 
-Level 2 introduces `public/assets/character/grey_cat.png` as a non-playable character. The sheet uses 238px frames: row 1 for running, row 2 for jump and landing poses, and row 3 for sitting / idle. The cat should feel elusive and strange, staying ahead of Gabi rather than acting like an enemy.
+Level 3 introduces `public/assets/character/grey_cat.png` as a non-playable character. The sheet uses 238px frames: row 1 for running, row 2 for jump and landing poses, and row 3 for sitting / idle. The cat should feel elusive and strange, staying ahead of Gabi rather than acting like an enemy.
 
 ## Art Ownership
 
