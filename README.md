@@ -31,9 +31,9 @@ npm run dev
 
 - Three-level progression with player confirmation before each level starts
 - Optional two-panel manga intro support per level after the player presses Start
-- Per-level music: Level 1 uses `bgm.mp3`; the current underground levels use `bgm2.mp3`
+- Per-level music: Level 1 uses `bgm_lv1.mp3`, Level 2 uses `bgm_lv2.mp3`, and Level 3 uses `bgm_lv3.mp3`
 - Per-level player sprite support, currently used after collecting the Level 2 lantern
-- Level 2 lantern pickup that unlocks the lantern Gabi sprite and circular darkness reveal
+- Level 2 old-lady guide NPC, tunnel parallax, lantern pickup, and circular darkness reveal
 - Per-level ability gating, currently used for Level 3 acorn throwing
 - Level 3 grey cat NPC with run, jump, landing, and idle animations
 - Falling acorn hazards that continue dropping independently of player position

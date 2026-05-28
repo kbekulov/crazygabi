@@ -24,6 +24,8 @@ The Phaser runtime flips the sprite left when Gabi moves left, so future sprite 
 
 `public/assets/character/main_char_lantern_sprite.png` mirrors the same layout and is activated after Gabi collects the Level 2 lantern pickup, where she carries the light source through a dark tunnel.
 
+Level 2 also introduces `public/assets/character/old_lady.png` as a three-frame idle NPC who warns Gabi about the dark tunnel and points her toward the lantern pickup.
+
 ## Gameplay Readability
 
 Gabi should remain readable against the current moody city background and stone platform art. Avoid changes that make her blend into the environment, especially in dark areas or when she overlaps fences, water, robots, coins, or falling acorns.

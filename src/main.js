@@ -44,6 +44,9 @@ const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
 const ROBOT_SCALE = 0.22;
+const OLD_LADY_FRAME_WIDTH = 238;
+const OLD_LADY_FRAME_HEIGHT = 238;
+const OLD_LADY_SCALE = 0.27;
 const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
@@ -72,8 +75,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-lantern-pickup";
-const STORY_ASSET_VERSION = "20260528-lantern-pickup";
+const ASSET_VERSION = "20260528-tunnel-old-lady";
+const STORY_ASSET_VERSION = "20260528-tunnel-old-lady";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -84,7 +87,7 @@ const LEVELS = [
     name: "Level 1",
     rows: createLevelOne(),
     timeLimit: TIME_LIMIT,
-    soundtrack: "bgm",
+    soundtrack: "bgm-lv1",
     acornDelay: [450, 1800],
     acornPace: [185, 295],
     fallingHazard: "falling-acorn",
@@ -107,17 +110,21 @@ const LEVELS = [
     name: "Level 2",
     rows: createLevelTwo(),
     timeLimit: 205,
-    soundtrack: "bgm2",
+    soundtrack: "bgm-lv2",
     acornDelay: [900, 1600],
     acornPace: [210, 300],
     fallingHazard: "falling-brick",
     enemySprite: "robot-shadow-ghost-lv2",
     actionAbility: null,
-    startSpeech: "It's too dark to see far...",
+    storyFrames: [
+      { key: "story-level-2-frame-1", src: "./public/assets/story/level-2/frame_1.png" },
+      { key: "story-level-2-frame-2", src: "./public/assets/story/level-2/frame_2.png" }
+    ],
+    startSpeech: "",
     showStartingHouse: false,
     showWater: false,
     doorYOffset: -30,
-    parallax: "parallax-underground",
+    parallax: "parallax-tunnel",
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
     lanternPlayerSheet: "gabi-lantern-sheet",
@@ -131,13 +138,18 @@ const LEVELS = [
       fringe: 76,
       yOffset: -18
     },
+    oldLady: {
+      column: 22,
+      floorRow: 15,
+      speech: "This tunnel is dark, young lady. Please pick up this lantern to proceed."
+    },
     introCopy: "Find the lantern before the tunnel goes dark, then use its light to reach the brass key and escape before the shadows close in."
   },
   {
     name: "Level 3",
     rows: createLevelThree(),
     timeLimit: 260,
-    soundtrack: "bgm2",
+    soundtrack: "bgm-lv3",
     acornDelay: [260, 1100],
     acornPace: [245, 370],
     fallingHazard: "falling-brick",
@@ -703,12 +715,17 @@ class PlayScene extends Phaser.Scene {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
+    this.load.spritesheet("old-lady", `./public/assets/character/old_lady.png?v=${ASSET_VERSION}`, {
+      frameWidth: OLD_LADY_FRAME_WIDTH,
+      frameHeight: OLD_LADY_FRAME_HEIGHT
+    });
     this.load.spritesheet("grey-cat", `./public/assets/character/grey_cat.png?v=${ASSET_VERSION}`, {
       frameWidth: CAT_FRAME_WIDTH,
       frameHeight: CAT_FRAME_HEIGHT
     });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
     this.load.image("parallax-underground", `./public/assets/environment/paralax_underground.png?v=${ASSET_VERSION}`);
+    this.load.image("parallax-tunnel", `./public/assets/environment/paralax_tunnel.png?v=${ASSET_VERSION}`);
     this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
     this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
     this.load.image("starting-billboard", `./public/assets/environment/starting_billboard.png?v=${ASSET_VERSION}`);
@@ -721,8 +738,9 @@ class PlayScene extends Phaser.Scene {
     this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
     this.load.image("acorn-basket", `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`);
     this.load.image("lantern", `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`);
-    this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
-    this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
+    this.load.audio("bgm-lv1", `./public/assets/sound/bgm_lv1.mp3?v=${ASSET_VERSION}`);
+    this.load.audio("bgm-lv2", `./public/assets/sound/bgm_lv2.mp3?v=${ASSET_VERSION}`);
+    this.load.audio("bgm-lv3", `./public/assets/sound/bgm_lv3.mp3?v=${ASSET_VERSION}`);
     LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
       if (!frame?.key || !frame?.src || this.textures.exists(frame.key)) return;
       this.load.image(frame.key, `${frame.src}?v=${STORY_ASSET_VERSION}`);
@@ -773,6 +791,7 @@ class PlayScene extends Phaser.Scene {
     this.buildLevel();
     this.createPlayer();
     this.createLanternOverlay();
+    this.createOldLadyNpc();
     this.createCatNpc();
     this.createInput();
     this.setupPhysics();
@@ -1170,6 +1189,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (!this.anims.exists("old-lady-idle")) {
+      this.anims.create({
+        key: "old-lady-idle",
+        frames: this.anims.generateFrameNumbers("old-lady", { frames: [0, 1, 2] }),
+        frameRate: 3,
+        repeat: -1
+      });
+    }
     if (!this.anims.exists("cat-run")) {
       this.anims.create({
         key: "cat-run",
@@ -1438,6 +1465,18 @@ class PlayScene extends Phaser.Scene {
     this.cat.play("cat-idle");
   }
 
+  createOldLadyNpc() {
+    if (!this.level.oldLady) return;
+    const { column, floorRow, speech } = this.level.oldLady;
+    const x = column * TILE + TILE / 2;
+    const y = floorRow * TILE - (OLD_LADY_FRAME_HEIGHT * OLD_LADY_SCALE) / 2 + 3;
+    this.oldLady = this.add.sprite(x, y, "old-lady", 0);
+    this.oldLady.setScale(OLD_LADY_SCALE);
+    this.oldLady.setDepth(5);
+    this.oldLady.play("old-lady-idle");
+    this.oldLadySpeechText = speech;
+  }
+
   createInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keysInput = this.input.keyboard.addKeys({
@@ -1519,6 +1558,7 @@ class PlayScene extends Phaser.Scene {
     state.running = true;
     this.startTimer();
     this.showGabiSpeech(this.level.startSpeech);
+    this.showOldLadySpeech();
   }
 
   update(time = 0, delta = 0) {
@@ -1710,6 +1750,42 @@ class PlayScene extends Phaser.Scene {
         onComplete: () => {
           this.speechBubble?.destroy(true);
           this.speechBubble = null;
+        }
+      });
+    });
+  }
+
+  showOldLadySpeech() {
+    if (!this.oldLady || !this.oldLadySpeechText) return;
+    if (this.oldLadySpeechBubble) this.oldLadySpeechBubble.destroy(true);
+    const bubbleWidth = 218;
+    const bubbleHeight = 54;
+    const container = this.add.container(this.oldLady.x, this.oldLady.y - 46);
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0x050505, 0.9);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
+    const label = this.add.text(0, -bubbleHeight / 2, this.oldLadySpeechText, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "10px",
+      color: "#f4f0dc",
+      align: "center",
+      lineSpacing: 0,
+      wordWrap: { width: bubbleWidth - 18, useAdvancedWrap: true }
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add([bubble, label]);
+    container.setDepth(12);
+    this.oldLadySpeechBubble = container;
+    this.time.delayedCall(7200, () => {
+      if (!this.oldLadySpeechBubble) return;
+      this.tweens.add({
+        targets: this.oldLadySpeechBubble,
+        alpha: 0,
+        duration: 260,
+        onComplete: () => {
+          this.oldLadySpeechBubble?.destroy(true);
+          this.oldLadySpeechBubble = null;
         }
       });
     });
