@@ -1520,7 +1520,7 @@ class PlayScene extends Phaser.Scene {
     const y = floorRow * TILE - (OLD_LADY_FRAME_HEIGHT * OLD_LADY_SCALE) / 2 + 3;
     this.oldLady = this.add.sprite(x, y, "old-lady", 0);
     this.oldLady.setScale(OLD_LADY_SCALE);
-    this.oldLady.setDepth(5);
+    this.oldLady.setDepth(3);
     this.oldLady.play("old-lady-idle");
     this.oldLadySpeechText = speech;
   }
