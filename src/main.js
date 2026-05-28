@@ -75,32 +75,41 @@ const COIN_SPEECH_CHANCE = PICKUP_SPEECH_CHANCE / 5;
 const PICKUP_SPEECH_COOLDOWN = 5200;
 const PICKUP_SPEECH_LINES = {
   coin: [
-    "Good addition to my budget",
     "Tiny capitalism. Cute.",
     "Rent is rent.",
-    "Fiscal responsibility, obviously.",
-    "My accountant approves."
+    "My accountant approves.",
+    "Shiny. Mine.",
+    "This counts as income.",
+    "I do accept gold.",
+    "Luxury fund: started."
   ],
   heart: [
-    "Fine, I'll survive.",
-    "How medically convenient.",
     "Drama postponed.",
-    "Still deductible, probably.",
-    "My pulse has notes."
+    "Pain is temporary.",
+    "Cute little survival tax.",
+    "Emotionally? Still injured.",
+    "Trauma, but manageable.",
+    "Pain rescheduled.",
+    "My health bar has standards.",
+    "Damage control, literally."
   ],
   wing: [
     "Gravity can wait.",
     "Upgrades with flair.",
-    "Now I have range.",
     "Cute. Slightly excessive.",
-    "Air rights acquired."
+    "Airborne, apparently.",
+    "Oh good, vertical privilege.",
+    "I have ascended, modestly.",
+    "Finally, my dramatic era."
   ],
   respawn: [
-    "That was research.",
-    "I meant to test gravity.",
-    "Nobody saw that.",
-    "Resetting my dignity.",
-    "Again, with feeling."
+    "Let's pretend that was planned.",
+    "I'm choosing to ignore that.",
+    "That was a rehearsal.",
+    "Okay, universe. Weird choice.",
+    "I'm blaming the architecture.",
+    "That counted as cardio.",
+    "Back by unpopular demand."
   ]
 };
 const ENEMY_NAMES = [
