@@ -160,6 +160,7 @@ button:active {
   width: clamp(76px, 12vw, 124px);
   height: clamp(76px, 12vw, 124px);
   object-fit: contain;
+  image-rendering: crisp-edges;
   image-rendering: pixelated;
 }
 

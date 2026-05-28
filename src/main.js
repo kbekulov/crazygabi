@@ -74,10 +74,11 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-radial-lantern-light";
-const STORY_ASSET_VERSION = "20260528-radial-lantern-light";
+const ASSET_VERSION = "20260528-pixelated-equipped-icon";
+const STORY_ASSET_VERSION = "20260528-pixelated-equipped-icon";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
+const pixelatedEquippedImages = {};
 const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_HEIGHT_TILES = 18;
@@ -497,10 +498,10 @@ function updateEquippedHud() {
   let itemImage = "";
   if (state.hasAcornBasket) {
     itemName = "ACORN";
-    itemImage = `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`;
+    itemImage = pixelatedEquippedImages.acorn || `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`;
   } else if (state.hasLantern) {
     itemName = "LANTERN";
-    itemImage = `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`;
+    itemImage = pixelatedEquippedImages.lantern || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`;
   }
   hud.equippedName.textContent = itemName;
   hud.equippedIcon.src = itemImage;
@@ -849,6 +850,8 @@ class PlayScene extends Phaser.Scene {
     updateHud();
     this.pixelatedBasketImage = pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage());
     this.pixelatedLanternImage = pixelateStoryFrame(this.textures.get("lantern").getSourceImage());
+    pixelatedEquippedImages.acorn = pixelateStoryFrame(this.textures.get("falling-acorn").getSourceImage());
+    pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
