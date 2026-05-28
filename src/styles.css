@@ -142,11 +142,19 @@ button:active {
   gap: 5px;
 }
 
+.hud-lives {
+  gap: 0;
+}
+
 .hud-lives img {
   width: clamp(38px, 6vw, 60px);
   height: clamp(38px, 6vw, 60px);
   object-fit: contain;
   image-rendering: pixelated;
+}
+
+.hud-lives img + img {
+  margin-left: clamp(-17px, -1.8vw, -9px);
 }
 
 .hud-counter img {
