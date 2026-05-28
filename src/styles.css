@@ -388,21 +388,7 @@ button:active {
 #item-pickup-ok {
   min-width: 112px;
   margin-top: 2px;
-  padding: 0.56rem 1.2rem;
-  border: 2px solid #f4f0dc;
-  background: #050505;
-  color: #f4f0dc;
-  font-family: "Courier New", monospace;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-#item-pickup-ok:hover,
-#item-pickup-ok:focus-visible {
-  background: #f4f0dc;
-  color: #050505;
-  outline: none;
+  padding: 0.68rem 1.35rem;
 }
 
 .cheat-panel {
