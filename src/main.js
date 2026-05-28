@@ -71,7 +71,38 @@ const CAT_MEOW_CHANCE = 0.32;
 const CAT_MEOW_MIN_DELAY = 9000;
 const CAT_MEOW_MAX_DELAY = 18000;
 const PICKUP_SPEECH_CHANCE = 0.28;
+const COIN_SPEECH_CHANCE = PICKUP_SPEECH_CHANCE / 5;
 const PICKUP_SPEECH_COOLDOWN = 5200;
+const PICKUP_SPEECH_LINES = {
+  coin: [
+    "Good addition to my budget",
+    "Tiny capitalism. Cute.",
+    "Rent is rent.",
+    "Fiscal responsibility, obviously.",
+    "My accountant approves."
+  ],
+  heart: [
+    "Fine, I'll survive.",
+    "How medically convenient.",
+    "Drama postponed.",
+    "Still deductible, probably.",
+    "My pulse has notes."
+  ],
+  wing: [
+    "Gravity can wait.",
+    "Upgrades with flair.",
+    "Now I have range.",
+    "Cute. Slightly excessive.",
+    "Air rights acquired."
+  ],
+  respawn: [
+    "That was research.",
+    "I meant to test gravity.",
+    "Nobody saw that.",
+    "Resetting my dignity.",
+    "Again, with feeling."
+  ]
+};
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -79,8 +110,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-pickup-cat-speech";
-const STORY_ASSET_VERSION = "20260528-pickup-cat-speech";
+const ASSET_VERSION = "20260528-more-gabi-lines";
+const STORY_ASSET_VERSION = "20260528-more-gabi-lines";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
@@ -1896,12 +1927,14 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  maybeShowPickupSpeech(text) {
+  maybeShowPickupSpeech(kind) {
     const now = this.time?.now || 0;
-    if (!text || now - this.lastPickupSpeechAt < PICKUP_SPEECH_COOLDOWN) return;
-    if (Phaser.Math.FloatBetween(0, 1) > PICKUP_SPEECH_CHANCE) return;
+    const lines = PICKUP_SPEECH_LINES[kind] || [];
+    const chance = kind === "coin" ? COIN_SPEECH_CHANCE : PICKUP_SPEECH_CHANCE;
+    if (!lines.length || now - this.lastPickupSpeechAt < PICKUP_SPEECH_COOLDOWN) return;
+    if (Phaser.Math.FloatBetween(0, 1) > chance) return;
     this.lastPickupSpeechAt = now;
-    this.showGabiSpeech(text);
+    this.showGabiSpeech(Phaser.Math.RND.pick(lines));
   }
 
   showOldLadySpeech() {
@@ -3081,7 +3114,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 100;
     this.cameras.main.flash(80, 114, 214, 201, false);
     updateHud();
-    this.maybeShowPickupSpeech("Good addition to my budget");
+    this.maybeShowPickupSpeech("coin");
   }
 
   collectHeart(_player, heart) {
@@ -3091,7 +3124,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 150;
     this.cameras.main.flash(90, 255, 96, 150, false);
     updateHud();
-    this.maybeShowPickupSpeech("Fine, I'll survive.");
+    this.maybeShowPickupSpeech("heart");
   }
 
   collectDoubleJump(_player, doubleJump) {
@@ -3100,7 +3133,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 300;
     this.cameras.main.flash(130, 139, 220, 255, false);
     updateHud();
-    this.maybeShowPickupSpeech("Gravity can wait.");
+    this.maybeShowPickupSpeech("wing");
   }
 
   collectLantern(_player, lantern) {
@@ -3269,6 +3302,7 @@ class PlayScene extends Phaser.Scene {
     }
     state.timeLeft = Math.max(45, state.timeLeft);
     this.resetPlayerToSpawn();
+    this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.basketPromptActive = false;
