@@ -71,8 +71,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-level-robot-sprites";
-const STORY_ASSET_VERSION = "20260528-level-robot-sprites";
+const ASSET_VERSION = "20260528-lantern-falloff";
+const STORY_ASSET_VERSION = "20260528-lantern-falloff";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -122,9 +122,9 @@ const LEVELS = [
     playerSheet: "gabi-lantern-sheet",
     playerAnimationPrefix: "gabi-lantern",
     darkness: {
-      alpha: 0.9,
-      radius: 126,
-      fringe: 34,
+      alpha: 1,
+      radius: 190,
+      fringe: 76,
       yOffset: -18
     },
     introCopy: "Carry the lantern through the tunnel maze, find the brass key in the dark, and reach the exit before the shadows close in."
@@ -982,25 +982,43 @@ class PlayScene extends Phaser.Scene {
     const centerY = Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, -radius, PLAY_HEIGHT + radius);
     const bandTop = Phaser.Math.Clamp(centerY - radius, 0, PLAY_HEIGHT);
     const bandBottom = Phaser.Math.Clamp(centerY + radius, 0, PLAY_HEIGHT);
+    const clearRadius = Math.max(0, radius - fringe);
     const graphics = this.lanternOverlay;
 
     graphics.clear();
-    graphics.fillStyle(0x000000, alpha);
+    graphics.fillStyle(0x000000, 1);
     graphics.fillRect(0, 0, VIEW_WIDTH, bandTop);
     graphics.fillRect(0, bandBottom, VIEW_WIDTH, PLAY_HEIGHT - bandBottom);
 
     for (let y = bandTop; y < bandBottom; y += 4) {
       const midY = y + 2;
       const dy = midY - centerY;
-      const halfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
-      const leftWidth = Phaser.Math.Clamp(centerX - halfWidth, 0, VIEW_WIDTH);
-      const rightX = Phaser.Math.Clamp(centerX + halfWidth, 0, VIEW_WIDTH);
-      graphics.fillRect(0, y, leftWidth, 4);
-      graphics.fillRect(rightX, y, VIEW_WIDTH - rightX, 4);
+      const outerHalfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
+      const innerHalfWidth = Math.sqrt(Math.max(0, clearRadius * clearRadius - dy * dy));
+      const outerLeft = Phaser.Math.Clamp(centerX - outerHalfWidth, 0, VIEW_WIDTH);
+      const outerRight = Phaser.Math.Clamp(centerX + outerHalfWidth, 0, VIEW_WIDTH);
+      const innerLeft = Phaser.Math.Clamp(centerX - innerHalfWidth, 0, VIEW_WIDTH);
+      const innerRight = Phaser.Math.Clamp(centerX + innerHalfWidth, 0, VIEW_WIDTH);
+
+      graphics.fillStyle(0x000000, 1);
+      graphics.fillRect(0, y, outerLeft, 4);
+      graphics.fillRect(outerRight, y, VIEW_WIDTH - outerRight, 4);
+
+      if (innerHalfWidth <= 0) {
+        graphics.fillStyle(0x000000, alpha);
+        graphics.fillRect(outerLeft, y, outerRight - outerLeft, 4);
+        continue;
+      }
+
+      const fadeAlpha = Phaser.Math.Clamp(alpha * (Math.abs(dy) / radius), 0.04, alpha);
+      graphics.fillStyle(0x000000, fadeAlpha);
+      graphics.fillRect(outerLeft, y, innerLeft - outerLeft, 4);
+      graphics.fillRect(innerRight, y, outerRight - innerRight, 4);
     }
 
-    for (let offset = 0; offset < fringe; offset += 6) {
-      const ringAlpha = alpha * 0.08 * (1 - offset / fringe);
+    for (let offset = 0; offset < fringe; offset += 5) {
+      const progress = 1 - offset / fringe;
+      const ringAlpha = Phaser.Math.Clamp(alpha * progress * progress * 0.72, 0, alpha);
       graphics.lineStyle(6, 0x000000, ringAlpha);
       graphics.strokeCircle(centerX, centerY, radius - offset);
     }
