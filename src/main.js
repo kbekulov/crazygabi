@@ -67,6 +67,11 @@ const CAT_STUCK_DISTANCE = 18;
 const CAT_RECOVERY_MS = 1250;
 const CAT_RESCUE_MS = 2800;
 const CAT_TRANSITION_TIMEOUT_MS = 2200;
+const CAT_MEOW_CHANCE = 0.32;
+const CAT_MEOW_MIN_DELAY = 9000;
+const CAT_MEOW_MAX_DELAY = 18000;
+const PICKUP_SPEECH_CHANCE = 0.28;
+const PICKUP_SPEECH_COOLDOWN = 5200;
 const ENEMY_NAMES = [
   "PEP LVL 2",
   "ECDD Manual Case Handling",
@@ -74,8 +79,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-old-lady-cleanup";
-const STORY_ASSET_VERSION = "20260528-old-lady-cleanup";
+const ASSET_VERSION = "20260528-pickup-cat-speech";
+const STORY_ASSET_VERSION = "20260528-pickup-cat-speech";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
@@ -818,6 +823,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
     this.lastActionAt = -Infinity;
+    this.lastPickupSpeechAt = -Infinity;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -1622,6 +1628,8 @@ class PlayScene extends Phaser.Scene {
     setItemPickupVisible(false);
     this.speechBubble?.destroy(true);
     this.speechBubble = null;
+    this.catSpeechBubble?.destroy(true);
+    this.catSpeechBubble = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.releaseBasketPromptControlLock();
@@ -1665,6 +1673,7 @@ class PlayScene extends Phaser.Scene {
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateGabiSpeechPosition();
+    this.updateCatSpeechPosition();
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
 
@@ -1887,6 +1896,14 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  maybeShowPickupSpeech(text) {
+    const now = this.time?.now || 0;
+    if (!text || now - this.lastPickupSpeechAt < PICKUP_SPEECH_COOLDOWN) return;
+    if (Phaser.Math.FloatBetween(0, 1) > PICKUP_SPEECH_CHANCE) return;
+    this.lastPickupSpeechAt = now;
+    this.showGabiSpeech(text);
+  }
+
   showOldLadySpeech() {
     if (!this.oldLady || !this.oldLadySpeechText) return;
     if (this.oldLadySpeechBubble) this.oldLadySpeechBubble.destroy(true);
@@ -1926,6 +1943,53 @@ class PlayScene extends Phaser.Scene {
   updateGabiSpeechPosition() {
     if (!this.speechBubble || !this.player) return;
     this.speechBubble.setPosition(this.player.x, this.player.y - 62);
+  }
+
+  maybeShowCatMeow() {
+    const now = this.time?.now || 0;
+    if (!this.cat || !this.level.catNpc || !state.running || now < (this.nextCatMeowAt || 0)) return;
+    this.nextCatMeowAt = now + Phaser.Math.Between(CAT_MEOW_MIN_DELAY, CAT_MEOW_MAX_DELAY);
+    if (Phaser.Math.FloatBetween(0, 1) > CAT_MEOW_CHANCE) return;
+    this.showCatSpeech("Meow!");
+  }
+
+  showCatSpeech(text) {
+    if (!this.cat || !text) return;
+    if (this.catSpeechBubble) return;
+    const bubbleWidth = 72;
+    const bubbleHeight = 28;
+    const container = this.add.container(this.cat.x, this.cat.y - 34);
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0x050505, 0.9);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
+    const label = this.add.text(0, -bubbleHeight / 2, text, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "10px",
+      color: "#f4f0dc",
+      align: "center"
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add([bubble, label]);
+    container.setDepth(DARKNESS_DEPTH + 2);
+    this.catSpeechBubble = container;
+    this.time.delayedCall(1300, () => {
+      if (!this.catSpeechBubble) return;
+      this.tweens.add({
+        targets: this.catSpeechBubble,
+        alpha: 0,
+        duration: 220,
+        onComplete: () => {
+          this.catSpeechBubble?.destroy(true);
+          this.catSpeechBubble = null;
+        }
+      });
+    });
+  }
+
+  updateCatSpeechPosition() {
+    if (!this.catSpeechBubble || !this.cat) return;
+    this.catSpeechBubble.setPosition(this.cat.x, this.cat.y - 34);
   }
 
   isPlayerNearLevelSelectBoard() {
@@ -2060,6 +2124,7 @@ class PlayScene extends Phaser.Scene {
     this.catGuidePath = this.buildCatGuidePath();
     this.catGuideIndex = -1;
     this.catGuideTravel = null;
+    this.nextCatMeowAt = this.time.now + Phaser.Math.Between(CAT_MEOW_MIN_DELAY / 2, CAT_MEOW_MAX_DELAY);
     const spawnRun = this.findGuidePlatformRun(this.spawnPoint.x, this.spawnPoint.y);
     if (spawnRun) {
       const x = this.getCatGuideXInRun(this.spawnPoint.x + CAT_START_OFFSET, spawnRun);
@@ -2356,6 +2421,7 @@ class PlayScene extends Phaser.Scene {
     this.cat.setVelocity(0, 0);
     this.cat.setFlipX(this.player.x < this.cat.x);
     this.cat.play("cat-idle", true);
+    this.maybeShowCatMeow();
   }
 
   followCatRoute(goal, time = 0, onFloor = false, floorRun = null) {
@@ -2986,6 +3052,8 @@ class PlayScene extends Phaser.Scene {
     setItemPickupVisible(false);
     this.speechBubble?.destroy(true);
     this.speechBubble = null;
+    this.catSpeechBubble?.destroy(true);
+    this.catSpeechBubble = null;
     this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -3013,6 +3081,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 100;
     this.cameras.main.flash(80, 114, 214, 201, false);
     updateHud();
+    this.maybeShowPickupSpeech("Good addition to my budget");
   }
 
   collectHeart(_player, heart) {
@@ -3022,6 +3091,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 150;
     this.cameras.main.flash(90, 255, 96, 150, false);
     updateHud();
+    this.maybeShowPickupSpeech("Fine, I'll survive.");
   }
 
   collectDoubleJump(_player, doubleJump) {
@@ -3030,6 +3100,7 @@ class PlayScene extends Phaser.Scene {
     state.score += 300;
     this.cameras.main.flash(130, 139, 220, 255, false);
     updateHud();
+    this.maybeShowPickupSpeech("Gravity can wait.");
   }
 
   collectLantern(_player, lantern) {
