@@ -74,8 +74,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-opening-darkness";
-const STORY_ASSET_VERSION = "20260528-opening-darkness";
+const ASSET_VERSION = "20260528-lantern-soft-circle";
+const STORY_ASSET_VERSION = "20260528-lantern-soft-circle";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -1048,20 +1048,20 @@ class PlayScene extends Phaser.Scene {
     const { alpha, radius, fringe, yOffset } = this.lanternOverlayConfig;
     const camera = this.cameras.main;
     const centerX = Phaser.Math.Clamp(this.player.x - camera.scrollX + (this.player.flipX ? -18 : 18), -radius, VIEW_WIDTH + radius);
-    const centerY = Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, -radius, PLAY_HEIGHT + radius);
+    const centerY = Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, radius, PLAY_HEIGHT - radius);
+    const bandTop = Phaser.Math.Clamp(centerY - radius, 0, PLAY_HEIGHT);
+    const bandBottom = Phaser.Math.Clamp(centerY + radius, 0, PLAY_HEIGHT);
     const clearRadius = Math.max(0, radius - fringe);
     const graphics = this.lanternOverlay;
 
     graphics.clear();
-    for (let y = 0; y < PLAY_HEIGHT; y += 4) {
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillRect(0, 0, VIEW_WIDTH, bandTop);
+    graphics.fillRect(0, bandBottom, VIEW_WIDTH, PLAY_HEIGHT - bandBottom);
+
+    for (let y = bandTop; y < bandBottom; y += 4) {
       const midY = y + 2;
       const dy = midY - centerY;
-      if (Math.abs(dy) >= radius) {
-        graphics.fillStyle(0x000000, 1);
-        graphics.fillRect(0, y, VIEW_WIDTH, 4);
-        continue;
-      }
-
       const outerHalfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
       const innerHalfWidth = Math.sqrt(Math.max(0, clearRadius * clearRadius - dy * dy));
       const outerLeft = Phaser.Math.Clamp(centerX - outerHalfWidth, 0, VIEW_WIDTH);
@@ -1074,24 +1074,22 @@ class PlayScene extends Phaser.Scene {
       graphics.fillRect(outerRight, y, VIEW_WIDTH - outerRight, 4);
 
       if (innerHalfWidth <= 0) {
-        const rowEdgeProgress = Phaser.Math.Clamp((Math.abs(dy) - clearRadius) / Math.max(1, fringe), 0, 1);
-        graphics.fillStyle(0x000000, alpha * rowEdgeProgress * rowEdgeProgress);
+        graphics.fillStyle(0x000000, alpha);
         graphics.fillRect(outerLeft, y, outerRight - outerLeft, 4);
         continue;
       }
 
-      const leftFadeWidth = Math.max(1, innerLeft - outerLeft);
-      const rightFadeWidth = Math.max(1, outerRight - innerRight);
-      for (let x = outerLeft; x < innerLeft; x += 4) {
-        const progress = 1 - Phaser.Math.Clamp((x - outerLeft) / leftFadeWidth, 0, 1);
-        graphics.fillStyle(0x000000, alpha * progress * progress);
-        graphics.fillRect(x, y, 4, 4);
-      }
-      for (let x = innerRight; x < outerRight; x += 4) {
-        const progress = Phaser.Math.Clamp((x - innerRight) / rightFadeWidth, 0, 1);
-        graphics.fillStyle(0x000000, alpha * progress * progress);
-        graphics.fillRect(x, y, 4, 4);
-      }
+      const fadeAlpha = Phaser.Math.Clamp(alpha * (Math.abs(dy) / radius), 0.04, alpha);
+      graphics.fillStyle(0x000000, fadeAlpha);
+      graphics.fillRect(outerLeft, y, innerLeft - outerLeft, 4);
+      graphics.fillRect(innerRight, y, outerRight - innerRight, 4);
+    }
+
+    for (let offset = 0; offset < fringe; offset += 5) {
+      const progress = 1 - offset / fringe;
+      const ringAlpha = Phaser.Math.Clamp(alpha * progress * progress * 0.72, 0, alpha);
+      graphics.lineStyle(6, 0x000000, ringAlpha);
+      graphics.strokeCircle(centerX, centerY, radius - offset);
     }
   }
 
