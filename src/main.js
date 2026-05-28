@@ -74,8 +74,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-pixelated-equipped-icon";
-const STORY_ASSET_VERSION = "20260528-pixelated-equipped-icon";
+const ASSET_VERSION = "20260528-old-lady-cleanup";
+const STORY_ASSET_VERSION = "20260528-old-lady-cleanup";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
@@ -145,7 +145,7 @@ const LEVELS = [
     oldLady: {
       column: 11,
       floorRow: 18,
-      speech: "This tunnel is dark, young lady. Please pick up this lantern to proceed."
+      speech: "This tunnel is dark, young lady. Please pick up that lantern over there to proceed."
     },
     introCopy: "Find the lantern before the tunnel goes dark, then use its light to reach the brass key and escape before the shadows close in."
   },
@@ -1542,6 +1542,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   createOldLadyNpc() {
+    this.clearOldLadyNpc();
     if (!this.level.oldLady) return;
     const { column, floorRow, speech } = this.level.oldLady;
     const x = column * TILE + TILE / 2;
@@ -1551,6 +1552,14 @@ class PlayScene extends Phaser.Scene {
     this.oldLady.setDepth(3);
     this.oldLady.play("old-lady-idle");
     this.oldLadySpeechText = speech;
+  }
+
+  clearOldLadyNpc() {
+    this.oldLadySpeechBubble?.destroy(true);
+    this.oldLadySpeechBubble = null;
+    this.oldLady?.destroy();
+    this.oldLady = null;
+    this.oldLadySpeechText = "";
   }
 
   createInput() {
@@ -1611,6 +1620,8 @@ class PlayScene extends Phaser.Scene {
     hud.message.hidden = true;
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
+    this.speechBubble?.destroy(true);
+    this.speechBubble = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.releaseBasketPromptControlLock();
@@ -2973,6 +2984,9 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
+    this.speechBubble?.destroy(true);
+    this.speechBubble = null;
+    this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.releaseBasketPromptControlLock();
