@@ -75,8 +75,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-tunnel-old-lady";
-const STORY_ASSET_VERSION = "20260528-tunnel-old-lady";
+const ASSET_VERSION = "20260528-lantern-prompt";
+const STORY_ASSET_VERSION = "20260528-lantern-prompt";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -131,8 +131,12 @@ const LEVELS = [
     lanternAnimationPrefix: "gabi-lantern",
     darkness: {
       alpha: 1,
-      startX: 900,
-      thresholdFade: 190,
+      thresholdMode: "diagonal",
+      lineStartX: 150,
+      lineStartY: -20,
+      lineEndX: 930,
+      lineEndY: PLAY_HEIGHT + 48,
+      thresholdFade: 72,
       requiresLantern: true,
       radius: 190,
       fringe: 76,
@@ -785,6 +789,7 @@ class PlayScene extends Phaser.Scene {
     this.lastActionAt = -Infinity;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
+    this.lanternPromptActive = false;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -813,6 +818,7 @@ class PlayScene extends Phaser.Scene {
     state.won = false;
     updateHud();
     this.pixelatedBasketImage = pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage());
+    this.pixelatedLanternImage = pixelateStoryFrame(this.textures.get("lantern").getSourceImage());
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
@@ -1058,6 +1064,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateLanternThresholdDarkness() {
+    if (this.level.darkness?.thresholdMode === "diagonal") {
+      this.updateDiagonalLanternThresholdDarkness();
+      return;
+    }
+
     const camera = this.cameras.main;
     const startX = this.level.darkness?.startX ?? 0;
     const fadeWidth = this.level.darkness?.thresholdFade ?? 180;
@@ -1078,6 +1089,42 @@ class PlayScene extends Phaser.Scene {
 
     graphics.fillStyle(0x000000, 1);
     graphics.fillRect(fadeEnd, 0, VIEW_WIDTH - fadeEnd, PLAY_HEIGHT);
+  }
+
+  updateDiagonalLanternThresholdDarkness() {
+    const camera = this.cameras.main;
+    const darkness = this.level.darkness || {};
+    const startX = darkness.lineStartX ?? 0;
+    const startY = darkness.lineStartY ?? 0;
+    const endX = darkness.lineEndX ?? VIEW_WIDTH;
+    const endY = darkness.lineEndY ?? PLAY_HEIGHT;
+    const fadeWidth = darkness.thresholdFade ?? 64;
+    const alpha = darkness.alpha ?? 1;
+    const graphics = this.lanternOverlay;
+    const dx = Math.max(1, endX - startX);
+
+    graphics.clear();
+    for (let x = 0; x < VIEW_WIDTH; x += 4) {
+      const worldX = camera.scrollX + x;
+      const t = Phaser.Math.Clamp((worldX - startX) / dx, -0.35, 1.35);
+      const worldBoundaryY = Phaser.Math.Linear(startY, endY, t);
+      const screenBoundaryY = worldBoundaryY - camera.scrollY;
+      const solidBottom = Phaser.Math.Clamp(screenBoundaryY - fadeWidth * 0.5, 0, PLAY_HEIGHT);
+      const fadeBottom = Phaser.Math.Clamp(screenBoundaryY + fadeWidth * 0.5, 0, PLAY_HEIGHT);
+
+      if (solidBottom > 0) {
+        graphics.fillStyle(0x000000, alpha);
+        graphics.fillRect(x, 0, 4, solidBottom);
+      }
+
+      if (fadeBottom > solidBottom) {
+        for (let y = solidBottom; y < fadeBottom; y += 4) {
+          const progress = 1 - Phaser.Math.Clamp((y - solidBottom) / Math.max(1, fadeBottom - solidBottom), 0, 1);
+          graphics.fillStyle(0x000000, alpha * progress * progress);
+          graphics.fillRect(x, y, 4, 4);
+        }
+      }
+    }
   }
 
   createStartingHouse() {
@@ -1536,6 +1583,7 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
     this.basketPromptActive = false;
+    this.lanternPromptActive = false;
     this.releaseBasketPromptControlLock();
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
@@ -1588,6 +1636,18 @@ class PlayScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW);
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action);
     const onFloor = this.player.body.blocked.down;
+
+    if (this.lanternPromptActive) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocity(0, 0);
+      this.setGabiAnimation("idle");
+      if (action) {
+        this.lanternPromptActive = false;
+        setItemPickupVisible(false);
+        this.releaseBasketPromptControlLock();
+      }
+      return;
+    }
 
     if (this.basketPromptActive) {
       this.player.setAccelerationX(0);
@@ -1738,7 +1798,7 @@ class PlayScene extends Phaser.Scene {
     });
     label.setOrigin(0.5, 0.5);
     container.add([bubble, label]);
-    container.setDepth(12);
+    container.setDepth(DARKNESS_DEPTH + 2);
     this.speechBubble = container;
     this.updateGabiSpeechPosition();
     this.time.delayedCall(4200, () => {
@@ -1775,7 +1835,7 @@ class PlayScene extends Phaser.Scene {
     });
     label.setOrigin(0.5, 0.5);
     container.add([bubble, label]);
-    container.setDepth(12);
+    container.setDepth(DARKNESS_DEPTH + 2);
     this.oldLadySpeechBubble = container;
     this.time.delayedCall(7200, () => {
       if (!this.oldLadySpeechBubble) return;
@@ -2688,7 +2748,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateAcorns(time) {
-    if (this.basketPromptActive) return;
+    if (this.basketPromptActive || this.lanternPromptActive) return;
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
       if (time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
@@ -2852,6 +2912,8 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
+    this.basketPromptActive = false;
+    this.lanternPromptActive = false;
     this.releaseBasketPromptControlLock();
     if (this.timerEvent) {
       this.timerEvent.remove(false);
@@ -2899,8 +2961,15 @@ class PlayScene extends Phaser.Scene {
     lantern.disableBody(true, true);
     state.hasLantern = true;
     state.score += 350;
+    this.lanternPromptActive = true;
+    this.lockPlayerForBasketPrompt();
     this.switchPlayerToLanternSprite();
     this.updateLanternOverlay();
+    setItemPickupVisible(true, {
+      name: "Lantern",
+      instruction: "Its light cuts through the tunnel darkness. Press Enter to continue",
+      image: this.pixelatedLanternImage || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`
+    });
     this.cameras.main.flash(120, 255, 225, 120, false);
     updateHud();
   }
@@ -3023,7 +3092,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   hitAcorn(_player, acorn) {
-    if (!state.running || this.basketPromptActive || acorn.getData("armed")) return;
+    if (!state.running || this.basketPromptActive || this.lanternPromptActive || acorn.getData("armed")) return;
     this.resetAcorn(acorn);
     this.loseLife();
   }
@@ -3057,6 +3126,7 @@ class PlayScene extends Phaser.Scene {
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.basketPromptActive = false;
+    this.lanternPromptActive = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
     this.thrownItems.clear(true, true);
