@@ -4,18 +4,39 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260528-prompt-ok" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260528-overlay-hud" />
   </head>
   <body>
     <main id="shell">
       <section id="game-wrap" aria-label="Crazy Gabi game">
         <div id="hud">
-          <div><span class="label">1UP</span><strong id="score">000000</strong></div>
-          <div><span class="label">HI</span><strong>030000</strong></div>
-          <div><span class="label">TIME</span><strong id="time">150</strong></div>
-          <div><span class="label">GABI</span><strong id="lives">x3</strong></div>
-          <div><span class="label">COIN</span><strong id="gems">x00</strong></div>
-          <div><span class="label">KEY</span><strong id="key">x00</strong></div>
+          <div class="hud-cluster hud-top-left">
+            <div id="lives" class="hud-lives" aria-label="Lives"></div>
+            <span class="hud-divider"></span>
+            <div class="hud-timer"><span class="label">TIME</span><strong id="time">150</strong></div>
+          </div>
+          <div class="hud-cluster hud-top-right">
+            <div class="hud-counter">
+              <img id="coin-icon" alt="" />
+              <strong id="gems">00</strong>
+            </div>
+            <span class="hud-divider"></span>
+            <div class="hud-counter">
+              <img id="key-icon" alt="" />
+              <strong id="key">00</strong>
+            </div>
+          </div>
+          <div class="hud-equipped">
+            <img id="equipped-icon" alt="" />
+            <div>
+              <span class="label">ITEM</span>
+              <strong id="equipped-name">NONE</strong>
+            </div>
+          </div>
+          <div class="hud-score">
+            <span class="label">SCORE</span>
+            <strong id="score">000000</strong>
+          </div>
         </div>
         <div id="game"></div>
         <div id="loading" class="loading-panel" role="status" aria-live="polite">
@@ -50,6 +71,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260528-prompt-ok"></script>
+    <script type="module" src="./src/main.js?v=20260528-overlay-hud"></script>
   </body>
 </html>

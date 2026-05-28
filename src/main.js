@@ -1,8 +1,7 @@
 const TILE = 32;
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
-const HUD_HEIGHT = 86;
-const PLAY_HEIGHT = VIEW_HEIGHT - HUD_HEIGHT;
+const PLAY_HEIGHT = VIEW_HEIGHT;
 const TIME_LIMIT = 220;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
@@ -75,8 +74,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-prompt-ok";
-const STORY_ASSET_VERSION = "20260528-prompt-ok";
+const ASSET_VERSION = "20260528-overlay-hud";
+const STORY_ASSET_VERSION = "20260528-overlay-hud";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -443,10 +442,17 @@ const hud = {
   itemPickupName: document.querySelector("#item-pickup-name"),
   itemPickupInstruction: document.querySelector("#item-pickup-instruction"),
   itemPickupOk: document.querySelector("#item-pickup-ok"),
+  coinIcon: document.querySelector("#coin-icon"),
+  keyIcon: document.querySelector("#key-icon"),
+  equippedIcon: document.querySelector("#equipped-icon"),
+  equippedName: document.querySelector("#equipped-name"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatClose: document.querySelector("#cheat-close")
 };
+
+hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
+hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
 
 function setLoadingVisible(visible) {
   hud.loading.hidden = !visible;
@@ -473,10 +479,33 @@ function setMessage(title, copy, button = "Start") {
 
 function updateHud() {
   hud.score.textContent = String(state.score).padStart(6, "0");
-  hud.gems.textContent = `x${String(state.gems).padStart(2, "0")}`;
-  hud.lives.textContent = `x${state.lives}`;
+  hud.gems.textContent = String(state.gems).padStart(2, "0");
+  hud.lives.replaceChildren();
+  for (let index = 0; index < Math.max(0, state.lives); index += 1) {
+    const heart = document.createElement("img");
+    heart.src = `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`;
+    heart.alt = "";
+    hud.lives.appendChild(heart);
+  }
   hud.time.textContent = String(state.timeLeft).padStart(3, "0");
-  hud.key.textContent = state.hasKey ? "x01" : "x00";
+  hud.key.textContent = state.hasKey ? "01" : "00";
+  updateEquippedHud();
+}
+
+function updateEquippedHud() {
+  let itemName = "NONE";
+  let itemImage = "";
+  if (state.hasAcornBasket) {
+    itemName = "ACORN";
+    itemImage = `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`;
+  } else if (state.hasLantern) {
+    itemName = "LANTERN";
+    itemImage = `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`;
+  }
+  hud.equippedName.textContent = itemName;
+  hud.equippedIcon.src = itemImage;
+  hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
+  hud.equippedIcon.hidden = !itemImage;
 }
 
 function setCheatMenuVisible(visible) {

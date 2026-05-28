@@ -37,7 +37,7 @@ npm run dev
 - Per-level ability gating, currently used for Level 3 acorn throwing
 - Level 3 grey cat NPC with run, jump, landing, and idle animations
 - Falling acorn hazards that continue dropping independently of player position
-- Moving platforms, coins, double-jump pickup, key, exit door, robots, water, house, per-level parallax backgrounds, and DOM-based HUD
+- Moving platforms, coins, double-jump pickup, key, exit door, robots, water, house, per-level parallax backgrounds, and a compact overlay HUD
 - Cheat menu for quickly loading Level 1, Level 2, or Level 3 during development
 
 ## Assets
