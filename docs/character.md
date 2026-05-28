@@ -22,7 +22,7 @@ The Phaser runtime flips the sprite left when Gabi moves left, so future sprite 
 
 `public/assets/character/main_char_sprite_with_double_jump.png` mirrors the same layout and is used only for the winged secondary jump animation after Gabi has collected the double-jump item.
 
-`public/assets/character/main_char_lantern_sprite.png` mirrors the same layout and is used for the Level 2 lantern maze, where Gabi carries the light source through a dark tunnel.
+`public/assets/character/main_char_lantern_sprite.png` mirrors the same layout and is activated after Gabi collects the Level 2 lantern pickup, where she carries the light source through a dark tunnel.
 
 ## Gameplay Readability
 

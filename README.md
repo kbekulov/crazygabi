@@ -2,7 +2,7 @@
 
 An original Phaser platformer prototype about Gabi: a stylish heroine with long brown hair, fair skin, and a moody city route full of stone platforms, fences, coins, robots, keys, doors, falling acorns, and level-specific abilities.
 
-The game currently has three playable levels. Level 1 introduces the main traversal loop: collect coins, unlock double jump, grab the key, avoid hazards, and reach the exit door. Level 2 sends lantern-carrying Gabi into a dark tunnel maze with a circular pool of light around her. Level 3 reuses the underground asset set as a harder stage with denser platforming, more falling hazards, a strange grey cat NPC to chase, and the first `Enter` action ability: throwing acorns at robots.
+The game currently has three playable levels. Level 1 introduces the main traversal loop: collect coins, unlock double jump, grab the key, avoid hazards, and reach the exit door. Level 2 starts in a visible tunnel approach, then asks Gabi to pick up a lantern before entering a dark maze with a circular pool of light around her. Level 3 reuses the underground asset set as a harder stage with denser platforming, more falling hazards, a strange grey cat NPC to chase, and the first `Enter` action ability: throwing acorns at robots.
 
 ## Run
 
@@ -32,8 +32,8 @@ npm run dev
 - Three-level progression with player confirmation before each level starts
 - Optional two-panel manga intro support per level after the player presses Start
 - Per-level music: Level 1 uses `bgm.mp3`; the current underground levels use `bgm2.mp3`
-- Per-level player sprite support, currently used for Level 2 lantern Gabi
-- Level 2 darkness overlay with a circular lantern reveal around the player
+- Per-level player sprite support, currently used after collecting the Level 2 lantern
+- Level 2 lantern pickup that unlocks the lantern Gabi sprite and circular darkness reveal
 - Per-level ability gating, currently used for Level 3 acorn throwing
 - Level 3 grey cat NPC with run, jump, landing, and idle animations
 - Falling acorn hazards that continue dropping independently of player position

@@ -30,6 +30,7 @@ const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
 const ITEM_SCALE = 0.32;
 const BASKET_SCALE = 0.17;
+const LANTERN_SCALE = 0.23;
 const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
@@ -71,8 +72,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-lantern-falloff";
-const STORY_ASSET_VERSION = "20260528-lantern-falloff";
+const ASSET_VERSION = "20260528-lantern-pickup";
+const STORY_ASSET_VERSION = "20260528-lantern-pickup";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -119,15 +120,18 @@ const LEVELS = [
     parallax: "parallax-underground",
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
-    playerSheet: "gabi-lantern-sheet",
-    playerAnimationPrefix: "gabi-lantern",
+    lanternPlayerSheet: "gabi-lantern-sheet",
+    lanternAnimationPrefix: "gabi-lantern",
     darkness: {
       alpha: 1,
+      startX: 900,
+      thresholdFade: 190,
+      requiresLantern: true,
       radius: 190,
       fringe: 76,
       yOffset: -18
     },
-    introCopy: "Carry the lantern through the tunnel maze, find the brass key in the dark, and reach the exit before the shadows close in."
+    introCopy: "Find the lantern before the tunnel goes dark, then use its light to reach the brass key and escape before the shadows close in."
   },
   {
     name: "Level 3",
@@ -264,7 +268,7 @@ function createLevelTwo() {
   [
     [16, 4, "p"],
     [17, 9, "g"],
-    [14, 24, "g"],
+    [14, 24, "l"],
     [11, 13, "g"],
     [8, 34, "g"],
     [5, 20, "g"],
@@ -397,6 +401,7 @@ const state = {
   hasKey: false,
   hasDoubleJump: false,
   hasAcornBasket: false,
+  hasLantern: false,
   running: false,
   won: false,
   resetProgressOnCreate: true,
@@ -490,6 +495,7 @@ function resetGameProgress() {
   state.hasKey = false;
   state.hasDoubleJump = false;
   state.hasAcornBasket = false;
+  state.hasLantern = false;
   state.running = false;
   state.won = false;
   state.resetProgressOnCreate = false;
@@ -714,6 +720,7 @@ class PlayScene extends Phaser.Scene {
     this.load.image("falling-brick", `./public/assets/environment/brick.png?v=${ASSET_VERSION}`);
     this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
     this.load.image("acorn-basket", `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`);
+    this.load.image("lantern", `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm", `./public/assets/sound/bgm.mp3?v=${ASSET_VERSION}`);
     this.load.audio("bgm2", `./public/assets/sound/bgm2.mp3?v=${ASSET_VERSION}`);
     LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
@@ -746,6 +753,7 @@ class PlayScene extends Phaser.Scene {
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.acornBaskets = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.lanterns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.heartDrops = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -781,6 +789,7 @@ class PlayScene extends Phaser.Scene {
     state.hasKey = false;
     state.hasDoubleJump = false;
     state.hasAcornBasket = false;
+    state.hasLantern = false;
     state.running = false;
     state.won = false;
     updateHud();
@@ -976,6 +985,11 @@ class PlayScene extends Phaser.Scene {
   updateLanternOverlay() {
     if (!this.lanternOverlay || !this.player || !this.lanternOverlayConfig) return;
 
+    if (this.level.darkness?.requiresLantern !== false && !state.hasLantern) {
+      this.updateLanternThresholdDarkness();
+      return;
+    }
+
     const { alpha, radius, fringe, yOffset } = this.lanternOverlayConfig;
     const camera = this.cameras.main;
     const centerX = Phaser.Math.Clamp(this.player.x - camera.scrollX + (this.player.flipX ? -18 : 18), -radius, VIEW_WIDTH + radius);
@@ -1022,6 +1036,29 @@ class PlayScene extends Phaser.Scene {
       graphics.lineStyle(6, 0x000000, ringAlpha);
       graphics.strokeCircle(centerX, centerY, radius - offset);
     }
+  }
+
+  updateLanternThresholdDarkness() {
+    const camera = this.cameras.main;
+    const startX = this.level.darkness?.startX ?? 0;
+    const fadeWidth = this.level.darkness?.thresholdFade ?? 180;
+    const screenStart = startX - camera.scrollX;
+    const graphics = this.lanternOverlay;
+
+    graphics.clear();
+    if (screenStart >= VIEW_WIDTH) return;
+
+    const fadeStart = Phaser.Math.Clamp(screenStart - fadeWidth, 0, VIEW_WIDTH);
+    const fadeEnd = Phaser.Math.Clamp(screenStart, 0, VIEW_WIDTH);
+
+    for (let x = fadeStart; x < fadeEnd; x += 4) {
+      const progress = Phaser.Math.Clamp((x - fadeStart) / Math.max(1, fadeEnd - fadeStart), 0, 1);
+      graphics.fillStyle(0x000000, progress * progress);
+      graphics.fillRect(x, 0, 4, PLAY_HEIGHT);
+    }
+
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillRect(fadeEnd, 0, VIEW_WIDTH - fadeEnd, PLAY_HEIGHT);
   }
 
   createStartingHouse() {
@@ -1197,6 +1234,13 @@ class PlayScene extends Phaser.Scene {
           basket.setCircle(75, 64, 54);
           this.basketPoint = { x, y };
           this.tweens.add({ targets: basket, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        }
+        if (cell === "l") {
+          const lantern = this.lanterns.create(x, y, "lantern");
+          lantern.setScale(LANTERN_SCALE);
+          lantern.setDepth(ITEM_DEPTH);
+          lantern.setCircle(70, 49, 55);
+          this.tweens.add({ targets: lantern, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
           const enemySprite = this.level.enemySprite || "robot-lv1";
@@ -1432,6 +1476,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.gems, this.collectGem, null, this);
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.acornBaskets, this.collectAcornBasket, null, this);
+    this.physics.add.overlap(this.player, this.lanterns, this.collectLantern, null, this);
     this.physics.add.overlap(this.player, this.heartDrops, this.collectHeart, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
@@ -1621,6 +1666,14 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.resetPlayerMotion();
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.currentGabiAnimation = null;
+    this.setGabiAnimation("idle");
+  }
+
+  switchPlayerToLanternSprite() {
+    if (!this.level.lanternPlayerSheet || !this.player) return;
+    this.playerAnimationPrefix = this.level.lanternAnimationPrefix || "gabi-lantern";
+    this.player.setTexture(this.level.lanternPlayerSheet, this.player.frame?.name || 0);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
   }
@@ -2766,6 +2819,16 @@ class PlayScene extends Phaser.Scene {
     updateHud();
   }
 
+  collectLantern(_player, lantern) {
+    lantern.disableBody(true, true);
+    state.hasLantern = true;
+    state.score += 350;
+    this.switchPlayerToLanternSprite();
+    this.updateLanternOverlay();
+    this.cameras.main.flash(120, 255, 225, 120, false);
+    updateHud();
+  }
+
   collectAcornBasket(_player, basket) {
     basket.disableBody(true, true);
     state.hasAcornBasket = true;
@@ -3016,6 +3079,7 @@ LEVELS.forEach((level, index) => {
     state.score = 0;
     state.lives = 3;
     state.hasAcornBasket = false;
+    state.hasLantern = false;
     state.resetProgressOnCreate = false;
     state.pendingLevelPrompt = {
       title: level.name,
