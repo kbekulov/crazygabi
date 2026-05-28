@@ -71,8 +71,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-lantern-labyrinth";
-const STORY_ASSET_VERSION = "20260528-lantern-labyrinth";
+const ASSET_VERSION = "20260528-level-robot-sprites";
+const STORY_ASSET_VERSION = "20260528-level-robot-sprites";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -87,7 +87,7 @@ const LEVELS = [
     acornDelay: [450, 1800],
     acornPace: [185, 295],
     fallingHazard: "falling-acorn",
-    enemySprite: "robot",
+    enemySprite: "robot-lv1",
     actionAbility: null,
     storyFrames: [
       { key: "story-level-1-frame-1", src: "./public/assets/story/level-1/frame_1.png" },
@@ -110,7 +110,7 @@ const LEVELS = [
     acornDelay: [900, 1600],
     acornPace: [210, 300],
     fallingHazard: "falling-brick",
-    enemySprite: "robot-ghost-lv2",
+    enemySprite: "robot-shadow-ghost-lv2",
     actionAbility: null,
     startSpeech: "It's too dark to see far...",
     showStartingHouse: false,
@@ -137,7 +137,7 @@ const LEVELS = [
     acornDelay: [260, 1100],
     acornPace: [245, 370],
     fallingHazard: "falling-brick",
-    enemySprite: "robot-ghost-lv2",
+    enemySprite: "robot-ghost-lv3",
     actionAbility: "throw-acorn",
     storyFrames: [
       { key: "story-level-3-frame-1", src: "./public/assets/story/level-3/frame_1.png" },
@@ -685,11 +685,15 @@ class PlayScene extends Phaser.Scene {
       frameWidth: PLATFORM_FRAME_WIDTH,
       frameHeight: PLATFORM_FRAME_HEIGHT
     });
-    this.load.spritesheet("robot", `./public/assets/character/robot.png?v=${ASSET_VERSION}`, {
+    this.load.spritesheet("robot-lv1", `./public/assets/character/robot_lv1.png?v=${ASSET_VERSION}`, {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
-    this.load.spritesheet("robot-ghost-lv2", `./public/assets/character/robot_ghost_lv2.png?v=${ASSET_VERSION}`, {
+    this.load.spritesheet("robot-shadow-ghost-lv2", `./public/assets/character/robot_shadow_ghost_lv2.png?v=${ASSET_VERSION}`, {
+      frameWidth: ROBOT_FRAME_WIDTH,
+      frameHeight: ROBOT_FRAME_HEIGHT
+    });
+    this.load.spritesheet("robot-ghost-lv3", `./public/assets/character/robot_ghost_lv3.png?v=${ASSET_VERSION}`, {
       frameWidth: ROBOT_FRAME_WIDTH,
       frameHeight: ROBOT_FRAME_HEIGHT
     });
@@ -1093,14 +1097,20 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
       this.anims.create({
-        key: "robot-move",
-        frames: this.anims.generateFrameNumbers("robot", { frames: [0, 1, 2] }),
+        key: "robot-lv1-move",
+        frames: this.anims.generateFrameNumbers("robot-lv1", { frames: [0, 1, 2] }),
         frameRate: 8,
         repeat: -1
       });
       this.anims.create({
-        key: "robot-ghost-lv2-move",
-        frames: this.anims.generateFrameNumbers("robot-ghost-lv2", { frames: [0, 1, 2] }),
+        key: "robot-shadow-ghost-lv2-move",
+        frames: this.anims.generateFrameNumbers("robot-shadow-ghost-lv2", { frames: [0, 1, 2] }),
+        frameRate: 8,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "robot-ghost-lv3-move",
+        frames: this.anims.generateFrameNumbers("robot-ghost-lv3", { frames: [0, 1, 2] }),
         frameRate: 8,
         repeat: -1
       });
@@ -1171,14 +1181,14 @@ class PlayScene extends Phaser.Scene {
           this.tweens.add({ targets: basket, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
-          const enemySprite = this.level.enemySprite || "robot";
+          const enemySprite = this.level.enemySprite || "robot-lv1";
           const enemy = this.enemies.create(x, y, enemySprite, 0);
           enemy.setBounce(0);
           enemy.setCollideWorldBounds(true);
           enemy.setScale(ROBOT_SCALE);
           enemy.setDepth(5);
           enemy.body.setSize(112, 110).setOffset(58, 82);
-          enemy.play(enemySprite === "robot-ghost-lv2" ? "robot-ghost-lv2-move" : "robot-move");
+          enemy.play(`${enemySprite}-move`);
           this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
           this.attachEnemyLabel(enemy);
         }
