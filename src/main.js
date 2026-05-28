@@ -75,8 +75,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-lantern-prompt";
-const STORY_ASSET_VERSION = "20260528-lantern-prompt";
+const ASSET_VERSION = "20260528-prompt-ok";
+const STORY_ASSET_VERSION = "20260528-prompt-ok";
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const storySeenLevels = new Set();
@@ -442,6 +442,7 @@ const hud = {
   itemPickupImage: document.querySelector("#item-pickup-image"),
   itemPickupName: document.querySelector("#item-pickup-name"),
   itemPickupInstruction: document.querySelector("#item-pickup-instruction"),
+  itemPickupOk: document.querySelector("#item-pickup-ok"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatClose: document.querySelector("#cheat-close")
@@ -1615,7 +1616,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    this.moveEnemies();
+    if (!this.isItemPromptActive()) this.moveEnemies();
     this.updateEnemyLabels();
     this.updateMovingPlatforms();
     this.updateAcorns(time);
@@ -1641,11 +1642,7 @@ class PlayScene extends Phaser.Scene {
       this.player.setAccelerationX(0);
       this.player.setVelocity(0, 0);
       this.setGabiAnimation("idle");
-      if (action) {
-        this.lanternPromptActive = false;
-        setItemPickupVisible(false);
-        this.releaseBasketPromptControlLock();
-      }
+      if (action) this.handleItemPickupOk(time);
       return;
     }
 
@@ -1653,7 +1650,7 @@ class PlayScene extends Phaser.Scene {
       this.player.setAccelerationX(0);
       this.player.setVelocity(0, 0);
       this.setGabiAnimation("idle");
-      if (action) this.performAction(time);
+      if (action) this.handleItemPickupOk(time);
       return;
     }
 
@@ -1696,6 +1693,23 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
+  isItemPromptActive() {
+    return Boolean(this.basketPromptActive || this.lanternPromptActive);
+  }
+
+  handleItemPickupOk(time = this.time?.now || 0) {
+    if (this.lanternPromptActive) {
+      this.lanternPromptActive = false;
+      setItemPickupVisible(false);
+      this.releaseBasketPromptControlLock();
+      return;
+    }
+
+    if (this.basketPromptActive) {
+      this.performAction(time);
+    }
+  }
+
   throwAcorn(time = 0) {
     if (time - this.lastActionAt < 450) return false;
     this.lastActionAt = time;
@@ -1723,6 +1737,7 @@ class PlayScene extends Phaser.Scene {
     this.player.setVelocity(0, 0);
     this.player.body.moves = false;
     this.player.body.setAllowGravity(false);
+    this.freezeEnemiesForPrompt();
     this.setGabiAnimation("idle");
   }
 
@@ -1730,6 +1745,24 @@ class PlayScene extends Phaser.Scene {
     if (!this.player?.body) return;
     this.player.body.moves = true;
     this.player.body.setAllowGravity(true);
+    this.releaseEnemiesForPrompt();
+  }
+
+  freezeEnemiesForPrompt() {
+    this.enemies?.children.iterate((enemy) => {
+      if (!enemy?.body) return;
+      enemy.setData("promptFrozenVelocityX", enemy.body.velocity.x);
+      enemy.setData("promptFrozenVelocityY", enemy.body.velocity.y);
+      enemy.setVelocity(0, 0);
+      enemy.body.moves = false;
+    });
+  }
+
+  releaseEnemiesForPrompt() {
+    this.enemies?.children.iterate((enemy) => {
+      if (!enemy?.body) return;
+      enemy.body.moves = true;
+    });
   }
 
   setGabiFlip(flipX) {
@@ -3207,6 +3240,13 @@ hud.startButton.addEventListener("click", () => {
     updateHud();
   }
   scene.startRun();
+});
+
+hud.itemPickupOk.addEventListener("click", () => {
+  if (!gameAssetsReady) return;
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  scene.handleItemPickupOk(scene.time.now);
 });
 
 hud.cheatClose.addEventListener("click", () => setCheatMenuVisible(false));

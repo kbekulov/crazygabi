@@ -338,7 +338,7 @@ button:active {
   inset: 0;
   display: grid;
   place-items: center;
-  pointer-events: none;
+  pointer-events: auto;
   background: rgba(0, 0, 0, 0.38);
 }
 
@@ -383,6 +383,26 @@ button:active {
   color: #f4f0dc;
   font-size: clamp(0.9rem, 2.4vw, 1.18rem);
   line-height: 1.25;
+}
+
+#item-pickup-ok {
+  min-width: 112px;
+  margin-top: 2px;
+  padding: 0.56rem 1.2rem;
+  border: 2px solid #f4f0dc;
+  background: #050505;
+  color: #f4f0dc;
+  font-family: "Courier New", monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#item-pickup-ok:hover,
+#item-pickup-ok:focus-visible {
+  background: #f4f0dc;
+  color: #050505;
+  outline: none;
 }
 
 .cheat-panel {
