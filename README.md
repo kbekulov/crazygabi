@@ -23,6 +23,7 @@ npm run dev
 - Arrow keys or `A` / `D`: move
 - Up arrow, `W`, or `Space`: jump, then jump again after collecting the blue double-jump pickup
 - `Enter`: action button
+- `Enter` on a level start screen: begin the level
 - `Enter` in Level 3: throw an acorn in a ballistic arc after collecting the acorn basket; thrown acorns destroy robots
 - `R`: restart the level
 - `0`: open the cheat level-select menu for testing

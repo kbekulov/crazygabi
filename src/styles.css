@@ -77,27 +77,6 @@ button:active {
   text-shadow: 2px 2px 0 #000;
 }
 
-#hud::before,
-#hud::after {
-  content: "";
-  position: absolute;
-  top: 8px;
-  width: 92px;
-  height: 32px;
-  border-top: 2px solid rgba(193, 156, 93, 0.3);
-  opacity: 0.75;
-}
-
-#hud::before {
-  left: 8px;
-  border-left: 2px solid rgba(193, 156, 93, 0.3);
-}
-
-#hud::after {
-  right: 8px;
-  border-right: 2px solid rgba(193, 156, 93, 0.3);
-}
-
 .hud-cluster,
 .hud-equipped,
 .hud-score {
@@ -106,7 +85,6 @@ button:active {
   align-items: center;
   min-width: 0;
   padding: 8px 10px;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.22));
 }
 
 .hud-top-left {
@@ -119,7 +97,6 @@ button:active {
   top: 12px;
   right: 18px;
   gap: 12px;
-  background: linear-gradient(270deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.22));
 }
 
 .hud-equipped {
@@ -133,7 +110,6 @@ button:active {
   bottom: 18px;
   display: grid;
   justify-items: end;
-  background: linear-gradient(270deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.16));
 }
 
 .label {
@@ -167,22 +143,22 @@ button:active {
 }
 
 .hud-lives img {
-  width: clamp(19px, 3vw, 30px);
-  height: clamp(19px, 3vw, 30px);
+  width: clamp(38px, 6vw, 60px);
+  height: clamp(38px, 6vw, 60px);
   object-fit: contain;
   image-rendering: pixelated;
 }
 
 .hud-counter img {
-  width: clamp(22px, 3vw, 34px);
-  height: clamp(22px, 3vw, 34px);
+  width: clamp(44px, 6vw, 68px);
+  height: clamp(44px, 6vw, 68px);
   object-fit: contain;
   image-rendering: pixelated;
 }
 
 .hud-equipped img {
-  width: clamp(38px, 6vw, 62px);
-  height: clamp(38px, 6vw, 62px);
+  width: clamp(76px, 12vw, 124px);
+  height: clamp(76px, 12vw, 124px);
   object-fit: contain;
   image-rendering: pixelated;
 }
