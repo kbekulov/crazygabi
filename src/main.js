@@ -3697,15 +3697,7 @@ hud.gameOverRestart.addEventListener("click", () => {
 });
 
 hud.gameOverMenu.addEventListener("click", () => {
-  const scene = game.scene.getScene("PlayScene");
-  if (!scene.scene.isActive()) return;
-  setGameOverVisible(false);
-  scene.cancelLevelRuntime();
-  resetGameProgress();
-  state.autoStartLevel = false;
-  state.resetProgressOnCreate = false;
-  scene.sound.stopAll();
-  scene.scene.restart();
+  returnToMainMenu();
 });
 
 hud.menuSelectLevel.addEventListener("click", () => showLevelSelectPanel());
@@ -3725,6 +3717,19 @@ hud.itemPickupOk.addEventListener("click", () => {
 });
 
 hud.cheatClose.addEventListener("click", () => setCheatMenuVisible(false));
+
+function returnToMainMenu() {
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  setCheatMenuVisible(false);
+  setGameOverVisible(false);
+  scene.cancelLevelRuntime();
+  resetGameProgress();
+  state.autoStartLevel = false;
+  state.resetProgressOnCreate = false;
+  scene.sound.stopAll();
+  scene.scene.restart();
+}
 
 function showMenuPanel(title, copy) {
   hud.menuPanel.classList.remove("credits-panel");
@@ -3815,6 +3820,12 @@ LEVELS.forEach((level, index) => {
   hud.cheatLevels.appendChild(button);
 });
 
+const returnToMenuButton = document.createElement("button");
+returnToMenuButton.type = "button";
+returnToMenuButton.textContent = "Return to Menu";
+returnToMenuButton.addEventListener("click", returnToMainMenu);
+hud.cheatLevels.appendChild(returnToMenuButton);
+
 window.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !hud.mainMenu.hidden) {
     event.preventDefault();
@@ -3828,7 +3839,7 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (event.key !== "0") return;
+  if (event.key !== "0" && event.key !== "Escape") return;
   event.preventDefault();
   if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
