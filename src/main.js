@@ -119,8 +119,9 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-promo-png";
-const STORY_ASSET_VERSION = "20260529-menu-promo-png";
+const ASSET_VERSION = "20260529-loader-guard";
+const STORY_ASSET_VERSION = "20260529-loader-guard";
+const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -878,6 +879,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   async beginLevelLoad(levelIndex = 0) {
+    const loadId = (this.levelLoadId || 0) + 1;
+    this.levelLoadId = loadId;
     this.levelReady = false;
     setGameAssetsReady(false);
     setMainMenuVisible(false);
@@ -891,14 +894,25 @@ class PlayScene extends Phaser.Scene {
     state.levelIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     try {
-      await this.loadLevelAssets(this.level);
+      await this.loadLevelAssets(this.level, loadId);
+      if (!this.isActiveLevelLoad(loadId)) return;
       this.createLevelRuntime();
     } catch (_error) {
+      if (!this.isActiveLevelLoad(loadId)) return;
       updateLoadingProgress(1, "Could not load level.");
+      this.cancelLevelRuntime();
       setGameAssetsReady(true);
       setLoadingVisible(false);
-      setMessage("Loading Error", "Something went wrong while preparing this level. Please try again.", "Start");
+      hud.root.hidden = true;
+      hud.message.hidden = true;
+      setGameOverVisible(true, {
+        copy: "This level did not finish loading. Restart or return to the menu."
+      });
     }
+  }
+
+  isActiveLevelLoad(loadId) {
+    return this.scene.isActive("PlayScene") && this.levelLoadId === loadId;
   }
 
   createLevelRuntime() {
@@ -1037,8 +1051,12 @@ class PlayScene extends Phaser.Scene {
     this.menuBackdrop.tilePositionX -= delta * 0.012;
   }
 
-  loadLevelAssets(level) {
-    return new Promise((resolve) => {
+  loadLevelAssets(level, loadId) {
+    return new Promise((resolve, reject) => {
+      if (typeof this.load.isLoading === "function" && this.load.isLoading()) {
+        this.load.reset();
+      }
+
       let queued = 0;
       const image = (key, src) => {
         if (this.textures.exists(key)) return;
@@ -1107,13 +1125,46 @@ class PlayScene extends Phaser.Scene {
       }
 
       const progress = (value) => updateLoadingProgress(value, `Loading ${level.name}...`);
-      const complete = () => {
+      let finished = false;
+      let timeoutId = null;
+      const cleanup = () => {
+        window.clearTimeout(timeoutId);
         this.load.off("progress", progress);
+        this.load.off("complete", complete);
+        this.load.off("loaderror", fail);
+        this.events.off(Phaser.Scenes.Events.SHUTDOWN, stale);
+      };
+      const complete = () => {
+        if (finished) return;
+        finished = true;
+        cleanup();
         updateLoadingProgress(1, "Level ready.");
         resolve();
       };
+      const fail = (file) => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        if (typeof this.load.isLoading === "function" && this.load.isLoading()) {
+          this.load.reset();
+        }
+        reject(new Error(`Could not load ${file?.key || "level asset"}`));
+      };
+      const stale = () => {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        resolve();
+      };
+
       this.load.on("progress", progress);
       this.load.once("complete", complete);
+      this.load.once("loaderror", fail);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, stale);
+      timeoutId = window.setTimeout(() => {
+        if (finished || !this.isActiveLevelLoad(loadId)) return;
+        fail({ key: `${level.name} timed out` });
+      }, LEVEL_LOAD_TIMEOUT_MS);
       this.load.start();
     });
   }
@@ -3371,6 +3422,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   cancelLevelRuntime() {
+    this.levelLoadId = (this.levelLoadId || 0) + 1;
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
     state.running = false;
@@ -3650,6 +3702,12 @@ class PlayScene extends Phaser.Scene {
     const safeIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
     const level = LEVELS[safeIndex] || LEVELS[0];
     this.cancelLevelRuntime();
+    setGameAssetsReady(false);
+    hud.message.hidden = true;
+    setCheatMenuVisible(false);
+    setMenuPanelVisible(false);
+    setLoadingVisible(true);
+    updateLoadingProgress(0, "Loading level...");
     state.levelIndex = safeIndex;
     if (resetScore) {
       state.score = 0;
