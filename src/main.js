@@ -119,8 +119,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-promo-clean";
-const STORY_ASSET_VERSION = "20260529-menu-promo-clean";
+const ASSET_VERSION = "20260529-menu-promo-vertical";
+const STORY_ASSET_VERSION = "20260529-menu-promo-vertical";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
