@@ -123,6 +123,8 @@ const ASSET_VERSION = "20260529-level-transition-floor";
 const STORY_ASSET_VERSION = "20260529-level-transition-floor";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
+const INTRO_RETRY_MS = 1000;
+const INTRO_FAILSAFE_MS = 6500;
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -1205,6 +1207,7 @@ class PlayScene extends Phaser.Scene {
 
   async playStoryIntroThenBegin() {
     const introToken = this.activeIntroToken;
+    this.introPlayAttempt = (this.introPlayAttempt || 0) + 1;
     setStoryIntroVisible(false);
     hud.message.hidden = true;
     this.startMusic();
@@ -1212,6 +1215,13 @@ class PlayScene extends Phaser.Scene {
       const frames = this.getPreloadedStoryFrames();
       if (!this.isCurrentIntro(introToken)) return;
       if (frames.length < 2) {
+        await this.loadStoryFrameTexturesFallback();
+        if (!this.isCurrentIntro(introToken)) return;
+        const fallbackFrames = this.getPreloadedStoryFrames();
+        if (fallbackFrames.length >= 2) {
+          await this.renderStoryIntro(fallbackFrames, introToken);
+          if (!this.isCurrentIntro(introToken)) return;
+        }
         this.beginGameplay(introToken);
         return;
       }
@@ -1224,6 +1234,19 @@ class PlayScene extends Phaser.Scene {
     } catch (_error) {
       if (this.isCurrentIntro(introToken)) this.beginGameplay(introToken);
     }
+  }
+
+  async loadStoryFrameTexturesFallback() {
+    const missingFrames = (this.level.storyFrames || []).slice(0, 2).filter((frame) => {
+      return frame?.key && frame?.src && !this.textures.exists(frame.key);
+    });
+    if (!missingFrames.length) return;
+    const images = await Promise.all(missingFrames.map((frame) => loadStoryFrame(frame.src)));
+    images.forEach((image, index) => {
+      const frame = missingFrames[index];
+      if (!image || this.textures.exists(frame.key)) return;
+      this.textures.addImage(frame.key, image);
+    });
   }
 
   getPreloadedStoryFrames() {
@@ -1937,6 +1960,7 @@ class PlayScene extends Phaser.Scene {
 
   startRun() {
     if (state.running || !this.levelReady || !this.player) return;
+    this.clearIntroWatchdogs();
     if (this.introInProgress) {
       this.activeIntroToken = (this.activeIntroToken || 0) + 1;
       this.introInProgress = false;
@@ -1961,11 +1985,39 @@ class PlayScene extends Phaser.Scene {
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
     this.resetCatNpc();
+    this.armIntroWatchdogs(this.activeIntroToken);
     this.playStoryIntroThenBegin();
+  }
+
+  armIntroWatchdogs(introToken) {
+    this.clearIntroWatchdogs();
+    this.introRetryTimer = window.setTimeout(() => {
+      if (!this.isIntroStillWaiting(introToken) || !hud.storyIntro.hidden) return;
+      this.playStoryIntroThenBegin();
+    }, INTRO_RETRY_MS);
+    this.introFailsafeTimer = window.setTimeout(() => {
+      if (!this.isIntroStillWaiting(introToken)) return;
+      setStoryIntroVisible(false);
+      hud.message.hidden = true;
+      this.startMusic();
+      this.beginGameplay(introToken);
+    }, INTRO_FAILSAFE_MS);
+  }
+
+  clearIntroWatchdogs() {
+    window.clearTimeout(this.introRetryTimer);
+    window.clearTimeout(this.introFailsafeTimer);
+    this.introRetryTimer = null;
+    this.introFailsafeTimer = null;
+  }
+
+  isIntroStillWaiting(introToken) {
+    return this.isCurrentIntro(introToken) && this.introInProgress && !state.running && !state.won;
   }
 
   beginGameplay(introToken = this.activeIntroToken) {
     if (!this.isCurrentIntro(introToken)) return;
+    this.clearIntroWatchdogs();
     this.introInProgress = false;
     this.physics.world.resume();
     this.input.keyboard.enabled = true;
@@ -3423,6 +3475,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   cancelLevelRuntime() {
+    this.clearIntroWatchdogs();
     this.levelLoadId = (this.levelLoadId || 0) + 1;
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
