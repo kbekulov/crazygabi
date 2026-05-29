@@ -119,8 +119,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-promo-pixel2";
-const STORY_ASSET_VERSION = "20260529-menu-promo-pixel2";
+const ASSET_VERSION = "20260529-menu-promo-png";
+const STORY_ASSET_VERSION = "20260529-menu-promo-png";
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -523,7 +523,7 @@ const hud = {
 
 hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
-pixelateImageElement(hud.menuPromo, 0.21);
+pixelateImageElement(hud.menuPromo, 0.32);
 
 function setLoadingVisible(visible) {
   hud.loading.hidden = !visible;
