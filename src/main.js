@@ -3510,7 +3510,6 @@ class PlayScene extends Phaser.Scene {
     gem.disableBody(true, true);
     state.gems += 1;
     state.score += 100;
-    this.cameras.main.flash(80, 114, 214, 201, false);
     updateHud();
     this.maybeShowPickupSpeech("coin");
   }
@@ -3520,7 +3519,6 @@ class PlayScene extends Phaser.Scene {
     heart.disableBody(true, true);
     state.lives += 1;
     state.score += 150;
-    this.cameras.main.flash(90, 255, 96, 150, false);
     updateHud();
     this.maybeShowPickupSpeech("heart");
   }
@@ -3529,7 +3527,6 @@ class PlayScene extends Phaser.Scene {
     doubleJump.disableBody(true, true);
     state.hasDoubleJump = true;
     state.score += 300;
-    this.cameras.main.flash(130, 139, 220, 255, false);
     updateHud();
     this.maybeShowPickupSpeech("wing");
   }
@@ -3547,7 +3544,6 @@ class PlayScene extends Phaser.Scene {
       instruction: "Its light cuts through the tunnel darkness. Press Enter to continue",
       image: this.pixelatedLanternImage || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`
     });
-    this.cameras.main.flash(120, 255, 225, 120, false);
     updateHud();
   }
 
@@ -3566,7 +3562,6 @@ class PlayScene extends Phaser.Scene {
       instruction: "Press Enter to throw acorns",
       image: this.pixelatedBasketImage || `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
     });
-    this.cameras.main.flash(120, 255, 220, 90, false);
     updateHud();
   }
 
