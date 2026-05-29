@@ -3636,6 +3636,7 @@ hud.itemPickupOk.addEventListener("click", () => {
 hud.cheatClose.addEventListener("click", () => setCheatMenuVisible(false));
 
 function showMenuPanel(title, copy) {
+  hud.menuPanel.classList.remove("credits-panel");
   hud.menuPanelTitle.textContent = title;
   hud.menuPanelCopy.textContent = copy;
   hud.menuPanelContent.replaceChildren();
@@ -3680,6 +3681,7 @@ function showMusicBoxPanel() {
 
 function showCreditsPanel() {
   showMenuPanel("Credits", "");
+  hud.menuPanel.classList.add("credits-panel");
   const credits = [
     ["Development & Art Direction", ["Kiril"]],
     ["Gameplay Testers", ["Gabriele", "Stefano", "Rene"]],
