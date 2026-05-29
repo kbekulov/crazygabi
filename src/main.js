@@ -154,7 +154,7 @@ const LEVELS = [
     parallax: "parallax-city",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
-    introTitle: "Crazy Gabi",
+    introTitle: "Level 1",
     introCopy: "Collect the coins, grab the brass key, and reach the door before the city gets too wild."
   },
   {
@@ -3558,7 +3558,7 @@ class PlayScene extends Phaser.Scene {
     state.resetProgressOnCreate = false;
     state.autoStartLevel = true;
     state.pendingLevelPrompt = {
-      title: safeIndex === 0 ? level.introTitle || level.name : level.name,
+      title: level.introTitle || level.name,
       copy: level.introCopy || "Collect the coins, grab the key, and reach the door.",
       button: "Start"
     };
