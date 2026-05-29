@@ -3924,7 +3924,7 @@ function showCreditsPanel() {
   hud.menuPanel.classList.add("credits-panel");
   const credits = [
     ["Development & Art Direction", ["Kiril"]],
-    ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad"]],
+    ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad", "Jarek", "Kim Loong"]],
     ["Critics of AI", ["Tomas"]],
     ["AI Tools", ["Codex", "ChatGPT", "Gemini", "Suno AI"]],
     ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue"]],
