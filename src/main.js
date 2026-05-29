@@ -119,9 +119,10 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-main-menu-level-loading";
-const STORY_ASSET_VERSION = "20260529-main-menu-level-loading";
+const ASSET_VERSION = "20260529-menu-bgm";
+const STORY_ASSET_VERSION = "20260529-menu-bgm";
 const MUSIC_TRACKS = [
+  { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" }
@@ -787,7 +788,7 @@ class PlayScene extends Phaser.Scene {
     });
 
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
-    this.load.audio("bgm-lv1", `./public/assets/sound/bgm_lv1.mp3?v=${ASSET_VERSION}`);
+    this.load.audio("bgm-menu", `./public/assets/sound/bgm_menu.mp3?v=${ASSET_VERSION}`);
   }
 
   create() {
@@ -3178,13 +3179,13 @@ class PlayScene extends Phaser.Scene {
   startMenuMusic() {
     try {
       this.resumeAudioContext();
-      if (this.bgm?.isPlaying && this.bgm.key === "bgm-lv1") return;
+      if (this.bgm?.isPlaying && this.bgm.key === "bgm-menu") return;
       this.sound.stopAll();
-      if (this.bgm && this.bgm.key !== "bgm-lv1") {
+      if (this.bgm && this.bgm.key !== "bgm-menu") {
         this.bgm.destroy();
         this.bgm = null;
       }
-      this.bgm = this.bgm || this.sound.add("bgm-lv1", { loop: true, volume: 0.28 });
+      this.bgm = this.bgm || this.sound.add("bgm-menu", { loop: true, volume: 0.28 });
       this.bgm.play();
     } catch (_error) {
       this.bgm = null;
