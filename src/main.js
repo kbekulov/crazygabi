@@ -119,8 +119,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-bgm";
-const STORY_ASSET_VERSION = "20260529-menu-bgm";
+const ASSET_VERSION = "20260529-game-over-screen";
+const STORY_ASSET_VERSION = "20260529-game-over-screen";
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -488,6 +488,11 @@ const hud = {
   loadingText: document.querySelector("#loading-text"),
   message: document.querySelector("#message"),
   startButton: document.querySelector("#start-button"),
+  gameOver: document.querySelector("#game-over"),
+  gameOverCopy: document.querySelector("#game-over-copy"),
+  gameOverScore: document.querySelector("#game-over-score"),
+  gameOverRestart: document.querySelector("#game-over-restart"),
+  gameOverMenu: document.querySelector("#game-over-menu"),
   storyIntro: document.querySelector("#story-intro"),
   storyPanels: document.querySelector("#story-panels"),
   storyStart: document.querySelector("#story-start"),
@@ -582,6 +587,13 @@ function setMainMenuVisible(visible) {
 
 function setMenuPanelVisible(visible) {
   hud.menuPanel.hidden = !visible;
+}
+
+function setGameOverVisible(visible, details = {}) {
+  hud.gameOver.hidden = !visible;
+  if (!visible) return;
+  hud.gameOverCopy.textContent = details.copy || "The route is complete.";
+  hud.gameOverScore.textContent = String(details.score ?? state.score).padStart(6, "0");
 }
 
 function setStoryIntroVisible(visible) {
@@ -816,6 +828,7 @@ class PlayScene extends Phaser.Scene {
     setMainMenuVisible(false);
     setMenuPanelVisible(false);
     setCheatMenuVisible(false);
+    setGameOverVisible(false);
     hud.message.hidden = true;
     hud.root.hidden = true;
     setLoadingVisible(true);
@@ -921,6 +934,7 @@ class PlayScene extends Phaser.Scene {
     this.levelReady = false;
     hud.root.hidden = true;
     hud.message.hidden = true;
+    setGameOverVisible(false);
     setStoryIntroVisible(false);
     setCheatMenuVisible(false);
     setMenuPanelVisible(false);
@@ -3518,10 +3532,9 @@ class PlayScene extends Phaser.Scene {
     updateHud();
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
-      this.cancelLevelRuntime();
-      resetGameProgress();
-      this.sound.stopAll();
-      this.requestLevelStart(0, { resetScore: true });
+      this.showGameOverScreen({
+        copy: "Gabi ran out of chances. The city keeps the receipts."
+      });
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
@@ -3553,11 +3566,28 @@ class PlayScene extends Phaser.Scene {
     }
 
     state.won = true;
-    setMessage("Level Clear", "You found the key and escaped. More city routes and secret bonuses are ready for the next build.", "Play Again");
+    this.showGameOverScreen({
+      copy: "Gabi cleared every route. Somehow, that counts as a plan."
+    });
   }
 
   advanceToNextLevel() {
     this.requestLevelStart(state.levelIndex + 1, { resetScore: false });
+  }
+
+  showGameOverScreen({ copy } = {}) {
+    const finalScore = state.score;
+    this.cancelLevelRuntime();
+    state.won = true;
+    state.running = false;
+    this.resetPlayerMotion({ freeze: true });
+    this.setGabiAnimation("idle");
+    this.sound.stopAll();
+    setCheatMenuVisible(false);
+    setStoryIntroVisible(false);
+    setItemPickupVisible(false);
+    hud.message.hidden = true;
+    setGameOverVisible(true, { copy, score: finalScore });
   }
 
   requestLevelStart(levelIndex = 0, { resetScore = true } = {}) {
@@ -3637,6 +3667,26 @@ hud.menuNewGame.addEventListener("click", () => {
   if (!scene.scene.isActive()) return;
   resetGameProgress();
   scene.requestLevelStart(0, { resetScore: true });
+});
+
+hud.gameOverRestart.addEventListener("click", () => {
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  setGameOverVisible(false);
+  resetGameProgress();
+  scene.requestLevelStart(0, { resetScore: true });
+});
+
+hud.gameOverMenu.addEventListener("click", () => {
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  setGameOverVisible(false);
+  scene.cancelLevelRuntime();
+  resetGameProgress();
+  state.autoStartLevel = false;
+  state.resetProgressOnCreate = false;
+  scene.sound.stopAll();
+  scene.scene.restart();
 });
 
 hud.menuSelectLevel.addEventListener("click", () => showLevelSelectPanel());
@@ -3763,6 +3813,7 @@ window.addEventListener("keydown", (event) => {
   event.preventDefault();
   if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
+  if (!hud.gameOver.hidden) return;
   if (!hud.mainMenu.hidden) {
     showLevelSelectPanel();
     return;

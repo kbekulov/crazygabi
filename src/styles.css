@@ -273,6 +273,74 @@ button:active {
   line-height: 1.35;
 }
 
+.game-over-panel {
+  position: absolute;
+  z-index: 6;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: clamp(22px, 4vw, 48px);
+  text-align: center;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.game-over-panel[hidden] {
+  display: none;
+}
+
+.game-over-card {
+  display: grid;
+  justify-items: center;
+  gap: clamp(14px, 2.4vw, 24px);
+  width: min(680px, 94%);
+  padding: clamp(22px, 4vw, 38px);
+  background: rgba(0, 0, 0, 0.72);
+  border: 3px solid rgba(244, 220, 176, 0.62);
+  box-shadow: 0 14px 0 rgba(0, 0, 0, 0.48);
+}
+
+.game-over-card h1 {
+  margin: 0;
+  color: #fff200;
+  font-size: clamp(3rem, 9vw, 6rem);
+  line-height: 0.9;
+  text-shadow: 4px 4px 0 #ff2020, 8px 8px 0 #124cff;
+}
+
+.game-over-card p {
+  width: min(520px, 100%);
+  margin: 0;
+  color: #f4dcb0;
+  font-size: clamp(0.95rem, 2vw, 1.16rem);
+  line-height: 1.35;
+}
+
+.game-over-score {
+  display: grid;
+  gap: 4px;
+}
+
+.game-over-score span {
+  color: #d5ad73;
+  font-size: clamp(0.85rem, 1.8vw, 1.08rem);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.game-over-score strong {
+  color: #f4dcb0;
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  line-height: 1;
+  text-shadow: 3px 3px 0 #000;
+}
+
+.game-over-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
 .main-menu,
 .menu-panel {
   position: absolute;

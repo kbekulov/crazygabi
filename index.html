@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260529-menu-bgm" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260529-game-over-screen" />
   </head>
   <body>
     <main id="shell">
@@ -68,6 +68,20 @@
           <p>Collect the coins, grab the brass key, and reach the door before the city gets too wild.</p>
           <button id="start-button" type="button" disabled>Start</button>
         </div>
+        <div id="game-over" class="game-over-panel" hidden>
+          <div class="game-over-card">
+            <h1>Game Over</h1>
+            <p id="game-over-copy">The route is complete.</p>
+            <div class="game-over-score">
+              <span>Total Score</span>
+              <strong id="game-over-score">000000</strong>
+            </div>
+            <div class="game-over-actions">
+              <button id="game-over-restart" type="button">Restart</button>
+              <button id="game-over-menu" type="button">Return to Menu</button>
+            </div>
+          </div>
+        </div>
         <div id="story-intro" class="story-intro" hidden>
           <div class="story-backdrop"></div>
           <div id="story-panels" class="story-panels"></div>
@@ -90,6 +104,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260529-menu-bgm"></script>
+    <script type="module" src="./src/main.js?v=20260529-game-over-screen"></script>
   </body>
 </html>
