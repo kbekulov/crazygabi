@@ -119,8 +119,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-loader-guard";
-const STORY_ASSET_VERSION = "20260529-loader-guard";
+const ASSET_VERSION = "20260529-menu-promo-clean";
+const STORY_ASSET_VERSION = "20260529-menu-promo-clean";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
@@ -507,7 +507,6 @@ const hud = {
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
   mainMenu: document.querySelector("#main-menu"),
-  menuPromo: document.querySelector(".main-menu-promo"),
   bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
   menuSelectLevel: document.querySelector("#menu-select-level"),
@@ -525,7 +524,6 @@ const hud = {
 
 hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
-pixelateImageElement(hud.menuPromo, 0.32);
 updateBestScore();
 
 function setLoadingVisible(visible) {
@@ -743,20 +741,6 @@ function pixelateFrame(frame, pixelScale = 0.42) {
 
 function pixelateStoryFrame(frame) {
   return pixelateFrame(frame, 0.42);
-}
-
-function pixelateImageElement(image, pixelScale = 0.21) {
-  const applyPixelation = () => {
-    if (!image?.naturalWidth || image.dataset.pixelated === "true") return;
-    image.dataset.pixelated = "true";
-    image.src = pixelateFrame(image, pixelScale);
-  };
-
-  if (image?.complete) {
-    applyPixelation();
-  } else if (image) {
-    image.addEventListener("load", applyPixelation, { once: true });
-  }
 }
 
 async function loadStoryFrames(paths = []) {
