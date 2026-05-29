@@ -119,8 +119,13 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260528-more-gabi-lines";
-const STORY_ASSET_VERSION = "20260528-more-gabi-lines";
+const ASSET_VERSION = "20260529-main-menu-level-loading";
+const STORY_ASSET_VERSION = "20260529-main-menu-level-loading";
+const MUSIC_TRACKS = [
+  { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
+  { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
+  { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" }
+];
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
@@ -466,10 +471,12 @@ const state = {
   running: false,
   won: false,
   resetProgressOnCreate: true,
+  autoStartLevel: false,
   pendingLevelPrompt: null
 };
 
 const hud = {
+  root: document.querySelector("#hud"),
   score: document.querySelector("#score"),
   gems: document.querySelector("#gems"),
   lives: document.querySelector("#lives"),
@@ -492,6 +499,16 @@ const hud = {
   keyIcon: document.querySelector("#key-icon"),
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
+  mainMenu: document.querySelector("#main-menu"),
+  menuNewGame: document.querySelector("#menu-new-game"),
+  menuSelectLevel: document.querySelector("#menu-select-level"),
+  menuMusicBox: document.querySelector("#menu-music-box"),
+  menuCredits: document.querySelector("#menu-credits"),
+  menuPanel: document.querySelector("#menu-panel"),
+  menuPanelTitle: document.querySelector("#menu-panel-title"),
+  menuPanelCopy: document.querySelector("#menu-panel-copy"),
+  menuPanelContent: document.querySelector("#menu-panel-content"),
+  menuPanelClose: document.querySelector("#menu-panel-close"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatClose: document.querySelector("#cheat-close")
@@ -558,6 +575,14 @@ function setCheatMenuVisible(visible) {
   hud.cheatMenu.hidden = !visible;
 }
 
+function setMainMenuVisible(visible) {
+  hud.mainMenu.hidden = !visible;
+}
+
+function setMenuPanelVisible(visible) {
+  hud.menuPanel.hidden = !visible;
+}
+
 function setStoryIntroVisible(visible) {
   storyIntroRunId += 1;
   hud.storyIntro.hidden = !visible;
@@ -591,6 +616,7 @@ function resetGameProgress() {
   state.running = false;
   state.won = false;
   state.resetProgressOnCreate = false;
+  state.autoStartLevel = false;
   state.pendingLevelPrompt = null;
 }
 
@@ -750,91 +776,66 @@ class PlayScene extends Phaser.Scene {
     hud.message.hidden = true;
     setStoryIntroVisible(false);
     setCheatMenuVisible(false);
+    setMenuPanelVisible(false);
     setLoadingVisible(true);
-    updateLoadingProgress(0, "Loading assets...");
-    this.load.on("progress", (progress) => updateLoadingProgress(progress, "Loading assets..."));
-    this.load.once("complete", () => updateLoadingProgress(1, "Finalizing..."));
+    updateLoadingProgress(0, "Loading menu...");
+    const progress = (value) => updateLoadingProgress(value, "Loading menu...");
+    this.load.on("progress", progress);
+    this.load.once("complete", () => {
+      this.load.off("progress", progress);
+      updateLoadingProgress(1, "Finalizing menu...");
+    });
 
-    this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("gabi-wings-sheet", `./public/assets/character/main_char_sprite_with_double_jump.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("gabi-lantern-sheet", `./public/assets/character/main_char_lantern_sprite.png?v=${ASSET_VERSION}`, {
-      frameWidth: GABI_FRAME_WIDTH,
-      frameHeight: GABI_FRAME_HEIGHT
-    });
-    this.load.spritesheet("platform-strip", `./public/assets/environment/platform.png?v=${ASSET_VERSION}`, {
-      frameWidth: PLATFORM_FRAME_WIDTH,
-      frameHeight: PLATFORM_FRAME_HEIGHT
-    });
-    this.load.spritesheet("platform-fence", `./public/assets/environment/platform_fence.png?v=${ASSET_VERSION}`, {
-      frameWidth: PLATFORM_FRAME_WIDTH,
-      frameHeight: PLATFORM_FRAME_HEIGHT
-    });
-    this.load.spritesheet("platform-underground", `./public/assets/environment/platform_underground.png?v=${ASSET_VERSION}`, {
-      frameWidth: PLATFORM_FRAME_WIDTH,
-      frameHeight: PLATFORM_FRAME_HEIGHT
-    });
-    this.load.spritesheet("platform-fence-underground", `./public/assets/environment/platform_fence_underground.png?v=${ASSET_VERSION}`, {
-      frameWidth: PLATFORM_FRAME_WIDTH,
-      frameHeight: PLATFORM_FRAME_HEIGHT
-    });
-    this.load.spritesheet("robot-lv1", `./public/assets/character/robot_lv1.png?v=${ASSET_VERSION}`, {
-      frameWidth: ROBOT_FRAME_WIDTH,
-      frameHeight: ROBOT_FRAME_HEIGHT
-    });
-    this.load.spritesheet("robot-shadow-ghost-lv2", `./public/assets/character/robot_shadow_ghost_lv2.png?v=${ASSET_VERSION}`, {
-      frameWidth: ROBOT_FRAME_WIDTH,
-      frameHeight: ROBOT_FRAME_HEIGHT
-    });
-    this.load.spritesheet("robot-ghost-lv3", `./public/assets/character/robot_ghost_lv3.png?v=${ASSET_VERSION}`, {
-      frameWidth: ROBOT_FRAME_WIDTH,
-      frameHeight: ROBOT_FRAME_HEIGHT
-    });
-    this.load.spritesheet("old-lady", `./public/assets/character/old_lady.png?v=${ASSET_VERSION}`, {
-      frameWidth: OLD_LADY_FRAME_WIDTH,
-      frameHeight: OLD_LADY_FRAME_HEIGHT
-    });
-    this.load.spritesheet("grey-cat", `./public/assets/character/grey_cat.png?v=${ASSET_VERSION}`, {
-      frameWidth: CAT_FRAME_WIDTH,
-      frameHeight: CAT_FRAME_HEIGHT
-    });
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
-    this.load.image("parallax-underground", `./public/assets/environment/paralax_underground.png?v=${ASSET_VERSION}`);
-    this.load.image("parallax-tunnel", `./public/assets/environment/paralax_tunnel.png?v=${ASSET_VERSION}`);
-    this.load.image("water-below", `./public/assets/environment/water_below.png?v=${ASSET_VERSION}`);
-    this.load.image("starting-house", `./public/assets/environment/starting_house.png?v=${ASSET_VERSION}`);
-    this.load.image("starting-billboard", `./public/assets/environment/starting_billboard.png?v=${ASSET_VERSION}`);
-    this.load.image("coin", `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`);
-    this.load.image("jump-item", `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`);
-    this.load.image("door-key", `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`);
-    this.load.image("exit-door", `./public/assets/environment/exit_door.png?v=${ASSET_VERSION}`);
-    this.load.image("falling-acorn", `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`);
-    this.load.image("falling-brick", `./public/assets/environment/brick.png?v=${ASSET_VERSION}`);
-    this.load.image("life-heart", `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`);
-    this.load.image("acorn-basket", `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`);
-    this.load.image("lantern", `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`);
     this.load.audio("bgm-lv1", `./public/assets/sound/bgm_lv1.mp3?v=${ASSET_VERSION}`);
-    this.load.audio("bgm-lv2", `./public/assets/sound/bgm_lv2.mp3?v=${ASSET_VERSION}`);
-    this.load.audio("bgm-lv3", `./public/assets/sound/bgm_lv3.mp3?v=${ASSET_VERSION}`);
-    LEVELS.flatMap((level) => level.storyFrames || []).forEach((frame) => {
-      if (!frame?.key || !frame?.src || this.textures.exists(frame.key)) return;
-      this.load.image(frame.key, `${frame.src}?v=${STORY_ASSET_VERSION}`);
-    });
   }
 
   create() {
-    makeTextures(this);
+    if (!this.textures.exists("tile-ground")) makeTextures(this);
     this.physics.world.gravity.y = 1150;
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
     if (state.resetProgressOnCreate) {
       resetGameProgress();
     }
+    this.levelReady = false;
+    this.createMenuBackdrop();
+    this.registerAudioLifecycle();
+    if (state.autoStartLevel) {
+      state.autoStartLevel = false;
+      this.beginLevelLoad(state.levelIndex);
+      return;
+    }
+    this.showMainMenu();
+  }
+
+  async beginLevelLoad(levelIndex = 0) {
+    this.levelReady = false;
+    setGameAssetsReady(false);
+    setMainMenuVisible(false);
+    setMenuPanelVisible(false);
+    setCheatMenuVisible(false);
+    hud.message.hidden = true;
+    hud.root.hidden = true;
+    setLoadingVisible(true);
+    updateLoadingProgress(0, "Loading level...");
+    state.levelIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
+    this.level = LEVELS[state.levelIndex] || LEVELS[0];
+    try {
+      await this.loadLevelAssets(this.level);
+      this.createLevelRuntime();
+    } catch (_error) {
+      updateLoadingProgress(1, "Could not load level.");
+      setGameAssetsReady(true);
+      setLoadingVisible(false);
+      setMessage("Loading Error", "Something went wrong while preparing this level. Please try again.", "Start");
+    }
+  }
+
+  createLevelRuntime() {
+    this.menuBackdrop?.destroy();
+    this.menuBackdrop = null;
+    hud.root.hidden = false;
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     this.levelRows = this.level.rows;
     this.spawnPoint = { x: 96, y: 120 };
@@ -894,10 +895,17 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
-    this.pixelatedBasketImage = pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage());
-    this.pixelatedLanternImage = pixelateStoryFrame(this.textures.get("lantern").getSourceImage());
-    pixelatedEquippedImages.acorn = pixelateStoryFrame(this.textures.get("falling-acorn").getSourceImage());
-    pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
+    this.pixelatedBasketImage = this.textures.exists("acorn-basket")
+      ? pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage())
+      : "";
+    this.pixelatedLanternImage = this.textures.exists("lantern")
+      ? pixelateStoryFrame(this.textures.get("lantern").getSourceImage())
+      : "";
+    if (this.textures.exists("falling-acorn")) {
+      pixelatedEquippedImages.acorn = pixelateStoryFrame(this.textures.get("falling-acorn").getSourceImage());
+    }
+    if (this.pixelatedLanternImage) pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
+    this.levelReady = true;
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
@@ -906,6 +914,140 @@ class PlayScene extends Phaser.Scene {
         this.prepareLevelIntro();
       }
     });
+  }
+
+  showMainMenu() {
+    this.levelReady = false;
+    hud.root.hidden = true;
+    hud.message.hidden = true;
+    setStoryIntroVisible(false);
+    setCheatMenuVisible(false);
+    setMenuPanelVisible(false);
+    setLoadingVisible(false);
+    setGameAssetsReady(true);
+    setMainMenuVisible(true);
+    this.startMenuMusic();
+  }
+
+  createMenuBackdrop() {
+    if (!this.textures.exists("parallax-city")) return;
+    this.menuBackdrop?.destroy();
+    const source = this.textures.get("parallax-city").getSourceImage();
+    const scale = PLAY_HEIGHT / source.height;
+    const tileWidth = Math.ceil(VIEW_WIDTH / scale);
+    this.menuBackdrop = this.add.tileSprite(0, 0, tileWidth, source.height, "parallax-city");
+    this.menuBackdrop.setOrigin(0, 0);
+    this.menuBackdrop.setScale(scale);
+    this.menuBackdrop.setScrollFactor(0);
+    this.menuBackdrop.setDepth(-20);
+  }
+
+  updateMenuBackdrop(delta = 0) {
+    if (!this.menuBackdrop || !delta) return;
+    this.menuBackdrop.tilePositionX -= delta * 0.012;
+  }
+
+  loadLevelAssets(level) {
+    return new Promise((resolve) => {
+      let queued = 0;
+      const image = (key, src) => {
+        if (this.textures.exists(key)) return;
+        this.load.image(key, `${src}?v=${ASSET_VERSION}`);
+        queued += 1;
+      };
+      const storyImage = (key, src) => {
+        if (this.textures.exists(key)) return;
+        this.load.image(key, `${src}?v=${STORY_ASSET_VERSION}`);
+        queued += 1;
+      };
+      const sheet = (key, src, frameWidth, frameHeight) => {
+        if (this.textures.exists(key)) return;
+        this.load.spritesheet(key, `${src}?v=${ASSET_VERSION}`, { frameWidth, frameHeight });
+        queued += 1;
+      };
+      const audio = (key, src) => {
+        if (this.cache.audio.exists(key)) return;
+        this.load.audio(key, `${src}?v=${ASSET_VERSION}`);
+        queued += 1;
+      };
+
+      sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      if (level.lanternPlayerSheet) {
+        sheet("gabi-lantern-sheet", "./public/assets/character/main_char_lantern_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      }
+      sheet("platform-strip", "./public/assets/environment/platform.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
+      sheet("platform-fence", "./public/assets/environment/platform_fence.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
+      if (level.platformTexture === "platform-underground") {
+        sheet("platform-underground", "./public/assets/environment/platform_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
+        sheet("platform-fence-underground", "./public/assets/environment/platform_fence_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
+      }
+      sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
+      if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
+      if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
+
+      image("parallax-city", "./public/assets/environment/paralax_city.png");
+      if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
+      if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
+      if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
+      if (level.showStartingHouse) {
+        image("starting-house", "./public/assets/environment/starting_house.png");
+        image("starting-billboard", "./public/assets/environment/starting_billboard.png");
+      }
+      image("coin", "./public/assets/environment/golden-coin.png");
+      image("door-key", "./public/assets/environment/door_key.png");
+      image("exit-door", "./public/assets/environment/exit_door.png");
+      image("life-heart", "./public/assets/environment/life-heart.png");
+      image("jump-item", "./public/assets/environment/double_jump_item.png");
+      image(level.fallingHazard || "falling-acorn", this.getHazardPath(level.fallingHazard));
+      if (level.actionAbility === "throw-acorn" || this.levelHasCell(level, "b")) {
+        image("acorn-basket", "./public/assets/environment/acorn_basket.png");
+        image("falling-acorn", "./public/assets/environment/falling_acorn.png");
+      }
+      if (level.lanternPlayerSheet || this.levelHasCell(level, "l")) image("lantern", "./public/assets/environment/lantern.png");
+      (level.storyFrames || []).forEach((frame) => {
+        if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
+      });
+      audio(level.soundtrack || "bgm-lv1", this.getSoundtrackPath(level.soundtrack));
+
+      if (!queued) {
+        updateLoadingProgress(1, "Level ready.");
+        resolve();
+        return;
+      }
+
+      const progress = (value) => updateLoadingProgress(value, `Loading ${level.name}...`);
+      const complete = () => {
+        this.load.off("progress", progress);
+        updateLoadingProgress(1, "Level ready.");
+        resolve();
+      };
+      this.load.on("progress", progress);
+      this.load.once("complete", complete);
+      this.load.start();
+    });
+  }
+
+  levelHasCell(level, cell) {
+    return (level.rows || []).some((row) => row.includes(cell));
+  }
+
+  getEnemySpritePath(key = "robot-lv1") {
+    return {
+      "robot-lv1": "./public/assets/character/robot_lv1.png",
+      "robot-shadow-ghost-lv2": "./public/assets/character/robot_shadow_ghost_lv2.png",
+      "robot-ghost-lv3": "./public/assets/character/robot_ghost_lv3.png"
+    }[key] || "./public/assets/character/robot_lv1.png";
+  }
+
+  getHazardPath(key = "falling-acorn") {
+    return key === "falling-brick"
+      ? "./public/assets/environment/brick.png"
+      : "./public/assets/environment/falling_acorn.png";
+  }
+
+  getSoundtrackPath(key = "bgm-lv1") {
+    return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
   }
 
   prepareLevelIntro() {
@@ -1237,7 +1379,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   createAnimations() {
-    if (!this.anims.exists("gabi-idle")) {
+    if (this.textures.exists("gabi-sheet") && !this.anims.exists("gabi-idle")) {
       this.anims.create({
         key: "gabi-idle",
         frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
@@ -1256,18 +1398,24 @@ class PlayScene extends Phaser.Scene {
         frameRate: 6,
         repeat: -1
       });
+    }
+    if (this.textures.exists("gabi-wings-sheet") && !this.anims.exists("gabi-wing-jump")) {
       this.anims.create({
         key: "gabi-wing-jump",
         frames: this.anims.generateFrameNumbers("gabi-wings-sheet", { frames: [2, 3] }),
         frameRate: 6,
         repeat: -1
       });
+    }
+    if (this.textures.exists("gabi-sheet") && !this.anims.exists("gabi-hurt")) {
       this.anims.create({
         key: "gabi-hurt",
         frames: this.anims.generateFrameNumbers("gabi-sheet", { frames: [4, 5] }),
         frameRate: 6,
         repeat: -1
       });
+    }
+    if (this.textures.exists("gabi-lantern-sheet") && !this.anims.exists("gabi-lantern-idle")) {
       this.anims.create({
         key: "gabi-lantern-idle",
         frames: this.anims.generateFrameNumbers("gabi-lantern-sheet", { frames: [4, 5] }),
@@ -1292,26 +1440,17 @@ class PlayScene extends Phaser.Scene {
         frameRate: 6,
         repeat: -1
       });
+    }
+    const enemySprite = this.level.enemySprite || "robot-lv1";
+    if (this.textures.exists(enemySprite) && !this.anims.exists(`${enemySprite}-move`)) {
       this.anims.create({
-        key: "robot-lv1-move",
-        frames: this.anims.generateFrameNumbers("robot-lv1", { frames: [0, 1, 2] }),
-        frameRate: 8,
-        repeat: -1
-      });
-      this.anims.create({
-        key: "robot-shadow-ghost-lv2-move",
-        frames: this.anims.generateFrameNumbers("robot-shadow-ghost-lv2", { frames: [0, 1, 2] }),
-        frameRate: 8,
-        repeat: -1
-      });
-      this.anims.create({
-        key: "robot-ghost-lv3-move",
-        frames: this.anims.generateFrameNumbers("robot-ghost-lv3", { frames: [0, 1, 2] }),
+        key: `${enemySprite}-move`,
+        frames: this.anims.generateFrameNumbers(enemySprite, { frames: [0, 1, 2] }),
         frameRate: 8,
         repeat: -1
       });
     }
-    if (!this.anims.exists("old-lady-idle")) {
+    if (this.textures.exists("old-lady") && !this.anims.exists("old-lady-idle")) {
       this.anims.create({
         key: "old-lady-idle",
         frames: this.anims.generateFrameNumbers("old-lady", { frames: [0, 1, 2] }),
@@ -1319,7 +1458,7 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
-    if (!this.anims.exists("cat-run")) {
+    if (this.textures.exists("grey-cat") && !this.anims.exists("cat-run")) {
       this.anims.create({
         key: "cat-run",
         frames: this.anims.generateFrameNumbers("grey-cat", { frames: [0, 1, 2, 3] }),
@@ -1698,8 +1837,13 @@ class PlayScene extends Phaser.Scene {
   }
 
   update(time = 0, delta = 0) {
+    if (!this.levelReady) {
+      this.updateMenuBackdrop(delta);
+      return;
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.keysInput.restart)) {
-      this.scene.restart();
+      this.requestLevelStart(state.levelIndex, { resetScore: false });
       return;
     }
 
@@ -3031,6 +3175,51 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
+  startMenuMusic() {
+    try {
+      this.resumeAudioContext();
+      if (this.bgm?.isPlaying && this.bgm.key === "bgm-lv1") return;
+      this.sound.stopAll();
+      if (this.bgm && this.bgm.key !== "bgm-lv1") {
+        this.bgm.destroy();
+        this.bgm = null;
+      }
+      this.bgm = this.bgm || this.sound.add("bgm-lv1", { loop: true, volume: 0.28 });
+      this.bgm.play();
+    } catch (_error) {
+      this.bgm = null;
+    }
+  }
+
+  playMusicBoxTrack(track) {
+    if (!track) return;
+    const play = () => {
+      this.resumeAudioContext();
+      this.sound.stopAll();
+      if (this.bgm && this.bgm.key !== track.key) {
+        this.bgm.destroy();
+        this.bgm = null;
+      }
+      this.bgm = this.bgm || this.sound.add(track.key, { loop: true, volume: 0.32 });
+      this.bgm.play();
+    };
+    if (this.cache.audio.exists(track.key)) {
+      play();
+      return;
+    }
+    updateLoadingProgress(0, "Loading track...");
+    setLoadingVisible(true);
+    const progress = (value) => updateLoadingProgress(value, "Loading track...");
+    this.load.on("progress", progress);
+    this.load.once("complete", () => {
+      this.load.off("progress", progress);
+      setLoadingVisible(false);
+      play();
+    });
+    this.load.audio(track.key, `${track.src}?v=${ASSET_VERSION}`);
+    this.load.start();
+  }
+
   registerAudioLifecycle() {
     this.unregisterAudioLifecycle();
 
@@ -3040,9 +3229,13 @@ class PlayScene extends Phaser.Scene {
     };
 
     this.handlePageVisible = () => {
-      if (!state.running || state.won || !this.wasMusicPlayingBeforeHidden) return;
+      if (!this.wasMusicPlayingBeforeHidden) return;
       this.resumeAudioContext();
-      this.startMusic();
+      if (this.levelReady && state.running && !state.won) {
+        this.startMusic();
+      } else if (!this.levelReady && !hud.mainMenu.hidden) {
+        this.startMenuMusic();
+      }
     };
 
     this.handleVisibilityChange = () => {
@@ -3306,7 +3499,7 @@ class PlayScene extends Phaser.Scene {
       this.cancelLevelRuntime();
       resetGameProgress();
       this.sound.stopAll();
-      hardResetDocument();
+      this.requestLevelStart(0, { resetScore: true });
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
@@ -3342,10 +3535,29 @@ class PlayScene extends Phaser.Scene {
   }
 
   advanceToNextLevel() {
-    state.levelIndex += 1;
-    const level = LEVELS[state.levelIndex] || LEVELS[0];
+    this.requestLevelStart(state.levelIndex + 1, { resetScore: false });
+  }
+
+  requestLevelStart(levelIndex = 0, { resetScore = true } = {}) {
+    const safeIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
+    const level = LEVELS[safeIndex] || LEVELS[0];
+    this.cancelLevelRuntime();
+    state.levelIndex = safeIndex;
+    if (resetScore) {
+      state.score = 0;
+      state.gems = 0;
+      state.lives = 3;
+    }
+    state.hasKey = false;
+    state.hasDoubleJump = false;
+    state.hasAcornBasket = false;
+    state.hasLantern = false;
+    state.won = false;
+    state.running = false;
+    state.resetProgressOnCreate = false;
+    state.autoStartLevel = true;
     state.pendingLevelPrompt = {
-      title: level.name,
+      title: safeIndex === 0 ? level.introTitle || level.name : level.name,
       copy: level.introCopy || "Collect the coins, grab the key, and reach the door.",
       button: "Start"
     };
@@ -3398,6 +3610,22 @@ hud.startButton.addEventListener("click", () => {
   scene.startRun();
 });
 
+hud.menuNewGame.addEventListener("click", () => {
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  resetGameProgress();
+  scene.requestLevelStart(0, { resetScore: true });
+});
+
+hud.menuSelectLevel.addEventListener("click", () => showLevelSelectPanel());
+hud.menuMusicBox.addEventListener("click", () => showMusicBoxPanel());
+hud.menuCredits.addEventListener("click", () => showCreditsPanel());
+hud.menuPanelClose.addEventListener("click", () => {
+  setMenuPanelVisible(false);
+  if (!hud.mainMenu.hidden) return;
+  setMainMenuVisible(true);
+});
+
 hud.itemPickupOk.addEventListener("click", () => {
   if (!gameAssetsReady) return;
   const scene = game.scene.getScene("PlayScene");
@@ -3407,6 +3635,53 @@ hud.itemPickupOk.addEventListener("click", () => {
 
 hud.cheatClose.addEventListener("click", () => setCheatMenuVisible(false));
 
+function showMenuPanel(title, copy) {
+  hud.menuPanelTitle.textContent = title;
+  hud.menuPanelCopy.textContent = copy;
+  hud.menuPanelContent.replaceChildren();
+  setMainMenuVisible(false);
+  setMenuPanelVisible(true);
+}
+
+function showLevelSelectPanel() {
+  showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.");
+  LEVELS.forEach((level, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = level.name;
+    button.addEventListener("click", () => {
+      const scene = game.scene.getScene("PlayScene");
+      if (!scene.scene.isActive()) return;
+      scene.requestLevelStart(index, { resetScore: true });
+    });
+    hud.menuPanelContent.appendChild(button);
+  });
+}
+
+function showMusicBoxPanel() {
+  showMenuPanel("Music Box", "Play a track on demand. Tracks load only when selected.");
+  MUSIC_TRACKS.forEach((track) => {
+    const row = document.createElement("div");
+    row.className = "music-track";
+    const label = document.createElement("span");
+    label.textContent = track.label;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Play";
+    button.addEventListener("click", () => {
+      const scene = game.scene.getScene("PlayScene");
+      if (!scene.scene.isActive()) return;
+      scene.playMusicBoxTrack(track);
+    });
+    row.append(label, button);
+    hud.menuPanelContent.appendChild(row);
+  });
+}
+
+function showCreditsPanel() {
+  showMenuPanel("Credits", "Development and Art Direction - Kiril");
+}
+
 LEVELS.forEach((level, index) => {
   const button = document.createElement("button");
   button.type = "button";
@@ -3415,30 +3690,18 @@ LEVELS.forEach((level, index) => {
     if (!gameAssetsReady) return;
     const scene = game.scene.getScene("PlayScene");
     if (!scene.scene.isActive()) return;
-    setCheatMenuVisible(false);
-    setStoryIntroVisible(false);
-    state.levelIndex = index;
-    state.score = 0;
-    state.lives = 3;
-    state.hasAcornBasket = false;
-    state.hasLantern = false;
-    state.resetProgressOnCreate = false;
-    state.pendingLevelPrompt = {
-      title: level.name,
-      copy: level.introCopy || "Collect the coins, grab the key, and reach the door.",
-      button: "Start"
-    };
-    if (scene.timerEvent) {
-      scene.timerEvent.remove(false);
-      scene.timerEvent = null;
-    }
-    scene.sound.stopAll();
-    scene.scene.restart();
+    scene.requestLevelStart(index, { resetScore: true });
   });
   hud.cheatLevels.appendChild(button);
 });
 
 window.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !hud.mainMenu.hidden) {
+    event.preventDefault();
+    hud.menuNewGame.click();
+    return;
+  }
+
   if (event.key === "Enter" && !hud.message.hidden && !hud.startButton.disabled) {
     event.preventDefault();
     hud.startButton.click();
@@ -3449,5 +3712,9 @@ window.addEventListener("keydown", (event) => {
   event.preventDefault();
   if (!gameAssetsReady) return;
   if (!hud.storyIntro.hidden) return;
+  if (!hud.mainMenu.hidden) {
+    showLevelSelectPanel();
+    return;
+  }
   setCheatMenuVisible(hud.cheatMenu.hidden);
 });
