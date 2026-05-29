@@ -927,7 +927,27 @@ class PlayScene extends Phaser.Scene {
     setLoadingVisible(false);
     setGameAssetsReady(true);
     setMainMenuVisible(true);
+    this.registerMenuAudioUnlock();
     this.startMenuMusic();
+  }
+
+  registerMenuAudioUnlock() {
+    this.unregisterMenuAudioUnlock();
+    this.handleMenuAudioUnlock = () => {
+      if (this.levelReady || (hud.mainMenu.hidden && hud.menuPanel.hidden)) return;
+      this.startMenuMusic();
+    };
+    window.addEventListener("pointerdown", this.handleMenuAudioUnlock, true);
+    window.addEventListener("keydown", this.handleMenuAudioUnlock, true);
+    window.addEventListener("touchstart", this.handleMenuAudioUnlock, { capture: true, passive: true });
+  }
+
+  unregisterMenuAudioUnlock() {
+    if (!this.handleMenuAudioUnlock) return;
+    window.removeEventListener("pointerdown", this.handleMenuAudioUnlock, true);
+    window.removeEventListener("keydown", this.handleMenuAudioUnlock, true);
+    window.removeEventListener("touchstart", this.handleMenuAudioUnlock, true);
+    this.handleMenuAudioUnlock = null;
   }
 
   createMenuBackdrop() {
@@ -3263,6 +3283,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   unregisterAudioLifecycle() {
+    this.unregisterMenuAudioUnlock();
     if (this.handleSceneShutdown) {
       this.events.off(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown, this);
       this.handleSceneShutdown = null;
