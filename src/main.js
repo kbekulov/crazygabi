@@ -3679,7 +3679,38 @@ function showMusicBoxPanel() {
 }
 
 function showCreditsPanel() {
-  showMenuPanel("Credits", "Development and Art Direction - Kiril");
+  showMenuPanel(
+    "Credits",
+    [
+      "Development & Art Direction:",
+      "Kiril",
+      "",
+      "Gameplay Testers:",
+      "Gabriele",
+      "Stefano",
+      "Rene",
+      "",
+      "Critics of AI:",
+      "Tomas",
+      "",
+      "AI Tools:",
+      "Codex",
+      "ChatGPT",
+      "Gemini",
+      "Suno AI",
+      "",
+      "Inspirations:",
+      "Vilnius",
+      "Klaipeda",
+      "Crazy Sue",
+      "",
+      "Non-AI Tools:",
+      "Adobe Photoshop",
+      "Audacity",
+      "Github",
+      "Visual Studio Code"
+    ].join("\n")
+  );
 }
 
 LEVELS.forEach((level, index) => {
