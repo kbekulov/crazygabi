@@ -2101,7 +2101,6 @@ class PlayScene extends Phaser.Scene {
       this.airJumpsUsed += 1;
       this.usingWingJump = true;
       this.player.setVelocityY(-490);
-      this.cameras.main.flash(80, 104, 220, 255, false);
     }
 
     if (action) this.performAction(time);
