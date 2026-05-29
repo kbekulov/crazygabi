@@ -507,6 +507,7 @@ const hud = {
   equippedName: document.querySelector("#equipped-name"),
   mainMenu: document.querySelector("#main-menu"),
   menuPromo: document.querySelector(".main-menu-promo"),
+  bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
   menuSelectLevel: document.querySelector("#menu-select-level"),
   menuMusicBox: document.querySelector("#menu-music-box"),
@@ -524,6 +525,7 @@ const hud = {
 hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
 pixelateImageElement(hud.menuPromo, 0.32);
+updateBestScore();
 
 function setLoadingVisible(visible) {
   hud.loading.hidden = !visible;
@@ -577,6 +579,40 @@ function updateEquippedHud() {
   hud.equippedIcon.src = itemImage;
   hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
   hud.equippedIcon.hidden = !itemImage;
+}
+
+function getCookieValue(name) {
+  const cookie = document.cookie
+    .split("; ")
+    .find((part) => part.startsWith(`${encodeURIComponent(name)}=`));
+  return cookie ? decodeURIComponent(cookie.split("=").slice(1).join("=")) : "";
+}
+
+function getBestScore() {
+  const value = Number.parseInt(getCookieValue("crazy-gabi-best-score"), 10);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+function setBestScore(score) {
+  const safeScore = Math.max(0, Math.floor(score || 0));
+  document.cookie = [
+    `crazy-gabi-best-score=${encodeURIComponent(String(safeScore))}`,
+    "max-age=31536000",
+    "path=/",
+    "SameSite=Lax"
+  ].join("; ");
+}
+
+function updateBestScore(score = getBestScore()) {
+  hud.bestScore.textContent = String(score).padStart(6, "0");
+}
+
+function recordBestScore(score) {
+  const currentBest = getBestScore();
+  const nextBest = Math.max(currentBest, Math.max(0, Math.floor(score || 0)));
+  if (nextBest !== currentBest) setBestScore(nextBest);
+  updateBestScore(nextBest);
+  return nextBest;
 }
 
 function setCheatMenuVisible(visible) {
@@ -3596,6 +3632,7 @@ class PlayScene extends Phaser.Scene {
 
   showGameOverScreen({ copy } = {}) {
     const finalScore = state.score;
+    recordBestScore(finalScore);
     this.cancelLevelRuntime();
     state.won = true;
     state.running = false;
