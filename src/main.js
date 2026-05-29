@@ -3679,38 +3679,34 @@ function showMusicBoxPanel() {
 }
 
 function showCreditsPanel() {
-  showMenuPanel(
-    "Credits",
-    [
-      "Development & Art Direction:",
-      "Kiril",
-      "",
-      "Gameplay Testers:",
-      "Gabriele",
-      "Stefano",
-      "Rene",
-      "",
-      "Critics of AI:",
-      "Tomas",
-      "",
-      "AI Tools:",
-      "Codex",
-      "ChatGPT",
-      "Gemini",
-      "Suno AI",
-      "",
-      "Inspirations:",
-      "Vilnius",
-      "Klaipeda",
-      "Crazy Sue",
-      "",
-      "Non-AI Tools:",
-      "Adobe Photoshop",
-      "Audacity",
-      "Github",
-      "Visual Studio Code"
-    ].join("\n")
-  );
+  showMenuPanel("Credits", "");
+  const credits = [
+    ["Development & Art Direction", ["Kiril"]],
+    ["Gameplay Testers", ["Gabriele", "Stefano", "Rene"]],
+    ["Critics of AI", ["Tomas"]],
+    ["AI Tools", ["Codex", "ChatGPT", "Gemini", "Suno AI"]],
+    ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue"]],
+    ["Non-AI Tools", ["Adobe Photoshop", "Audacity", "Github", "Visual Studio Code"]]
+  ];
+
+  const list = document.createElement("div");
+  list.className = "credits-list";
+  credits.forEach(([category, names]) => {
+    const section = document.createElement("section");
+    section.className = "credits-section";
+    const heading = document.createElement("h3");
+    heading.textContent = category;
+    const people = document.createElement("div");
+    people.className = "credits-names";
+    names.forEach((name) => {
+      const line = document.createElement("p");
+      line.textContent = name;
+      people.appendChild(line);
+    });
+    section.append(heading, people);
+    list.appendChild(section);
+  });
+  hud.menuPanelContent.appendChild(list);
 }
 
 LEVELS.forEach((level, index) => {

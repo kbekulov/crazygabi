@@ -295,7 +295,7 @@ button:active {
   display: grid;
   justify-items: center;
   gap: 18px;
-  width: min(560px, 92%);
+  width: min(680px, 92%);
   padding: clamp(20px, 4vw, 34px);
   background: rgba(0, 0, 0, 0.72);
   border: 3px solid rgba(244, 220, 176, 0.58);
@@ -315,6 +315,46 @@ button:active {
   display: grid;
   gap: 12px;
   width: min(340px, 100%);
+}
+
+.credits-list {
+  display: grid;
+  gap: 16px;
+  width: min(540px, 100%);
+  max-height: 48vh;
+  overflow-y: auto;
+  padding-right: 6px;
+  text-align: left;
+}
+
+.credits-section {
+  display: grid;
+  gap: 5px;
+}
+
+.credits-section h3 {
+  margin: 0;
+  color: #fff200;
+  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.credits-names {
+  display: grid;
+  gap: 2px;
+  padding-left: 16px;
+}
+
+.credits-names p {
+  width: auto;
+  margin: 0;
+  color: #f4dcb0;
+  font-size: clamp(0.84rem, 1.8vw, 1.05rem);
+  font-weight: 400;
+  line-height: 1.18;
+  text-align: left;
 }
 
 .menu-panel-card h2 {
