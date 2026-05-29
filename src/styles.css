@@ -480,6 +480,7 @@ button:active {
 }
 
 .menu-panel.credits-panel .credits-list {
+  align-items: start;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(18px, 3vw, 34px) clamp(22px, 4vw, 54px);
   width: 100%;
@@ -488,7 +489,8 @@ button:active {
 
 .credits-section {
   display: grid;
-  gap: 5px;
+  align-content: start;
+  gap: 8px;
 }
 
 .credits-section h3 {

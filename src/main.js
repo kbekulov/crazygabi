@@ -3927,7 +3927,7 @@ function showCreditsPanel() {
     ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad", "Jarek", "Kim Loong"]],
     ["Critics of AI", ["Tomas"]],
     ["AI Tools", ["Codex", "ChatGPT", "Gemini", "Suno AI"]],
-    ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue"]],
+    ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue", "Yuki Kajiura"]],
     ["Non-AI Tools", ["Adobe Photoshop", "Audacity", "Github", "Visual Studio Code"]]
   ];
 
