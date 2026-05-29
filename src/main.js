@@ -119,8 +119,8 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-promo";
-const STORY_ASSET_VERSION = "20260529-menu-promo";
+const ASSET_VERSION = "20260529-menu-promo-pixel2";
+const STORY_ASSET_VERSION = "20260529-menu-promo-pixel2";
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -506,6 +506,7 @@ const hud = {
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
   mainMenu: document.querySelector("#main-menu"),
+  menuPromo: document.querySelector(".main-menu-promo"),
   menuNewGame: document.querySelector("#menu-new-game"),
   menuSelectLevel: document.querySelector("#menu-select-level"),
   menuMusicBox: document.querySelector("#menu-music-box"),
@@ -522,6 +523,7 @@ const hud = {
 
 hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
+pixelateImageElement(hud.menuPromo, 0.21);
 
 function setLoadingVisible(visible) {
   hud.loading.hidden = !visible;
@@ -683,8 +685,7 @@ function loadStoryFrame(src) {
   });
 }
 
-function pixelateStoryFrame(frame) {
-  const pixelScale = 0.42;
+function pixelateFrame(frame, pixelScale = 0.42) {
   const lowWidth = Math.max(1, Math.round(frame.naturalWidth * pixelScale));
   const lowHeight = Math.max(1, Math.round(frame.naturalHeight * pixelScale));
   const lowCanvas = document.createElement("canvas");
@@ -701,6 +702,24 @@ function pixelateStoryFrame(frame) {
   highContext.imageSmoothingEnabled = false;
   highContext.drawImage(lowCanvas, 0, 0, highCanvas.width, highCanvas.height);
   return highCanvas.toDataURL("image/png");
+}
+
+function pixelateStoryFrame(frame) {
+  return pixelateFrame(frame, 0.42);
+}
+
+function pixelateImageElement(image, pixelScale = 0.21) {
+  const applyPixelation = () => {
+    if (!image?.naturalWidth || image.dataset.pixelated === "true") return;
+    image.dataset.pixelated = "true";
+    image.src = pixelateFrame(image, pixelScale);
+  };
+
+  if (image?.complete) {
+    applyPixelation();
+  } else if (image) {
+    image.addEventListener("load", applyPixelation, { once: true });
+  }
 }
 
 async function loadStoryFrames(paths = []) {
