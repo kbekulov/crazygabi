@@ -119,9 +119,10 @@ const ENEMY_NAMES = [
   "PEP LVL 1",
   "GCR Upload from Email to Pharos"
 ];
-const ASSET_VERSION = "20260529-menu-promo-vertical";
-const STORY_ASSET_VERSION = "20260529-menu-promo-vertical";
+const ASSET_VERSION = "20260529-level-transition-floor";
+const STORY_ASSET_VERSION = "20260529-level-transition-floor";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
+const MIN_LEVEL_TRANSITION_MS = 1400;
 const MUSIC_TRACKS = [
   { key: "bgm-menu", label: "Menu Theme", src: "./public/assets/sound/bgm_menu.mp3" },
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
@@ -614,6 +615,10 @@ function recordBestScore(score) {
   return nextBest;
 }
 
+function wait(ms = 0) {
+  return new Promise((resolve) => window.setTimeout(resolve, Math.max(0, ms)));
+}
+
 function setCheatMenuVisible(visible) {
   hud.cheatMenu.hidden = !visible;
 }
@@ -863,6 +868,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   async beginLevelLoad(levelIndex = 0) {
+    const transitionStartedAt = performance.now();
     const loadId = (this.levelLoadId || 0) + 1;
     this.levelLoadId = loadId;
     this.levelReady = false;
@@ -879,6 +885,12 @@ class PlayScene extends Phaser.Scene {
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     try {
       await this.loadLevelAssets(this.level, loadId);
+      if (!this.isActiveLevelLoad(loadId)) return;
+      const remainingTransitionMs = MIN_LEVEL_TRANSITION_MS - (performance.now() - transitionStartedAt);
+      if (remainingTransitionMs > 0) {
+        updateLoadingProgress(1, "Preparing level...");
+        await wait(remainingTransitionMs);
+      }
       if (!this.isActiveLevelLoad(loadId)) return;
       this.createLevelRuntime();
     } catch (_error) {
@@ -952,6 +964,11 @@ class PlayScene extends Phaser.Scene {
     this.physics.world.setBounds(0, -PLAY_HEIGHT * 2, this.levelWidth, this.levelHeight + PLAY_HEIGHT * 3);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
+    this.physics.world.pause();
+    this.input.keyboard.enabled = false;
+    this.player.body.enable = false;
+    this.player.body.moves = false;
+    this.player.setVelocity(0, 0);
 
     state.gems = 0;
     state.timeLeft = this.level.timeLimit;
@@ -1919,7 +1936,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   startRun() {
-    if (state.running) return;
+    if (state.running || !this.levelReady || !this.player) return;
     if (this.introInProgress) {
       this.activeIntroToken = (this.activeIntroToken || 0) + 1;
       this.introInProgress = false;
@@ -3826,6 +3843,7 @@ function showLevelSelectPanel() {
     button.type = "button";
     button.textContent = level.name;
     button.addEventListener("click", () => {
+      if (!gameAssetsReady) return;
       const scene = game.scene.getScene("PlayScene");
       if (!scene.scene.isActive()) return;
       scene.requestLevelStart(index, { resetScore: true });
