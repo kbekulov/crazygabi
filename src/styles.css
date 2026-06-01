@@ -107,7 +107,6 @@ button:active {
   left: 18px;
   bottom: 18px;
   gap: 12px;
-  align-items: flex-end;
 }
 
 .hud-score {
