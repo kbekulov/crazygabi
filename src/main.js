@@ -16,7 +16,7 @@ const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
-const WALL_FOREGROUND_TILE_SPAN = 3;
+const WALL_FOREGROUND_TILE_SPAN = 2;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -1867,7 +1867,7 @@ class PlayScene extends Phaser.Scene {
         if (!this.isWallCell(rowIndex + rowOffset, columnIndex + columnOffset)) return false;
       }
     }
-    return (rowIndex * 31 + columnIndex * 17) % 2 === 0;
+    return (rowIndex * 13 + columnIndex * 7) % 4 !== 1;
   }
 
   findWallRegionEdge(rowIndex, columnIndex, rowStep, columnStep) {
