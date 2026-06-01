@@ -237,6 +237,42 @@ const LEVELS = [
     parallax: "parallax-underground",
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
+    wallTiles: {
+      backdrop: [
+        "wall-bottom-a",
+        "wall-bottom-broken",
+        "wall-bottom-drips",
+        "wall-corner-bl",
+        "wall-corner-br",
+        "wall-corner-tl",
+        "wall-corner-tr",
+        "wall-fill-a",
+        "wall-fill-b",
+        "wall-fill-c",
+        "wall-fill-cracked",
+        "wall-fill-dark",
+        "wall-fill-moss",
+        "wall-dark-backfill",
+        "wall-left-a",
+        "wall-left-broken",
+        "wall-pillar-mid-a",
+        "wall-pillar-mid-b",
+        "wall-right-a",
+        "wall-right-broken",
+        "wall-rubble-low-a",
+        "wall-rubble-low-b",
+        "wall-top-a",
+        "wall-top-broken-a",
+        "wall-top-broken-b"
+      ],
+      foreground: [
+        "underground-wall-1",
+        "underground-wall-2",
+        "underground-wall-3",
+        "underground-wall-4",
+        "underground-wall-5"
+      ]
+    },
     introCopy: "Follow the strange cat through the lower city, collect coins, claim the acorn basket, and fight your way to the brass key and exit."
   }
 ];
@@ -1120,6 +1156,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
+      if (level.wallTiles) this.queueWallTileAssets(level, image);
       image("coin", "./public/assets/environment/golden-coin.png");
       image("door-key", "./public/assets/environment/door_key.png");
       image("exit-door", "./public/assets/environment/exit_door.png");
@@ -1208,6 +1245,24 @@ class PlayScene extends Phaser.Scene {
 
   getSoundtrackPath(key = "bgm-lv1") {
     return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
+  }
+
+  queueWallTileAssets(level, image) {
+    const base = "./public/assets/environment/level3_wall_tiles";
+    (level.wallTiles.backdrop || []).forEach((key) => {
+      image(key, `${base}/backdrop_tiles/${key.replaceAll("-", "_")}.png`);
+    });
+    (level.wallTiles.foreground || []).forEach((key) => image(key, `${base}/foreground_tiles/${this.getWallTileFile(key)}.png`));
+  }
+
+  getWallTileFile(key) {
+    return {
+      "underground-wall-1": "underground_wall_1",
+      "underground-wall-2": "underground_wall_2",
+      "underground-wall-3": "underground_wall_3",
+      "underground-wall-4": "underground_wall_4",
+      "underground-wall-5": "underground_wall_5"
+    }[key] || key.replaceAll("-", "_");
   }
 
   getSfxPath(key) {
@@ -1682,9 +1737,7 @@ class PlayScene extends Phaser.Scene {
           const block = this.platforms.create(x, y, "tile-ground");
           block.setVisible(false);
           if (cell === "w") {
-            const wall = this.add.rectangle(x, y, TILE + 1, TILE + 1, 0x020202, 1);
-            wall.setDepth(0);
-            this.platformVisuals.add(wall);
+            this.createWallTileVisual(x, y, rowIndex, columnIndex);
           }
         }
         if (cell === "g" || cell === "c") {
@@ -1771,6 +1824,73 @@ class PlayScene extends Phaser.Scene {
     });
     this.createPlatformVisuals();
     this.createMovingPlatforms();
+  }
+
+  createWallTileVisual(x, y, rowIndex, columnIndex) {
+    const wallTiles = this.level.wallTiles;
+    if (!wallTiles) {
+      const wall = this.add.rectangle(x, y, TILE + 1, TILE + 1, 0x020202, 1);
+      wall.setDepth(0);
+      this.platformVisuals.add(wall);
+      return;
+    }
+
+    const backdropKey = this.pickWallBackdropTile(rowIndex, columnIndex);
+    const backdrop = this.add.image(x, y, backdropKey);
+    backdrop.setDisplaySize(TILE + 1, TILE + 1);
+    backdrop.setDepth(0);
+    backdrop.setAlpha(0.94);
+    this.platformVisuals.add(backdrop);
+
+    if ((rowIndex * 31 + columnIndex * 17) % 5 !== 0) return;
+    const foregroundKey = this.pickWallTile(wallTiles.foreground, rowIndex + 7, columnIndex + 11);
+    const foreground = this.add.image(x, y, foregroundKey);
+    foreground.setDisplaySize(TILE + 2, TILE + 2);
+    foreground.setDepth(0.08);
+    foreground.setAlpha(0.72);
+    this.platformVisuals.add(foreground);
+  }
+
+  pickWallTile(keys = [], rowIndex = 0, columnIndex = 0) {
+    if (!keys.length) return "tile-ground";
+    const index = Math.abs((rowIndex * 47 + columnIndex * 23 + rowIndex * columnIndex * 7) % keys.length);
+    return keys[index];
+  }
+
+  pickWallBackdropTile(rowIndex, columnIndex) {
+    const hasUp = this.isWallCell(rowIndex - 1, columnIndex);
+    const hasDown = this.isWallCell(rowIndex + 1, columnIndex);
+    const hasLeft = this.isWallCell(rowIndex, columnIndex - 1);
+    const hasRight = this.isWallCell(rowIndex, columnIndex + 1);
+    if (!hasUp && !hasLeft) return "wall-corner-tl";
+    if (!hasUp && !hasRight) return "wall-corner-tr";
+    if (!hasDown && !hasLeft) return "wall-corner-bl";
+    if (!hasDown && !hasRight) return "wall-corner-br";
+    if (!hasUp) return this.pickWallTile(["wall-top-a", "wall-top-broken-a", "wall-top-broken-b"], rowIndex, columnIndex);
+    if (!hasDown) return this.pickWallTile(["wall-bottom-a", "wall-bottom-broken", "wall-bottom-drips"], rowIndex, columnIndex);
+    if (!hasLeft) return this.pickWallTile(["wall-left-a", "wall-left-broken"], rowIndex, columnIndex);
+    if (!hasRight) return this.pickWallTile(["wall-right-a", "wall-right-broken"], rowIndex, columnIndex);
+    return this.pickWallTile(
+      [
+        "wall-fill-a",
+        "wall-fill-b",
+        "wall-fill-c",
+        "wall-fill-cracked",
+        "wall-fill-dark",
+        "wall-fill-moss",
+        "wall-dark-backfill",
+        "wall-pillar-mid-a",
+        "wall-pillar-mid-b",
+        "wall-rubble-low-a",
+        "wall-rubble-low-b"
+      ],
+      rowIndex,
+      columnIndex
+    );
+  }
+
+  isWallCell(rowIndex, columnIndex) {
+    return this.levelRows[rowIndex]?.[columnIndex] === "w";
   }
 
   createPlatformVisuals() {
