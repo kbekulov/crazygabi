@@ -16,6 +16,7 @@ const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
+const WALL_FOREGROUND_TILE_SPAN = 3;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -1842,13 +1843,40 @@ class PlayScene extends Phaser.Scene {
     backdrop.setAlpha(0.94);
     this.platformVisuals.add(backdrop);
 
-    if ((rowIndex * 31 + columnIndex * 17) % 5 !== 0) return;
+    if (!this.shouldPlaceWallForeground(rowIndex, columnIndex)) return;
     const foregroundKey = this.pickWallTile(wallTiles.foreground, rowIndex + 7, columnIndex + 11);
-    const foreground = this.add.image(x, y, foregroundKey);
-    foreground.setDisplaySize(TILE + 2, TILE + 2);
+    const foreground = this.add.image(
+      x + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
+      y + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
+      foregroundKey
+    );
+    foreground.setDisplaySize(TILE * WALL_FOREGROUND_TILE_SPAN + 2, TILE * WALL_FOREGROUND_TILE_SPAN + 2);
     foreground.setDepth(0.08);
-    foreground.setAlpha(0.72);
+    foreground.setAlpha(0.82);
     this.platformVisuals.add(foreground);
+  }
+
+  shouldPlaceWallForeground(rowIndex, columnIndex) {
+    const regionTop = this.findWallRegionEdge(rowIndex, columnIndex, -1, 0);
+    const regionLeft = this.findWallRegionEdge(rowIndex, columnIndex, 0, -1);
+    if ((rowIndex - regionTop) % WALL_FOREGROUND_TILE_SPAN !== 0) return false;
+    if ((columnIndex - regionLeft) % WALL_FOREGROUND_TILE_SPAN !== 0) return false;
+    for (let rowOffset = 0; rowOffset < WALL_FOREGROUND_TILE_SPAN; rowOffset += 1) {
+      for (let columnOffset = 0; columnOffset < WALL_FOREGROUND_TILE_SPAN; columnOffset += 1) {
+        if (!this.isWallCell(rowIndex + rowOffset, columnIndex + columnOffset)) return false;
+      }
+    }
+    return (rowIndex * 31 + columnIndex * 17) % 2 === 0;
+  }
+
+  findWallRegionEdge(rowIndex, columnIndex, rowStep, columnStep) {
+    let row = rowIndex;
+    let column = columnIndex;
+    while (this.isWallCell(row + rowStep, column + columnStep)) {
+      row += rowStep;
+      column += columnStep;
+    }
+    return rowStep ? row : column;
   }
 
   pickWallTile(keys = [], rowIndex = 0, columnIndex = 0) {
