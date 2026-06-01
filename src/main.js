@@ -1840,6 +1840,7 @@ class PlayScene extends Phaser.Scene {
     const backdrop = this.add.image(x, y, backdropKey);
     backdrop.setDisplaySize(TILE + 1, TILE + 1);
     backdrop.setDepth(0);
+    backdrop.setTint(0x808080);
     backdrop.setAlpha(0.94);
     this.platformVisuals.add(backdrop);
 
