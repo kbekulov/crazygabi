@@ -1004,6 +1004,7 @@ class PlayScene extends Phaser.Scene {
 
     state.totalGems = 0;
     this.createAnimations();
+    this.createMutedWallBackdropTextures();
     this.buildLevel();
     this.createPlayer();
     this.createLanternOverlay();
@@ -1836,11 +1837,10 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const backdropKey = this.pickWallBackdropTile(rowIndex, columnIndex);
+    const backdropKey = this.getMutedWallBackdropKey(this.pickWallBackdropTile(rowIndex, columnIndex));
     const backdrop = this.add.image(x, y, backdropKey);
     backdrop.setDisplaySize(TILE + 1, TILE + 1);
     backdrop.setDepth(0);
-    backdrop.setTint(0x808080);
     backdrop.setAlpha(0.94);
     this.platformVisuals.add(backdrop);
 
@@ -1878,6 +1878,43 @@ class PlayScene extends Phaser.Scene {
       column += columnStep;
     }
     return rowStep ? row : column;
+  }
+
+  createMutedWallBackdropTextures() {
+    const wallTiles = this.level.wallTiles;
+    if (!wallTiles) return;
+    (wallTiles.backdrop || []).forEach((key) => {
+      const mutedKey = this.getMutedWallBackdropKey(key);
+      if (this.textures.exists(mutedKey) || !this.textures.exists(key)) return;
+      const canvas = this.createMutedWallBackdropCanvas(this.textures.get(key).getSourceImage());
+      if (canvas) this.textures.addCanvas(mutedKey, canvas);
+    });
+  }
+
+  getMutedWallBackdropKey(key) {
+    return `${key}-muted`;
+  }
+
+  createMutedWallBackdropCanvas(sourceImage) {
+    const width = sourceImage?.naturalWidth || sourceImage?.width || 0;
+    const height = sourceImage?.naturalHeight || sourceImage?.height || 0;
+    if (!width || !height) return null;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    context.drawImage(sourceImage, 0, 0);
+    const imageData = context.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    for (let index = 0; index < data.length; index += 4) {
+      const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+      data[index] = gray * 0.5;
+      data[index + 1] = gray * 0.5;
+      data[index + 2] = gray * 0.5;
+    }
+    context.putImageData(imageData, 0, 0);
+    return canvas;
   }
 
   pickWallTile(keys = [], rowIndex = 0, columnIndex = 0) {
