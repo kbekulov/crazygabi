@@ -1741,6 +1741,8 @@ class PlayScene extends Phaser.Scene {
           acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
           acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
           acorn.setVelocity(0, 0);
+          acorn.setVisible(false);
+          acorn.body.enable = false;
         }
         if (cell === "k") {
           const key = this.keys.create(x, y, "door-key");
@@ -3327,14 +3329,17 @@ class PlayScene extends Phaser.Scene {
     const quakeDropWindowOpen = !quake || (time >= this.quakeDropStartsAt && time <= this.quakeDropUntil);
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
-      if (quake && acorn.body.velocity.y === 0 && time > this.quakeDropUntil) return;
-      if (quakeDropWindowOpen && time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
+      const isWaiting = !acorn.body.enable || acorn.body.velocity.y === 0;
+      if (quake && isWaiting && time > this.quakeDropUntil) return;
+      if (quakeDropWindowOpen && time >= acorn.getData("nextDrop") && isWaiting) {
+        acorn.body.enable = true;
+        acorn.setVisible(true);
         acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
         acorn.setVelocity(0, acorn.getData("pace"));
         acorn.setAngularVelocity(Phaser.Math.Between(-140, 140));
       }
 
-      if (acorn.y > this.cameras.main.scrollY + PLAY_HEIGHT + 90) {
+      if (acorn.body.enable && acorn.y > this.cameras.main.scrollY + PLAY_HEIGHT + 90) {
         this.resetAcorn(acorn);
       }
     });
@@ -3747,6 +3752,8 @@ class PlayScene extends Phaser.Scene {
     acorn.setAngularVelocity(0);
     acorn.setAngle(0);
     acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
+    acorn.setVisible(false);
+    acorn.body.enable = false;
     acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
     acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
   }
