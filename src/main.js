@@ -4110,8 +4110,27 @@ function returnToMainMenu() {
   scene.scene.restart();
 }
 
-function showMenuPanel(title, copy) {
+function requestSelectedLevel(levelIndex) {
+  if (!gameAssetsReady) return;
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene.scene.isActive()) return;
+  scene.requestLevelStart(levelIndex, { resetScore: true });
+}
+
+function getLevelIndexFromKeyboardEvent(event) {
+  if (event.altKey || event.ctrlKey || event.metaKey) return null;
+  if (!/^[1-9]$/.test(event.key)) return null;
+  const levelIndex = Number(event.key) - 1;
+  return levelIndex >= 0 && levelIndex < LEVELS.length ? levelIndex : null;
+}
+
+function isLevelSelectionVisible() {
+  return !hud.cheatMenu.hidden || (!hud.menuPanel.hidden && hud.menuPanel.dataset.panel === "level-select");
+}
+
+function showMenuPanel(title, copy, panel = "") {
   hud.menuPanel.classList.remove("credits-panel");
+  hud.menuPanel.dataset.panel = panel;
   hud.menuPanelTitle.textContent = title;
   hud.menuPanelCopy.textContent = copy;
   hud.menuPanelContent.replaceChildren();
@@ -4120,17 +4139,12 @@ function showMenuPanel(title, copy) {
 }
 
 function showLevelSelectPanel() {
-  showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.");
+  showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.", "level-select");
   LEVELS.forEach((level, index) => {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = level.name;
-    button.addEventListener("click", () => {
-      if (!gameAssetsReady) return;
-      const scene = game.scene.getScene("PlayScene");
-      if (!scene.scene.isActive()) return;
-      scene.requestLevelStart(index, { resetScore: true });
-    });
+    button.addEventListener("click", () => requestSelectedLevel(index));
     hud.menuPanelContent.appendChild(button);
   });
 }
@@ -4191,12 +4205,7 @@ LEVELS.forEach((level, index) => {
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = level.name;
-  button.addEventListener("click", () => {
-    if (!gameAssetsReady) return;
-    const scene = game.scene.getScene("PlayScene");
-    if (!scene.scene.isActive()) return;
-    scene.requestLevelStart(index, { resetScore: true });
-  });
+  button.addEventListener("click", () => requestSelectedLevel(index));
   hud.cheatLevels.appendChild(button);
 });
 
@@ -4217,6 +4226,15 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     hud.startButton.click();
     return;
+  }
+
+  if (isLevelSelectionVisible()) {
+    const levelIndex = getLevelIndexFromKeyboardEvent(event);
+    if (levelIndex !== null) {
+      event.preventDefault();
+      requestSelectedLevel(levelIndex);
+      return;
+    }
   }
 
   if (event.key !== "0" && event.key !== "Escape") return;
