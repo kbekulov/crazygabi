@@ -1004,7 +1004,6 @@ class PlayScene extends Phaser.Scene {
 
     state.totalGems = 0;
     this.createAnimations();
-    this.createPixelatedWallTileTextures();
     this.buildLevel();
     this.createPlayer();
     this.createLanternOverlay();
@@ -1837,7 +1836,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const backdropKey = this.getPixelatedWallTileKey(this.pickWallBackdropTile(rowIndex, columnIndex));
+    const backdropKey = this.pickWallBackdropTile(rowIndex, columnIndex);
     const backdrop = this.add.image(x, y, backdropKey);
     backdrop.setDisplaySize(TILE + 1, TILE + 1);
     backdrop.setDepth(0);
@@ -1845,7 +1844,7 @@ class PlayScene extends Phaser.Scene {
     this.platformVisuals.add(backdrop);
 
     if (!this.shouldPlaceWallForeground(rowIndex, columnIndex)) return;
-    const foregroundKey = this.getPixelatedWallTileKey(this.pickWallTile(wallTiles.foreground, rowIndex + 7, columnIndex + 11));
+    const foregroundKey = this.pickWallTile(wallTiles.foreground, rowIndex + 7, columnIndex + 11);
     const foreground = this.add.image(
       x + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
       y + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
@@ -1878,44 +1877,6 @@ class PlayScene extends Phaser.Scene {
       column += columnStep;
     }
     return rowStep ? row : column;
-  }
-
-  createPixelatedWallTileTextures() {
-    const wallTiles = this.level.wallTiles;
-    if (!wallTiles) return;
-    [...(wallTiles.backdrop || []), ...(wallTiles.foreground || [])].forEach((key) => {
-      const pixelKey = this.getPixelatedWallTileKey(key);
-      if (this.textures.exists(pixelKey) || !this.textures.exists(key)) return;
-      const sourceImage = this.textures.get(key).getSourceImage();
-      const pixelScale = key.startsWith("underground-wall") ? 0.34 : 0.32;
-      const canvas = this.createPixelatedCanvas(sourceImage, pixelScale);
-      if (canvas) this.textures.addCanvas(pixelKey, canvas);
-    });
-  }
-
-  getPixelatedWallTileKey(key) {
-    return `${key}-pixel`;
-  }
-
-  createPixelatedCanvas(sourceImage, pixelScale = 0.34) {
-    const width = sourceImage?.naturalWidth || sourceImage?.width || 0;
-    const height = sourceImage?.naturalHeight || sourceImage?.height || 0;
-    if (!width || !height) return null;
-
-    const lowCanvas = document.createElement("canvas");
-    const highCanvas = document.createElement("canvas");
-    lowCanvas.width = Math.max(1, Math.round(width * pixelScale));
-    lowCanvas.height = Math.max(1, Math.round(height * pixelScale));
-    highCanvas.width = width;
-    highCanvas.height = height;
-
-    const lowContext = lowCanvas.getContext("2d");
-    const highContext = highCanvas.getContext("2d");
-    lowContext.imageSmoothingEnabled = true;
-    lowContext.drawImage(sourceImage, 0, 0, lowCanvas.width, lowCanvas.height);
-    highContext.imageSmoothingEnabled = false;
-    highContext.drawImage(lowCanvas, 0, 0, width, height);
-    return highCanvas;
   }
 
   pickWallTile(keys = [], rowIndex = 0, columnIndex = 0) {
