@@ -17,6 +17,7 @@ const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
 const WALL_FOREGROUND_TILE_SPAN = 2;
+const LIGHT_RAY_DEPTH = PLATFORM_DEPTH - 0.35;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -115,11 +116,26 @@ const PICKUP_SPEECH_LINES = {
   ]
 };
 const ENEMY_NAMES = [
-  "PEP LVL 2",
-  "ECDD Manual Case Handling",
+  "KYC WUDB Comment and Management Tool",
+  "GSI Document Upload from Email to Pharos",
+  "KYC ECDD Manual Case Creation",
+  "KYC ECDD Case Handling",
   "GSI BI First Attempt",
-  "PEP LVL 1",
-  "GCR Upload from Email to Pharos"
+  "GSI Bank Inquiry Notification",
+  "GSI Sanctions Outreach",
+  "GAI Agent Referral Case Creation",
+  "KYC PEP LVL 1",
+  "KYC PEP LVL 2",
+  "KYC Promo Code Generation for Approved Consumers",
+  "GSI Hourly Report",
+  "GCR Escalated via iWatch and Email",
+  "GCR Interdictions and RTRA Case Handling",
+  "DRT Comment in CTM",
+  "DRT High Band KYC Case Creation",
+  "FIU International Subpoena Referrals",
+  "GSI Second Attempt Email Notification",
+  "OCM Tiers Case Escalation",
+  "KYC WUDB Onboarding Assistant"
 ];
 const ASSET_VERSION = "20260529-level-transition-floor";
 const STORY_ASSET_VERSION = "20260529-level-transition-floor";
@@ -236,6 +252,13 @@ const LEVELS = [
     catNpc: true,
     doorYOffset: -30,
     parallax: "parallax-underground",
+    lightRays: [
+      { x: 190, topWidth: 62, bottomWidth: 190, height: 450, lean: 150, alpha: 0.23 },
+      { x: 285, topWidth: 44, bottomWidth: 132, height: 350, lean: 98, alpha: 0.16 },
+      { x: 405, topWidth: 76, bottomWidth: 220, height: 500, lean: 166, alpha: 0.2 },
+      { x: 545, topWidth: 36, bottomWidth: 116, height: 390, lean: 110, alpha: 0.13 },
+      { x: 720, topWidth: 50, bottomWidth: 155, height: 420, lean: 130, alpha: 0.14 }
+    ],
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
     wallTiles: {
@@ -969,6 +992,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyDirection = new Map();
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
+    this.enemyNameIndex = 0;
     this.lastActionAt = -Infinity;
     this.lastPickupSpeechAt = -Infinity;
     this.heartDropsCreated = 0;
@@ -982,6 +1006,7 @@ class PlayScene extends Phaser.Scene {
     this.createAnimations();
     this.planWallForegroundTiles();
     this.buildLevel();
+    this.createLightRays();
     this.createPlayer();
     this.createLanternOverlay();
     this.createOldLadyNpc();
@@ -1407,6 +1432,97 @@ class PlayScene extends Phaser.Scene {
       sprite.setScale(scale);
       sprite.setScrollFactor(0);
       sprite.setDepth(-10 + index);
+    });
+  }
+
+  createLightRays() {
+    this.lightRayLayer = null;
+    this.lightRayDust = null;
+    if (!this.level.lightRays?.length) return;
+
+    const layer = this.add.graphics();
+    layer.setDepth(LIGHT_RAY_DEPTH);
+    layer.setBlendMode(Phaser.BlendModes.ADD);
+    layer.setAlpha(0.88);
+
+    this.level.lightRays.forEach((ray, index) => {
+      this.drawLightRay(layer, ray, index);
+    });
+
+    const dust = this.add.graphics();
+    dust.setDepth(LIGHT_RAY_DEPTH + 0.02);
+    dust.setBlendMode(Phaser.BlendModes.ADD);
+    this.drawLightDust(dust);
+
+    this.lightRayLayer = layer;
+    this.lightRayDust = dust;
+  }
+
+  drawLightRay(layer, ray, index = 0) {
+    const topY = ray.y ?? -48;
+    const bottomY = topY + (ray.height ?? 430);
+    const topWidth = ray.topWidth ?? 48;
+    const bottomWidth = ray.bottomWidth ?? 150;
+    const lean = ray.lean ?? 120;
+    const alpha = ray.alpha ?? 0.16;
+    const topX = ray.x ?? 0;
+    const bottomX = topX + lean;
+    const color = ray.color ?? 0xfff0c6;
+
+    const layers = [
+      { width: 1.42, alpha: 0.18 },
+      { width: 1, alpha: 0.36 },
+      { width: 0.48, alpha: 0.72 }
+    ];
+
+    layers.forEach(({ width, alpha: layerAlpha }) => {
+      layer.fillStyle(color, alpha * layerAlpha);
+      layer.fillPoints(
+        [
+          new Phaser.Geom.Point(topX - (topWidth * width) / 2, topY),
+          new Phaser.Geom.Point(topX + (topWidth * width) / 2, topY),
+          new Phaser.Geom.Point(bottomX + (bottomWidth * width) / 2, bottomY),
+          new Phaser.Geom.Point(bottomX - (bottomWidth * width) / 2, bottomY)
+        ],
+        true
+      );
+    });
+
+    for (let streak = 0; streak < 4; streak += 1) {
+      const t = (streak + 1) / 5;
+      const drift = (this.wallPlacementNoise(index + 13, streak + 19) - 0.5) * topWidth * 0.7;
+      const startX = Phaser.Math.Linear(topX, bottomX, t * 0.18) + drift;
+      const endX = startX + lean * 0.68;
+      const startY = topY + 8 + streak * 18;
+      const endY = bottomY - 40 - streak * 12;
+      layer.lineStyle(2, color, alpha * 0.28);
+      layer.beginPath();
+      layer.moveTo(startX, startY);
+      layer.lineTo(endX, endY);
+      layer.strokePath();
+    }
+  }
+
+  drawLightDust(dust) {
+    const rays = this.level.lightRays || [];
+    rays.forEach((ray, rayIndex) => {
+      const topY = ray.y ?? -48;
+      const bottomY = topY + (ray.height ?? 430);
+      const topX = ray.x ?? 0;
+      const bottomX = topX + (ray.lean ?? 120);
+      const bottomWidth = ray.bottomWidth ?? 150;
+
+      for (let i = 0; i < 18; i += 1) {
+        const seedA = this.wallPlacementNoise(rayIndex + i * 3, i + 41);
+        const seedB = this.wallPlacementNoise(rayIndex + i * 5, i + 73);
+        const seedC = this.wallPlacementNoise(rayIndex + i * 7, i + 97);
+        const t = 0.15 + seedA * 0.74;
+        const x = Phaser.Math.Linear(topX, bottomX, t) + (seedB - 0.5) * bottomWidth * 0.58;
+        const y = Phaser.Math.Linear(topY, bottomY, t);
+        const radius = 0.5 + seedC * 1.3;
+        dust.fillStyle(0xfff1c9, 0.08 + seedC * 0.09);
+        dust.fillCircle(x, y, radius);
+      }
     });
   }
 
@@ -2235,6 +2351,7 @@ class PlayScene extends Phaser.Scene {
     this.updateAcorns(time);
     this.updateThrownItems();
     this.updateParallax();
+    this.updateLightRays(time);
     this.updateWater(delta);
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
@@ -3427,7 +3544,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   attachEnemyLabel(enemy) {
-    const name = this.enemyNames.shift() || "GABI OPS BOT";
+    const name = this.enemyNames.shift() || ENEMY_NAMES[this.enemyNameIndex % ENEMY_NAMES.length];
+    this.enemyNameIndex += 1;
     const label = this.add.text(enemy.x, enemy.y - 38, name, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "8px",
@@ -3558,6 +3676,15 @@ class PlayScene extends Phaser.Scene {
     this.parallaxLayers.forEach(({ sprite, speed }) => {
       sprite.tilePositionX = scrollX * speed;
     });
+  }
+
+  updateLightRays(time = 0) {
+    if (!this.lightRayLayer) return;
+    const pulse = 0.82 + Math.sin(time * 0.0011) * 0.06 + Math.sin(time * 0.00037) * 0.04;
+    this.lightRayLayer.setAlpha(Phaser.Math.Clamp(pulse, 0.72, 0.94));
+    if (this.lightRayDust) {
+      this.lightRayDust.setAlpha(0.72 + Math.sin(time * 0.0008) * 0.12);
+    }
   }
 
   startTimer() {
