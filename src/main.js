@@ -990,6 +990,7 @@ class PlayScene extends Phaser.Scene {
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.platformRuns = [];
+    this.wallForegroundAnchors = new Set();
     this.enemyDirection = new Map();
     this.enemyLabels = new Map();
     this.enemyNames = [...ENEMY_NAMES];
@@ -1005,6 +1006,7 @@ class PlayScene extends Phaser.Scene {
     state.totalGems = 0;
     this.createAnimations();
     this.createMutedWallBackdropTextures();
+    this.planWallForegroundTiles();
     this.buildLevel();
     this.createPlayer();
     this.createLanternOverlay();
@@ -1846,28 +1848,72 @@ class PlayScene extends Phaser.Scene {
 
     if (!this.shouldPlaceWallForeground(rowIndex, columnIndex)) return;
     const foregroundKey = this.pickWallTile(wallTiles.foreground, rowIndex + 7, columnIndex + 11);
+    const foregroundOffset = this.getWallForegroundOffset(rowIndex, columnIndex);
     const foreground = this.add.image(
-      x + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
-      y + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2),
+      x + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2) + foregroundOffset.x,
+      y + TILE * ((WALL_FOREGROUND_TILE_SPAN - 1) / 2) + foregroundOffset.y,
       foregroundKey
     );
     foreground.setDisplaySize(TILE * WALL_FOREGROUND_TILE_SPAN + 2, TILE * WALL_FOREGROUND_TILE_SPAN + 2);
     foreground.setDepth(0.08);
     foreground.setAlpha(0.82);
+    foreground.setFlipX(this.shouldFlipWallForeground(rowIndex, columnIndex));
     this.platformVisuals.add(foreground);
   }
 
   shouldPlaceWallForeground(rowIndex, columnIndex) {
-    const regionTop = this.findWallRegionEdge(rowIndex, columnIndex, -1, 0);
-    const regionLeft = this.findWallRegionEdge(rowIndex, columnIndex, 0, -1);
-    if ((rowIndex - regionTop) % WALL_FOREGROUND_TILE_SPAN !== 0) return false;
-    if ((columnIndex - regionLeft) % WALL_FOREGROUND_TILE_SPAN !== 0) return false;
+    return this.wallForegroundAnchors?.has(`${rowIndex}:${columnIndex}`);
+  }
+
+  planWallForegroundTiles() {
+    this.wallForegroundAnchors = new Set();
+    if (!this.level.wallTiles) return;
+    const candidates = [];
+    this.levelRows.forEach((row, rowIndex) => {
+      [...row].forEach((cell, columnIndex) => {
+        if (cell !== "w" || !this.canPlaceWallForegroundAt(rowIndex, columnIndex)) return;
+        candidates.push({ rowIndex, columnIndex, score: this.wallPlacementNoise(rowIndex, columnIndex) });
+      });
+    });
+
+    candidates.sort((a, b) => a.score - b.score);
+    const selected = [];
+    candidates.forEach((candidate) => {
+      if (candidate.score > 0.58) return;
+      const tooClose = selected.some((placed) => {
+        const rowDistance = Math.abs(placed.rowIndex - candidate.rowIndex);
+        const columnDistance = Math.abs(placed.columnIndex - candidate.columnIndex);
+        return rowDistance < 4 && columnDistance < 4;
+      });
+      if (tooClose) return;
+      selected.push(candidate);
+      this.wallForegroundAnchors.add(`${candidate.rowIndex}:${candidate.columnIndex}`);
+    });
+  }
+
+  canPlaceWallForegroundAt(rowIndex, columnIndex) {
     for (let rowOffset = 0; rowOffset < WALL_FOREGROUND_TILE_SPAN; rowOffset += 1) {
       for (let columnOffset = 0; columnOffset < WALL_FOREGROUND_TILE_SPAN; columnOffset += 1) {
         if (!this.isWallCell(rowIndex + rowOffset, columnIndex + columnOffset)) return false;
       }
     }
-    return (rowIndex * 13 + columnIndex * 7) % 4 !== 1;
+    return true;
+  }
+
+  getWallForegroundOffset(rowIndex, columnIndex) {
+    return {
+      x: (this.wallPlacementNoise(rowIndex + 19, columnIndex + 31) - 0.5) * TILE * 0.5,
+      y: (this.wallPlacementNoise(rowIndex + 43, columnIndex + 7) - 0.5) * TILE * 0.36
+    };
+  }
+
+  shouldFlipWallForeground(rowIndex, columnIndex) {
+    return this.wallPlacementNoise(rowIndex + 71, columnIndex + 23) > 0.52;
+  }
+
+  wallPlacementNoise(rowIndex, columnIndex) {
+    const value = Math.sin(rowIndex * 12.9898 + columnIndex * 78.233 + rowIndex * columnIndex * 0.137) * 43758.5453;
+    return value - Math.floor(value);
   }
 
   findWallRegionEdge(rowIndex, columnIndex, rowStep, columnStep) {
