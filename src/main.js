@@ -17,7 +17,8 @@ const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
 const WALL_FOREGROUND_TILE_SPAN = 2;
-const LIGHT_RAY_DEPTH = PLATFORM_DEPTH - 0.35;
+const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
+const LIGHT_RAY_TEXTURE_PADDING = 220;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -137,8 +138,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260529-level-transition-floor";
-const STORY_ASSET_VERSION = "20260529-level-transition-floor";
+const ASSET_VERSION = "20260602-soft-light-rays";
+const STORY_ASSET_VERSION = "20260602-soft-light-rays";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -253,11 +254,11 @@ const LEVELS = [
     doorYOffset: -30,
     parallax: "parallax-underground",
     lightRays: [
-      { x: 190, topWidth: 62, bottomWidth: 190, height: 450, lean: 150, alpha: 0.23 },
-      { x: 285, topWidth: 44, bottomWidth: 132, height: 350, lean: 98, alpha: 0.16 },
-      { x: 405, topWidth: 76, bottomWidth: 220, height: 500, lean: 166, alpha: 0.2 },
-      { x: 545, topWidth: 36, bottomWidth: 116, height: 390, lean: 110, alpha: 0.13 },
-      { x: 720, topWidth: 50, bottomWidth: 155, height: 420, lean: 130, alpha: 0.14 }
+      { x: 70, y: -190, topWidth: 34, bottomWidth: 150, height: 760, lean: 190, alpha: 0.34 },
+      { x: 146, y: -185, topWidth: 42, bottomWidth: 178, height: 720, lean: 200, alpha: 0.24 },
+      { x: 265, y: -175, topWidth: 58, bottomWidth: 212, height: 690, lean: 174, alpha: 0.2 },
+      { x: 410, y: -180, topWidth: 38, bottomWidth: 154, height: 670, lean: 136, alpha: 0.15 },
+      { x: 675, y: -170, topWidth: 34, bottomWidth: 128, height: 610, lean: 104, alpha: 0.1 }
     ],
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
@@ -1437,93 +1438,168 @@ class PlayScene extends Phaser.Scene {
 
   createLightRays() {
     this.lightRayLayer = null;
-    this.lightRayDust = null;
     if (!this.level.lightRays?.length) return;
 
-    const layer = this.add.graphics();
+    const textureKey = `level-light-rays-${state.levelIndex}`;
+    if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
+    this.textures.addCanvas(textureKey, this.createLightRayCanvas());
+
+    const layer = this.add.image(-LIGHT_RAY_TEXTURE_PADDING, -LIGHT_RAY_TEXTURE_PADDING, textureKey);
+    layer.setOrigin(0, 0);
+    layer.setScrollFactor(0);
     layer.setDepth(LIGHT_RAY_DEPTH);
-    layer.setBlendMode(Phaser.BlendModes.ADD);
-    layer.setAlpha(0.88);
-
-    this.level.lightRays.forEach((ray, index) => {
-      this.drawLightRay(layer, ray, index);
-    });
-
-    const dust = this.add.graphics();
-    dust.setDepth(LIGHT_RAY_DEPTH + 0.02);
-    dust.setBlendMode(Phaser.BlendModes.ADD);
-    this.drawLightDust(dust);
-
+    layer.setAlpha(this.level.lightRayAlpha ?? 0.78);
+    layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
     this.lightRayLayer = layer;
-    this.lightRayDust = dust;
   }
 
-  drawLightRay(layer, ray, index = 0) {
-    const topY = ray.y ?? -48;
-    const bottomY = topY + (ray.height ?? 430);
-    const topWidth = ray.topWidth ?? 48;
-    const bottomWidth = ray.bottomWidth ?? 150;
-    const lean = ray.lean ?? 120;
-    const alpha = ray.alpha ?? 0.16;
-    const topX = ray.x ?? 0;
-    const bottomX = topX + lean;
-    const color = ray.color ?? 0xfff0c6;
+  createLightRayCanvas() {
+    const padding = LIGHT_RAY_TEXTURE_PADDING;
+    const width = VIEW_WIDTH + padding * 2;
+    const height = PLAY_HEIGHT + padding * 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
 
-    const layers = [
-      { width: 1.42, alpha: 0.18 },
-      { width: 1, alpha: 0.36 },
-      { width: 0.48, alpha: 0.72 }
-    ];
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, width, height);
+    context.globalCompositeOperation = "lighter";
 
-    layers.forEach(({ width, alpha: layerAlpha }) => {
-      layer.fillStyle(color, alpha * layerAlpha);
-      layer.fillPoints(
-        [
-          new Phaser.Geom.Point(topX - (topWidth * width) / 2, topY),
-          new Phaser.Geom.Point(topX + (topWidth * width) / 2, topY),
-          new Phaser.Geom.Point(bottomX + (bottomWidth * width) / 2, bottomY),
-          new Phaser.Geom.Point(bottomX - (bottomWidth * width) / 2, bottomY)
-        ],
-        true
-      );
+    this.paintRoofGlow(context, width, padding);
+    this.level.lightRays.forEach((ray, index) => {
+      this.paintSoftLightRay(context, width, height, padding, ray, index);
     });
-
-    for (let streak = 0; streak < 4; streak += 1) {
-      const t = (streak + 1) / 5;
-      const drift = (this.wallPlacementNoise(index + 13, streak + 19) - 0.5) * topWidth * 0.7;
-      const startX = Phaser.Math.Linear(topX, bottomX, t * 0.18) + drift;
-      const endX = startX + lean * 0.68;
-      const startY = topY + 8 + streak * 18;
-      const endY = bottomY - 40 - streak * 12;
-      layer.lineStyle(2, color, alpha * 0.28);
-      layer.beginPath();
-      layer.moveTo(startX, startY);
-      layer.lineTo(endX, endY);
-      layer.strokePath();
-    }
+    this.paintLightDust(context, padding);
+    return canvas;
   }
 
-  drawLightDust(dust) {
-    const rays = this.level.lightRays || [];
-    rays.forEach((ray, rayIndex) => {
-      const topY = ray.y ?? -48;
-      const bottomY = topY + (ray.height ?? 430);
-      const topX = ray.x ?? 0;
-      const bottomX = topX + (ray.lean ?? 120);
-      const bottomWidth = ray.bottomWidth ?? 150;
+  paintRoofGlow(context, width, padding) {
+    const glow = context.createLinearGradient(0, 0, 0, padding + 220);
+    glow.addColorStop(0, "rgba(255, 238, 192, 0.16)");
+    glow.addColorStop(0.34, "rgba(255, 238, 192, 0.08)");
+    glow.addColorStop(1, "rgba(255, 238, 192, 0)");
+    context.fillStyle = glow;
+    context.fillRect(0, 0, width, padding + 220);
+  }
 
-      for (let i = 0; i < 18; i += 1) {
+  paintSoftLightRay(context, width, height, padding, ray, index = 0) {
+    [
+      { widthScale: 1.7, alphaScale: 0.22, blur: 38 },
+      { widthScale: 1.05, alphaScale: 0.42, blur: 22 },
+      { widthScale: 0.46, alphaScale: 0.48, blur: 10 }
+    ].forEach((pass) => {
+      this.paintLightRayPass(context, width, height, padding, ray, pass);
+    });
+    this.paintLightStreaks(context, width, height, padding, ray, index);
+  }
+
+  paintLightRayPass(context, width, height, padding, ray, pass) {
+    const mask = document.createElement("canvas");
+    mask.width = width;
+    mask.height = height;
+    const maskContext = mask.getContext("2d");
+    const geometry = this.getLightRayGeometry(ray, padding, pass.widthScale);
+    const alpha = (ray.alpha ?? 0.16) * pass.alphaScale;
+    const gradient = maskContext.createLinearGradient(0, geometry.topY, 0, geometry.bottomY);
+    gradient.addColorStop(0, "rgba(255, 239, 198, 0)");
+    gradient.addColorStop(0.12, this.lightRayRgba(alpha * 0.65));
+    gradient.addColorStop(0.32, this.lightRayRgba(alpha));
+    gradient.addColorStop(0.62, this.lightRayRgba(alpha * 0.42));
+    gradient.addColorStop(0.88, this.lightRayRgba(alpha * 0.08));
+    gradient.addColorStop(1, "rgba(255, 239, 198, 0)");
+
+    maskContext.fillStyle = gradient;
+    maskContext.beginPath();
+    maskContext.moveTo(geometry.topLeft, geometry.topY);
+    maskContext.lineTo(geometry.topRight, geometry.topY);
+    maskContext.lineTo(geometry.bottomRight, geometry.bottomY);
+    maskContext.lineTo(geometry.bottomLeft, geometry.bottomY);
+    maskContext.closePath();
+    maskContext.fill();
+
+    context.save();
+    context.filter = `blur(${pass.blur}px)`;
+    context.drawImage(mask, 0, 0);
+    context.restore();
+  }
+
+  paintLightStreaks(context, width, height, padding, ray, index = 0) {
+    const streaks = document.createElement("canvas");
+    streaks.width = width;
+    streaks.height = height;
+    const streakContext = streaks.getContext("2d");
+    const geometry = this.getLightRayGeometry(ray, padding, 0.7);
+
+    for (let streak = 0; streak < 3; streak += 1) {
+      const t = 0.18 + streak * 0.19;
+      const drift = (this.wallPlacementNoise(index + 17, streak + 31) - 0.5) * (ray.topWidth ?? 42) * 0.7;
+      const startX = Phaser.Math.Linear(geometry.topX, geometry.bottomX, t * 0.2) + drift;
+      const endX = startX + (ray.lean ?? 140) * (0.68 + streak * 0.06);
+      const startY = geometry.topY + 26 + streak * 24;
+      const endY = geometry.bottomY - 130 - streak * 26;
+      const lineGradient = streakContext.createLinearGradient(startX, startY, endX, endY);
+      const alpha = (ray.alpha ?? 0.16) * (0.12 + streak * 0.025);
+      lineGradient.addColorStop(0, "rgba(255, 247, 220, 0)");
+      lineGradient.addColorStop(0.28, this.lightRayRgba(alpha));
+      lineGradient.addColorStop(0.72, this.lightRayRgba(alpha * 0.42));
+      lineGradient.addColorStop(1, "rgba(255, 247, 220, 0)");
+
+      streakContext.strokeStyle = lineGradient;
+      streakContext.lineWidth = 3 + streak * 1.4;
+      streakContext.lineCap = "round";
+      streakContext.beginPath();
+      streakContext.moveTo(startX, startY);
+      streakContext.lineTo(endX, endY);
+      streakContext.stroke();
+    }
+
+    context.save();
+    context.filter = "blur(5px)";
+    context.drawImage(streaks, 0, 0);
+    context.restore();
+  }
+
+  paintLightDust(context, padding) {
+    (this.level.lightRays || []).forEach((ray, rayIndex) => {
+      const geometry = this.getLightRayGeometry(ray, padding, 0.9);
+      for (let i = 0; i < 24; i += 1) {
         const seedA = this.wallPlacementNoise(rayIndex + i * 3, i + 41);
         const seedB = this.wallPlacementNoise(rayIndex + i * 5, i + 73);
         const seedC = this.wallPlacementNoise(rayIndex + i * 7, i + 97);
-        const t = 0.15 + seedA * 0.74;
-        const x = Phaser.Math.Linear(topX, bottomX, t) + (seedB - 0.5) * bottomWidth * 0.58;
-        const y = Phaser.Math.Linear(topY, bottomY, t);
-        const radius = 0.5 + seedC * 1.3;
-        dust.fillStyle(0xfff1c9, 0.08 + seedC * 0.09);
-        dust.fillCircle(x, y, radius);
+        const t = 0.14 + seedA * 0.68;
+        const spread = Phaser.Math.Linear(ray.topWidth ?? 42, ray.bottomWidth ?? 150, t);
+        const x = Phaser.Math.Linear(geometry.topX, geometry.bottomX, t) + (seedB - 0.5) * spread * 0.72;
+        const y = Phaser.Math.Linear(geometry.topY, geometry.bottomY, t);
+        const radius = 0.45 + seedC * 1.15;
+        context.fillStyle = this.lightRayRgba(0.025 + seedC * 0.04);
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
       }
     });
+  }
+
+  getLightRayGeometry(ray, padding, widthScale = 1) {
+    const topY = padding + (ray.y ?? -180);
+    const bottomY = topY + (ray.height ?? 680);
+    const topWidth = (ray.topWidth ?? 42) * widthScale;
+    const bottomWidth = (ray.bottomWidth ?? 160) * widthScale;
+    const topX = padding + (ray.x ?? 0);
+    const bottomX = topX + (ray.lean ?? 140);
+    return {
+      topX,
+      bottomX,
+      topY,
+      bottomY,
+      topLeft: topX - topWidth / 2,
+      topRight: topX + topWidth / 2,
+      bottomLeft: bottomX - bottomWidth / 2,
+      bottomRight: bottomX + bottomWidth / 2
+    };
+  }
+
+  lightRayRgba(alpha) {
+    return `rgba(255, 239, 198, ${Phaser.Math.Clamp(alpha, 0, 1)})`;
   }
 
   createWaterBelow() {
@@ -3680,11 +3756,9 @@ class PlayScene extends Phaser.Scene {
 
   updateLightRays(time = 0) {
     if (!this.lightRayLayer) return;
-    const pulse = 0.82 + Math.sin(time * 0.0011) * 0.06 + Math.sin(time * 0.00037) * 0.04;
-    this.lightRayLayer.setAlpha(Phaser.Math.Clamp(pulse, 0.72, 0.94));
-    if (this.lightRayDust) {
-      this.lightRayDust.setAlpha(0.72 + Math.sin(time * 0.0008) * 0.12);
-    }
+    const baseAlpha = this.level.lightRayAlpha ?? 0.78;
+    const pulse = baseAlpha + Math.sin(time * 0.0008) * 0.025 + Math.sin(time * 0.00031) * 0.018;
+    this.lightRayLayer.setAlpha(Phaser.Math.Clamp(pulse, baseAlpha - 0.06, baseAlpha + 0.04));
   }
 
   startTimer() {
