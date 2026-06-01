@@ -1858,6 +1858,8 @@ class PlayScene extends Phaser.Scene {
     foreground.setDepth(0.08);
     foreground.setAlpha(0.82);
     foreground.setFlipX(this.shouldFlipWallForeground(rowIndex, columnIndex));
+    foreground.setFlipY(this.shouldFlipWallForeground(rowIndex + 37, columnIndex + 5));
+    foreground.setAngle(this.getWallForegroundAngle(rowIndex, columnIndex));
     this.platformVisuals.add(foreground);
   }
 
@@ -1887,7 +1889,24 @@ class PlayScene extends Phaser.Scene {
       });
       if (tooClose) return;
       selected.push(candidate);
-      this.wallForegroundAnchors.add(`${candidate.rowIndex}:${candidate.columnIndex}`);
+      this.addWallForegroundCluster(candidate.rowIndex, candidate.columnIndex);
+    });
+  }
+
+  addWallForegroundCluster(rowIndex, columnIndex) {
+    this.wallForegroundAnchors.add(`${rowIndex}:${columnIndex}`);
+    [
+      [0, WALL_FOREGROUND_TILE_SPAN, 0.82],
+      [WALL_FOREGROUND_TILE_SPAN, 0, 0.72],
+      [WALL_FOREGROUND_TILE_SPAN, WALL_FOREGROUND_TILE_SPAN, 0.52],
+      [-WALL_FOREGROUND_TILE_SPAN, 0, 0.36],
+      [0, -WALL_FOREGROUND_TILE_SPAN, 0.3]
+    ].forEach(([rowOffset, columnOffset, threshold]) => {
+      const nextRow = rowIndex + rowOffset;
+      const nextColumn = columnIndex + columnOffset;
+      if (!this.canPlaceWallForegroundAt(nextRow, nextColumn)) return;
+      if (this.wallPlacementNoise(nextRow + 101, nextColumn + 53) > threshold) return;
+      this.wallForegroundAnchors.add(`${nextRow}:${nextColumn}`);
     });
   }
 
@@ -1909,6 +1928,14 @@ class PlayScene extends Phaser.Scene {
 
   shouldFlipWallForeground(rowIndex, columnIndex) {
     return this.wallPlacementNoise(rowIndex + 71, columnIndex + 23) > 0.52;
+  }
+
+  getWallForegroundAngle(rowIndex, columnIndex) {
+    const value = this.wallPlacementNoise(rowIndex + 17, columnIndex + 89);
+    if (value > 0.86) return 180;
+    if (value > 0.72) return 90;
+    if (value < 0.14) return -90;
+    return 0;
   }
 
   wallPlacementNoise(rowIndex, columnIndex) {
