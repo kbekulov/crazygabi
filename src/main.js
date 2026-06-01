@@ -39,6 +39,7 @@ const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
 const BRICK_SCALE = 0.27;
 const FALLING_OBJECT_SPAWN_OFFSET = 140;
+const EARTHQUAKE_SFX_KEY = "earthquake-1";
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -212,6 +213,17 @@ const LEVELS = [
     acornDelay: [260, 1100],
     acornPace: [245, 370],
     fallingHazard: "falling-brick",
+    environmentalQuake: {
+      sfx: EARTHQUAKE_SFX_KEY,
+      minDelay: 9000,
+      maxDelay: 15000,
+      shakeDuration: 760,
+      shakeIntensity: 0.007,
+      brickDelay: 320,
+      burstDuration: 2600,
+      brickDropDelay: [80, 420],
+      brickPace: [330, 470]
+    },
     enemySprite: "robot-ghost-lv3",
     actionAbility: "throw-acorn",
     storyFrames: [
@@ -949,6 +961,9 @@ class PlayScene extends Phaser.Scene {
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.nextQuakeAt = Infinity;
+    this.quakeDropStartsAt = 0;
+    this.quakeDropUntil = 0;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -1120,6 +1135,7 @@ class PlayScene extends Phaser.Scene {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
       });
       audio(level.soundtrack || "bgm-lv1", this.getSoundtrackPath(level.soundtrack));
+      if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
@@ -1192,6 +1208,12 @@ class PlayScene extends Phaser.Scene {
 
   getSoundtrackPath(key = "bgm-lv1") {
     return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
+  }
+
+  getSfxPath(key) {
+    return {
+      [EARTHQUAKE_SFX_KEY]: "./public/assets/sound/sfx/earthquake_1.mp3"
+    }[key];
   }
 
   prepareLevelIntro() {
@@ -1977,6 +1999,9 @@ class PlayScene extends Phaser.Scene {
     this.catSpeechBubble = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.nextQuakeAt = Infinity;
+    this.quakeDropStartsAt = 0;
+    this.quakeDropUntil = 0;
     this.releaseBasketPromptControlLock();
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
@@ -2026,6 +2051,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setAllowGravity(true);
     state.running = true;
     this.startTimer();
+    this.scheduleNextQuake(this.time.now + 1800);
     this.showGabiSpeech(this.level.startSpeech);
     this.showOldLadySpeech();
   }
@@ -2044,6 +2070,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.isItemPromptActive()) this.moveEnemies();
     this.updateEnemyLabels();
     this.updateMovingPlatforms();
+    this.updateEnvironmentalQuake(time);
     this.updateAcorns(time);
     this.updateThrownItems();
     this.updateParallax();
@@ -3264,11 +3291,44 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  scheduleNextQuake(fromTime = this.time.now) {
+    const quake = this.level.environmentalQuake;
+    if (!quake) {
+      this.nextQuakeAt = Infinity;
+      this.quakeDropStartsAt = 0;
+      this.quakeDropUntil = 0;
+      return;
+    }
+
+    this.nextQuakeAt = fromTime + Phaser.Math.Between(quake.minDelay, quake.maxDelay);
+  }
+
+  updateEnvironmentalQuake(time) {
+    const quake = this.level.environmentalQuake;
+    if (!quake || !state.running || state.won || this.isItemPromptActive()) return;
+    if (time < this.nextQuakeAt) return;
+
+    this.nextQuakeAt = Infinity;
+    this.quakeDropStartsAt = time + quake.brickDelay;
+    this.quakeDropUntil = this.quakeDropStartsAt + quake.burstDuration;
+    this.cameras.main.shake(quake.shakeDuration, quake.shakeIntensity);
+    this.playLevelSfx(quake.sfx, 0.68);
+    this.acorns.children.iterate((acorn) => {
+      if (!acorn || !acorn.active) return;
+      acorn.setData("nextDrop", this.quakeDropStartsAt + Phaser.Math.Between(...quake.brickDropDelay));
+      acorn.setData("pace", Phaser.Math.Between(...quake.brickPace));
+    });
+    this.scheduleNextQuake(this.quakeDropUntil);
+  }
+
   updateAcorns(time) {
     if (this.basketPromptActive || this.lanternPromptActive) return;
+    const quake = this.level.environmentalQuake;
+    const quakeDropWindowOpen = !quake || (time >= this.quakeDropStartsAt && time <= this.quakeDropUntil);
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active || !state.running || state.won) return;
-      if (time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
+      if (quake && acorn.body.velocity.y === 0 && time > this.quakeDropUntil) return;
+      if (quakeDropWindowOpen && time >= acorn.getData("nextDrop") && acorn.body.velocity.y === 0) {
         acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
         acorn.setVelocity(0, acorn.getData("pace"));
         acorn.setAngularVelocity(Phaser.Math.Between(-140, 140));
@@ -3365,6 +3425,16 @@ class PlayScene extends Phaser.Scene {
       this.bgm.play();
     } catch (_error) {
       this.bgm = null;
+    }
+  }
+
+  playLevelSfx(key, volume = 0.6) {
+    if (!key || !this.cache.audio.exists(key)) return;
+    try {
+      this.resumeAudioContext();
+      this.sound.play(key, { volume });
+    } catch (_error) {
+      // Ignore SFX failures so environmental events never interrupt gameplay.
     }
   }
 
