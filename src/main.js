@@ -239,33 +239,8 @@ const LEVELS = [
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
     wallTiles: {
-      backdrop: [
-        "wall-bottom-a",
-        "wall-bottom-broken",
-        "wall-bottom-drips",
-        "wall-corner-bl",
-        "wall-corner-br",
-        "wall-corner-tl",
-        "wall-corner-tr",
-        "wall-fill-a",
-        "wall-fill-b",
-        "wall-fill-c",
-        "wall-fill-cracked",
-        "wall-fill-dark",
-        "wall-fill-moss",
-        "wall-dark-backfill",
-        "wall-left-a",
-        "wall-left-broken",
-        "wall-pillar-mid-a",
-        "wall-pillar-mid-b",
-        "wall-right-a",
-        "wall-right-broken",
-        "wall-rubble-low-a",
-        "wall-rubble-low-b",
-        "wall-top-a",
-        "wall-top-broken-a",
-        "wall-top-broken-b"
-      ],
+      backdropSheet: "level3-wall-backdrop",
+      backdropFrames: 30,
       foreground: [
         "underground-wall-1",
         "underground-wall-2",
@@ -1005,7 +980,6 @@ class PlayScene extends Phaser.Scene {
 
     state.totalGems = 0;
     this.createAnimations();
-    this.createMutedWallBackdropTextures();
     this.planWallForegroundTiles();
     this.buildLevel();
     this.createPlayer();
@@ -1160,7 +1134,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
-      if (level.wallTiles) this.queueWallTileAssets(level, image);
+      if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
       image("door-key", "./public/assets/environment/door_key.png");
       image("exit-door", "./public/assets/environment/exit_door.png");
@@ -1251,11 +1225,11 @@ class PlayScene extends Phaser.Scene {
     return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
   }
 
-  queueWallTileAssets(level, image) {
+  queueWallTileAssets(level, image, sheet) {
     const base = "./public/assets/environment/level3_wall_tiles";
-    (level.wallTiles.backdrop || []).forEach((key) => {
-      image(key, `${base}/backdrop_tiles/${key.replaceAll("-", "_")}.png`);
-    });
+    if (level.wallTiles.backdropSheet) {
+      sheet(level.wallTiles.backdropSheet, `${base}/backdrop_tiles/x64_tile.png`, 64, 64);
+    }
     (level.wallTiles.foreground || []).forEach((key) => image(key, `${base}/foreground_tiles/${this.getWallTileFile(key)}.png`));
   }
 
@@ -1839,8 +1813,8 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    const backdropKey = this.getMutedWallBackdropKey(this.pickWallBackdropTile(rowIndex, columnIndex));
-    const backdrop = this.add.image(x, y, backdropKey);
+    const backdropFrame = this.pickWallBackdropFrame(rowIndex, columnIndex);
+    const backdrop = this.add.image(x, y, wallTiles.backdropSheet, backdropFrame);
     backdrop.setDisplaySize(TILE + 1, TILE + 1);
     backdrop.setDepth(0);
     backdrop.setAlpha(0.94);
@@ -1943,79 +1917,15 @@ class PlayScene extends Phaser.Scene {
     return rowStep ? row : column;
   }
 
-  createMutedWallBackdropTextures() {
-    const wallTiles = this.level.wallTiles;
-    if (!wallTiles) return;
-    (wallTiles.backdrop || []).forEach((key) => {
-      const mutedKey = this.getMutedWallBackdropKey(key);
-      if (this.textures.exists(mutedKey) || !this.textures.exists(key)) return;
-      const canvas = this.createMutedWallBackdropCanvas(this.textures.get(key).getSourceImage());
-      if (canvas) this.textures.addCanvas(mutedKey, canvas);
-    });
-  }
-
-  getMutedWallBackdropKey(key) {
-    return `${key}-muted`;
-  }
-
-  createMutedWallBackdropCanvas(sourceImage) {
-    const width = sourceImage?.naturalWidth || sourceImage?.width || 0;
-    const height = sourceImage?.naturalHeight || sourceImage?.height || 0;
-    if (!width || !height) return null;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext("2d");
-    context.drawImage(sourceImage, 0, 0);
-    const imageData = context.getImageData(0, 0, width, height);
-    const data = imageData.data;
-    for (let index = 0; index < data.length; index += 4) {
-      const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
-      data[index] = gray * 0.5;
-      data[index + 1] = gray * 0.5;
-      data[index + 2] = gray * 0.5;
-    }
-    context.putImageData(imageData, 0, 0);
-    return canvas;
-  }
-
   pickWallTile(keys = [], rowIndex = 0, columnIndex = 0) {
     if (!keys.length) return "tile-ground";
     const index = Math.abs((rowIndex * 47 + columnIndex * 23 + rowIndex * columnIndex * 7) % keys.length);
     return keys[index];
   }
 
-  pickWallBackdropTile(rowIndex, columnIndex) {
-    const hasUp = this.isWallCell(rowIndex - 1, columnIndex);
-    const hasDown = this.isWallCell(rowIndex + 1, columnIndex);
-    const hasLeft = this.isWallCell(rowIndex, columnIndex - 1);
-    const hasRight = this.isWallCell(rowIndex, columnIndex + 1);
-    if (!hasUp && !hasLeft) return "wall-corner-tl";
-    if (!hasUp && !hasRight) return "wall-corner-tr";
-    if (!hasDown && !hasLeft) return "wall-corner-bl";
-    if (!hasDown && !hasRight) return "wall-corner-br";
-    if (!hasUp) return this.pickWallTile(["wall-top-a", "wall-top-broken-a", "wall-top-broken-b"], rowIndex, columnIndex);
-    if (!hasDown) return this.pickWallTile(["wall-bottom-a", "wall-bottom-broken", "wall-bottom-drips"], rowIndex, columnIndex);
-    if (!hasLeft) return this.pickWallTile(["wall-left-a", "wall-left-broken"], rowIndex, columnIndex);
-    if (!hasRight) return this.pickWallTile(["wall-right-a", "wall-right-broken"], rowIndex, columnIndex);
-    return this.pickWallTile(
-      [
-        "wall-fill-a",
-        "wall-fill-b",
-        "wall-fill-c",
-        "wall-fill-cracked",
-        "wall-fill-dark",
-        "wall-fill-moss",
-        "wall-dark-backfill",
-        "wall-pillar-mid-a",
-        "wall-pillar-mid-b",
-        "wall-rubble-low-a",
-        "wall-rubble-low-b"
-      ],
-      rowIndex,
-      columnIndex
-    );
+  pickWallBackdropFrame(rowIndex, columnIndex) {
+    const frameCount = this.level.wallTiles?.backdropFrames || 1;
+    return Math.floor(this.wallPlacementNoise(rowIndex + 11, columnIndex + 29) * frameCount) % frameCount;
   }
 
   isWallCell(rowIndex, columnIndex) {
