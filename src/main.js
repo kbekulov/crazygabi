@@ -44,6 +44,8 @@ const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
 const MOBILE_SWIPE_DEADZONE = 18;
 const MOBILE_JUMP_SWIPE_THRESHOLD = 34;
+const MOBILE_JUMP_REPEAT_THRESHOLD = 42;
+const MOBILE_JUMP_MIN_INTERVAL = 180;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -145,8 +147,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-original-death-spawn";
-const STORY_ASSET_VERSION = "20260602-original-death-spawn";
+const ASSET_VERSION = "20260602-mobile-touch-actions";
+const STORY_ASSET_VERSION = "20260602-mobile-touch-actions";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -2711,8 +2713,12 @@ class PlayScene extends Phaser.Scene {
       pointerId: null,
       startX: 0,
       startY: 0,
+      jumpAnchorX: 0,
+      jumpAnchorY: 0,
+      lastJumpQueuedAt: -Infinity,
       direction: 0,
-      jumpQueued: false
+      jumpQueued: false,
+      actionQueued: false
     };
     if (!this.mobileGesture.enabled) return;
     this.input.addPointer(2);
@@ -2725,10 +2731,17 @@ class PlayScene extends Phaser.Scene {
 
   handleMobilePointerDown(pointer) {
     if (!this.mobileGesture?.enabled) return;
+    if (this.mobileGesture.active && this.mobileGesture.pointerId !== pointer.id) {
+      this.mobileGesture.actionQueued = true;
+      return;
+    }
     this.mobileGesture.active = true;
     this.mobileGesture.pointerId = pointer.id;
     this.mobileGesture.startX = pointer.x;
     this.mobileGesture.startY = pointer.y;
+    this.mobileGesture.jumpAnchorX = pointer.x;
+    this.mobileGesture.jumpAnchorY = pointer.y;
+    this.mobileGesture.lastJumpQueuedAt = -Infinity;
     this.mobileGesture.direction = 0;
     this.mobileGesture.jumpQueued = false;
   }
@@ -2752,8 +2765,22 @@ class PlayScene extends Phaser.Scene {
     if (Math.abs(dx) > MOBILE_SWIPE_DEADZONE && Math.abs(dx) > Math.abs(dy) * 0.55) {
       this.mobileGesture.direction = dx < 0 ? -1 : 1;
     }
-    if (!this.mobileGesture.jumpQueued && dy < -MOBILE_JUMP_SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx) * 0.62) {
+    const jumpDx = pointer.x - this.mobileGesture.jumpAnchorX;
+    const jumpDy = pointer.y - this.mobileGesture.jumpAnchorY;
+    const jumpThreshold = this.mobileGesture.lastJumpQueuedAt === -Infinity
+      ? MOBILE_JUMP_SWIPE_THRESHOLD
+      : MOBILE_JUMP_REPEAT_THRESHOLD;
+    const canQueueJump = performance.now() - this.mobileGesture.lastJumpQueuedAt >= MOBILE_JUMP_MIN_INTERVAL;
+    if (
+      !this.mobileGesture.jumpQueued &&
+      canQueueJump &&
+      jumpDy < -jumpThreshold &&
+      Math.abs(jumpDy) > Math.abs(jumpDx) * 0.62
+    ) {
       this.mobileGesture.jumpQueued = true;
+      this.mobileGesture.lastJumpQueuedAt = performance.now();
+      this.mobileGesture.jumpAnchorX = pointer.x;
+      this.mobileGesture.jumpAnchorY = pointer.y;
     }
   }
 
@@ -2775,12 +2802,20 @@ class PlayScene extends Phaser.Scene {
     return true;
   }
 
+  consumeMobileAction() {
+    if (!this.mobileGesture?.enabled || !this.mobileGesture.actionQueued) return false;
+    this.mobileGesture.actionQueued = false;
+    return true;
+  }
+
   resetMobileGestureInput() {
     if (!this.mobileGesture) return;
     this.mobileGesture.active = false;
     this.mobileGesture.pointerId = null;
     this.mobileGesture.direction = 0;
     this.mobileGesture.jumpQueued = false;
+    this.mobileGesture.lastJumpQueuedAt = -Infinity;
+    this.mobileGesture.actionQueued = false;
   }
 
   setupPhysics() {
@@ -2929,7 +2964,7 @@ class PlayScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
       Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW) ||
       this.consumeMobileJump();
-    const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action);
+    const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
     const onFloor = this.player.body.blocked.down;
 
     if (this.lanternPromptActive) {
