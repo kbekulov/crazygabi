@@ -145,8 +145,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-mobile-gestures";
-const STORY_ASSET_VERSION = "20260602-mobile-gestures";
+const ASSET_VERSION = "20260602-level2-spawn-fix";
+const STORY_ASSET_VERSION = "20260602-level2-spawn-fix";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -194,9 +194,6 @@ const LEVELS = [
     rows: createLevelTwo(),
     timeLimit: 340,
     soundtrack: "bgm-lv2",
-    acornDelay: [900, 1600],
-    acornPace: [210, 300],
-    fallingHazard: "falling-brick",
     enemySprite: "robot-shadow-ghost-lv2",
     actionAbility: null,
     storyFrames: [
@@ -451,11 +448,7 @@ function createLevelTwo() {
     [9, 212, "m"],
     [12, 232, "m"],
     [15, 250, "m"],
-    [12, 268, "m"],
-    [1, 160, "a"],
-    [1, 190, "a"],
-    [1, 224, "a"],
-    [1, 258, "a"]
+    [12, 268, "m"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1327,7 +1320,9 @@ class PlayScene extends Phaser.Scene {
       image("exit-door", "./public/assets/environment/exit_door.png");
       image("life-heart", "./public/assets/environment/life-heart.png");
       image("jump-item", "./public/assets/environment/double_jump_item.png");
-      image(level.fallingHazard || "falling-acorn", this.getHazardPath(level.fallingHazard));
+      if (level.fallingHazard || this.levelHasCell(level, "a")) {
+        image(level.fallingHazard || "falling-acorn", this.getHazardPath(level.fallingHazard));
+      }
       if (level.actionAbility === "throw-acorn" || this.levelHasCell(level, "b")) {
         image("acorn-basket", "./public/assets/environment/acorn_basket.png");
         image("falling-acorn", "./public/assets/environment/falling_acorn.png");
@@ -3096,7 +3091,9 @@ class PlayScene extends Phaser.Scene {
 
   resetPlayerToSpawn() {
     this.resetPlayerMotion();
+    this.player.body.reset(this.spawnPoint.x, this.spawnPoint.y);
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.player.body.updateFromGameObject?.();
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
   }
