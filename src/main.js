@@ -143,8 +143,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-platform-shadows";
-const STORY_ASSET_VERSION = "20260602-platform-shadows";
+const ASSET_VERSION = "20260602-platform-riders";
+const STORY_ASSET_VERSION = "20260602-platform-riders";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -3157,12 +3157,40 @@ class PlayScene extends Phaser.Scene {
   }
 
   carryMovingPlatformRiders() {
+    const playerIsSteering = this.isPlayerSteeringHorizontally();
     [this.player, this.cat].forEach((sprite) => {
       const platform = this.getRidingMovingPlatform(sprite);
-      if (!platform || Math.abs(platform.deltaX || 0) < 0.01) return;
-      sprite.x += platform.deltaX;
-      sprite.body?.updateFromGameObject?.();
+      if (!platform) {
+        sprite?.setData?.("movingPlatformSupport", null);
+        return;
+      }
+
+      const support = sprite.getData("movingPlatformSupport");
+      const shouldCorrect = support?.platform === platform && (sprite !== this.player || !playerIsSteering);
+      if (shouldCorrect) {
+        const expectedX = platform.body.x + support.offsetX;
+        const correctionLimit = Math.max(0.35, Math.abs(platform.deltaX || 0));
+        const correction = Phaser.Math.Clamp(expectedX - sprite.x, -correctionLimit, correctionLimit);
+        if (Math.abs(correction) > 0.01) {
+          sprite.x += correction;
+          sprite.body?.updateFromGameObject?.();
+        }
+      }
+
+      sprite.setData("movingPlatformSupport", {
+        platform,
+        offsetX: sprite.x - platform.body.x
+      });
     });
+  }
+
+  isPlayerSteeringHorizontally() {
+    return Boolean(
+      this.cursors?.left?.isDown ||
+      this.cursors?.right?.isDown ||
+      this.keysInput?.left?.isDown ||
+      this.keysInput?.right?.isDown
+    );
   }
 
   getRidingMovingPlatform(sprite) {
