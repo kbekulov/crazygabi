@@ -138,8 +138,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-soft-light-rays";
-const STORY_ASSET_VERSION = "20260602-soft-light-rays";
+const ASSET_VERSION = "20260602-crossbrowser-light-rays";
+const STORY_ASSET_VERSION = "20260602-crossbrowser-light-rays";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -1467,7 +1467,7 @@ class PlayScene extends Phaser.Scene {
 
     this.paintRoofGlow(context, width, padding);
     this.level.lightRays.forEach((ray, index) => {
-      this.paintSoftLightRay(context, width, height, padding, ray, index);
+      this.paintSoftLightRay(context, padding, ray, index);
     });
     this.paintLightDust(context, padding);
     return canvas;
@@ -1482,52 +1482,50 @@ class PlayScene extends Phaser.Scene {
     context.fillRect(0, 0, width, padding + 220);
   }
 
-  paintSoftLightRay(context, width, height, padding, ray, index = 0) {
+  paintSoftLightRay(context, padding, ray, index = 0) {
     [
-      { widthScale: 1.7, alphaScale: 0.22, blur: 38 },
-      { widthScale: 1.05, alphaScale: 0.42, blur: 22 },
-      { widthScale: 0.46, alphaScale: 0.48, blur: 10 }
+      { widthScale: 2.15, alphaScale: 0.2, edgePower: 2.1, segments: 92 },
+      { widthScale: 1.28, alphaScale: 0.48, edgePower: 2.55, segments: 86 },
+      { widthScale: 0.58, alphaScale: 0.38, edgePower: 3.1, segments: 68 }
     ].forEach((pass) => {
-      this.paintLightRayPass(context, width, height, padding, ray, pass);
+      this.paintFeatheredLightRay(context, padding, ray, pass);
     });
-    this.paintLightStreaks(context, width, height, padding, ray, index);
+    this.paintLightStreaks(context, padding, ray, index);
   }
 
-  paintLightRayPass(context, width, height, padding, ray, pass) {
-    const mask = document.createElement("canvas");
-    mask.width = width;
-    mask.height = height;
-    const maskContext = mask.getContext("2d");
+  paintFeatheredLightRay(context, padding, ray, pass) {
     const geometry = this.getLightRayGeometry(ray, padding, pass.widthScale);
-    const alpha = (ray.alpha ?? 0.16) * pass.alphaScale;
-    const gradient = maskContext.createLinearGradient(0, geometry.topY, 0, geometry.bottomY);
-    gradient.addColorStop(0, "rgba(255, 239, 198, 0)");
-    gradient.addColorStop(0.12, this.lightRayRgba(alpha * 0.65));
-    gradient.addColorStop(0.32, this.lightRayRgba(alpha));
-    gradient.addColorStop(0.62, this.lightRayRgba(alpha * 0.42));
-    gradient.addColorStop(0.88, this.lightRayRgba(alpha * 0.08));
-    gradient.addColorStop(1, "rgba(255, 239, 198, 0)");
+    const segments = pass.segments ?? 80;
+    for (let segment = 0; segment < segments; segment += 1) {
+      const u1 = -1 + (segment / segments) * 2;
+      const u2 = -1 + ((segment + 1) / segments) * 2;
+      const midpoint = (u1 + u2) / 2;
+      const edgeFade = Math.max(0, 1 - Math.abs(midpoint));
+      const gaussianFade = Math.exp(-Math.pow(Math.abs(midpoint) / 0.62, 2));
+      const lateralFade = Math.pow(edgeFade, pass.edgePower ?? 2.4) * 0.45 + gaussianFade * 0.55;
+      const alpha = (ray.alpha ?? 0.16) * (pass.alphaScale ?? 0.4) * lateralFade;
+      if (alpha < 0.001) continue;
 
-    maskContext.fillStyle = gradient;
-    maskContext.beginPath();
-    maskContext.moveTo(geometry.topLeft, geometry.topY);
-    maskContext.lineTo(geometry.topRight, geometry.topY);
-    maskContext.lineTo(geometry.bottomRight, geometry.bottomY);
-    maskContext.lineTo(geometry.bottomLeft, geometry.bottomY);
-    maskContext.closePath();
-    maskContext.fill();
+      const gradient = context.createLinearGradient(0, geometry.topY, 0, geometry.bottomY);
+      gradient.addColorStop(0, "rgba(255, 239, 198, 0)");
+      gradient.addColorStop(0.12, this.lightRayRgba(alpha * 0.44));
+      gradient.addColorStop(0.29, this.lightRayRgba(alpha));
+      gradient.addColorStop(0.58, this.lightRayRgba(alpha * 0.42));
+      gradient.addColorStop(0.84, this.lightRayRgba(alpha * 0.08));
+      gradient.addColorStop(1, "rgba(255, 239, 198, 0)");
 
-    context.save();
-    context.filter = `blur(${pass.blur}px)`;
-    context.drawImage(mask, 0, 0);
-    context.restore();
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.moveTo(geometry.topX + geometry.topHalfWidth * u1, geometry.topY);
+      context.lineTo(geometry.topX + geometry.topHalfWidth * u2, geometry.topY);
+      context.lineTo(geometry.bottomX + geometry.bottomHalfWidth * u2, geometry.bottomY);
+      context.lineTo(geometry.bottomX + geometry.bottomHalfWidth * u1, geometry.bottomY);
+      context.closePath();
+      context.fill();
+    }
   }
 
-  paintLightStreaks(context, width, height, padding, ray, index = 0) {
-    const streaks = document.createElement("canvas");
-    streaks.width = width;
-    streaks.height = height;
-    const streakContext = streaks.getContext("2d");
+  paintLightStreaks(context, padding, ray, index = 0) {
     const geometry = this.getLightRayGeometry(ray, padding, 0.7);
 
     for (let streak = 0; streak < 3; streak += 1) {
@@ -1537,26 +1535,21 @@ class PlayScene extends Phaser.Scene {
       const endX = startX + (ray.lean ?? 140) * (0.68 + streak * 0.06);
       const startY = geometry.topY + 26 + streak * 24;
       const endY = geometry.bottomY - 130 - streak * 26;
-      const lineGradient = streakContext.createLinearGradient(startX, startY, endX, endY);
-      const alpha = (ray.alpha ?? 0.16) * (0.12 + streak * 0.025);
+      const lineGradient = context.createLinearGradient(startX, startY, endX, endY);
+      const alpha = (ray.alpha ?? 0.16) * (0.045 + streak * 0.012);
       lineGradient.addColorStop(0, "rgba(255, 247, 220, 0)");
       lineGradient.addColorStop(0.28, this.lightRayRgba(alpha));
       lineGradient.addColorStop(0.72, this.lightRayRgba(alpha * 0.42));
       lineGradient.addColorStop(1, "rgba(255, 247, 220, 0)");
 
-      streakContext.strokeStyle = lineGradient;
-      streakContext.lineWidth = 3 + streak * 1.4;
-      streakContext.lineCap = "round";
-      streakContext.beginPath();
-      streakContext.moveTo(startX, startY);
-      streakContext.lineTo(endX, endY);
-      streakContext.stroke();
+      context.strokeStyle = lineGradient;
+      context.lineWidth = 10 + streak * 4;
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(startX, startY);
+      context.lineTo(endX, endY);
+      context.stroke();
     }
-
-    context.save();
-    context.filter = "blur(5px)";
-    context.drawImage(streaks, 0, 0);
-    context.restore();
   }
 
   paintLightDust(context, padding) {
@@ -1591,6 +1584,8 @@ class PlayScene extends Phaser.Scene {
       bottomX,
       topY,
       bottomY,
+      topHalfWidth: topWidth / 2,
+      bottomHalfWidth: bottomWidth / 2,
       topLeft: topX - topWidth / 2,
       topRight: topX + topWidth / 2,
       bottomLeft: bottomX - bottomWidth / 2,
