@@ -17,6 +17,7 @@ const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
 const WALL_FOREGROUND_TILE_SPAN = 2;
+const PLATFORM_SHADOW_DEPTH = PLATFORM_DEPTH + 0.52;
 const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
 const LIGHT_RAY_IMPACT_DEPTH = PLATFORM_DEPTH + 0.65;
 const LIGHT_RAY_TEXTURE_PADDING = 96;
@@ -142,8 +143,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-bright-light-rays";
-const STORY_ASSET_VERSION = "20260602-bright-light-rays";
+const ASSET_VERSION = "20260602-platform-shadows";
+const STORY_ASSET_VERSION = "20260602-platform-shadows";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -908,6 +909,10 @@ function makeLightFxTextures(scene) {
     g.clear();
   }
 
+  if (!scene.textures.exists("platform-cast-shadow")) {
+    scene.textures.addCanvas("platform-cast-shadow", createPlatformCastShadowCanvas());
+  }
+
   g.destroy();
 }
 
@@ -937,6 +942,32 @@ function createLightImpactGlowCanvas() {
   core.addColorStop(1, "rgba(255, 242, 204, 0)");
   context.fillStyle = core;
   context.fillRect(28, 18, 136, 7);
+  return canvas;
+}
+
+function createPlatformCastShadowCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 224;
+  canvas.height = 34;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  const horizontal = context.createLinearGradient(0, 0, canvas.width, 0);
+  horizontal.addColorStop(0, "rgba(0, 0, 0, 0)");
+  horizontal.addColorStop(0.18, "rgba(0, 0, 0, 0.46)");
+  horizontal.addColorStop(0.5, "rgba(0, 0, 0, 0.74)");
+  horizontal.addColorStop(0.82, "rgba(0, 0, 0, 0.46)");
+  horizontal.addColorStop(1, "rgba(0, 0, 0, 0)");
+  context.fillStyle = horizontal;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  context.globalCompositeOperation = "destination-in";
+  const vertical = context.createLinearGradient(0, 0, 0, canvas.height);
+  vertical.addColorStop(0, "rgba(0, 0, 0, 0)");
+  vertical.addColorStop(0.32, "rgba(0, 0, 0, 0.92)");
+  vertical.addColorStop(0.72, "rgba(0, 0, 0, 0.58)");
+  vertical.addColorStop(1, "rgba(0, 0, 0, 0)");
+  context.fillStyle = vertical;
+  context.fillRect(0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
@@ -1044,6 +1075,7 @@ class PlayScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
+    this.platformShadows = [];
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -2236,6 +2268,7 @@ class PlayScene extends Phaser.Scene {
     });
     this.createPlatformVisuals();
     this.createMovingPlatforms();
+    this.createPlatformShadows();
   }
 
   createWallTileVisual(x, y, rowIndex, columnIndex) {
@@ -2476,8 +2509,80 @@ class PlayScene extends Phaser.Scene {
       rowIndex,
       minX: centerX - 130,
       maxX: centerX + 130,
-      speed: Phaser.Math.Between(0, 1) ? 72 : -72
+      speed: Phaser.Math.Between(0, 1) ? 72 : -72,
+      lastX: centerX,
+      deltaX: 0
     });
+  }
+
+  createPlatformShadows() {
+    this.platformShadows = [];
+    if (!this.level.lightRays?.length) return;
+    const runs = this.getPlatformShadowRuns();
+    runs.forEach((caster) => {
+      runs.forEach((receiver) => {
+        if (caster.id === receiver.id) return;
+        const verticalDistance = receiver.topY - caster.topY;
+        if (verticalDistance < 88 || verticalDistance > 460) return;
+        const overlap = this.getRunOverlap(this.getRunShadowEnvelope(caster), this.getRunShadowEnvelope(receiver));
+        if (overlap.width < 42) return;
+        const shadow = this.add.image(overlap.centerX, receiver.topY + 9, "platform-cast-shadow");
+        shadow.setDepth(PLATFORM_SHADOW_DEPTH);
+        shadow.setBlendMode(Phaser.BlendModes.MULTIPLY ?? Phaser.BlendModes.NORMAL);
+        shadow.setAlpha(0);
+        this.platformShadows.push({
+          shadow,
+          caster,
+          receiver,
+          baseAlpha: Phaser.Math.Clamp(0.42 - verticalDistance / 1550, 0.13, 0.34)
+        });
+      });
+    });
+    this.updatePlatformShadows();
+  }
+
+  getPlatformShadowRuns() {
+    const staticRuns = this.platformRuns.map((run, index) => ({
+      ...run,
+      id: `static-${index}`,
+      moving: false
+    }));
+    const movingRuns = this.movingPlatformRuns.map((platform, index) => ({
+      ...this.getMovingPlatformRun(platform),
+      id: `moving-${index}`,
+      moving: true,
+      platform
+    }));
+    return [...staticRuns, ...movingRuns];
+  }
+
+  getRunShadowEnvelope(run) {
+    if (!run.moving || !run.platform) return run;
+    const halfWidth = run.platform.width / 2;
+    return {
+      ...run,
+      startX: run.platform.minX - halfWidth,
+      endX: run.platform.maxX + halfWidth
+    };
+  }
+
+  resolvePlatformShadowRun(run) {
+    if (!run.moving || !run.platform) return run;
+    return {
+      ...run,
+      ...this.getMovingPlatformRun(run.platform)
+    };
+  }
+
+  getRunOverlap(a, b) {
+    const startX = Math.max(a.startX, b.startX);
+    const endX = Math.min(a.endX, b.endX);
+    return {
+      startX,
+      endX,
+      width: Math.max(0, endX - startX),
+      centerX: (startX + endX) / 2
+    };
   }
 
   createPlayer() {
@@ -3037,12 +3142,69 @@ class PlayScene extends Phaser.Scene {
 
   updateMovingPlatforms() {
     this.movingPlatformRuns.forEach((platform) => {
+      const previousX = platform.lastX ?? platform.body.x;
       if (platform.body.x <= platform.minX) platform.speed = Math.abs(platform.speed);
       if (platform.body.x >= platform.maxX) platform.speed = -Math.abs(platform.speed);
       platform.body.setVelocityX(platform.speed);
+      platform.deltaX = platform.body.x - previousX;
+      platform.lastX = platform.body.x;
       platform.visuals.forEach(({ sprite, offsetX, offsetY }) => {
         sprite.setPosition(platform.body.x + offsetX, platform.body.y + offsetY);
       });
+    });
+    this.carryMovingPlatformRiders();
+    this.updatePlatformShadows();
+  }
+
+  carryMovingPlatformRiders() {
+    [this.player, this.cat].forEach((sprite) => {
+      const platform = this.getRidingMovingPlatform(sprite);
+      if (!platform || Math.abs(platform.deltaX || 0) < 0.01) return;
+      sprite.x += platform.deltaX;
+      sprite.body?.updateFromGameObject?.();
+    });
+  }
+
+  getRidingMovingPlatform(sprite) {
+    if (!sprite?.body?.enable || !sprite.body.moves) return null;
+    const body = sprite.body;
+    if (!body.blocked.down && !body.touching.down) return null;
+    const bodyLeft = body.x;
+    const bodyRight = body.x + body.width;
+    const bodyBottom = body.y + body.height;
+    return this.movingPlatformRuns.find((platform) => {
+      const platformBody = platform.body.body;
+      if (!platformBody?.enable) return false;
+      const platformLeft = platformBody.x;
+      const platformRight = platformBody.x + platformBody.width;
+      const platformTop = platformBody.y;
+      const overlapsHorizontally = bodyRight > platformLeft + 4 && bodyLeft < platformRight - 4;
+      const restsOnTop = bodyBottom >= platformTop - 7 && bodyBottom <= platformTop + 14;
+      return overlapsHorizontally && restsOnTop;
+    }) || null;
+  }
+
+  updatePlatformShadows() {
+    this.platformShadows?.forEach((entry) => {
+      const caster = this.resolvePlatformShadowRun(entry.caster);
+      const receiver = this.resolvePlatformShadowRun(entry.receiver);
+      const verticalDistance = receiver.topY - caster.topY;
+      const overlap = this.getRunOverlap(caster, receiver);
+      if (verticalDistance < 88 || verticalDistance > 460 || overlap.width < 28) {
+        entry.shadow.setVisible(false);
+        return;
+      }
+      const casterWidth = caster.endX - caster.startX;
+      const receiverWidth = receiver.endX - receiver.startX;
+      entry.shadow.setVisible(true);
+      entry.shadow.setPosition(overlap.centerX, receiver.topY + 9);
+      entry.shadow.setScale(
+        Phaser.Math.Clamp(overlap.width / 224, 0.24, 1.9),
+        Phaser.Math.Clamp(1 - verticalDistance / 720, 0.42, 0.92)
+      );
+      entry.shadow.setAlpha(
+        Phaser.Math.Clamp(entry.baseAlpha * (overlap.width / Math.max(1, Math.min(casterWidth, receiverWidth))), 0.08, entry.baseAlpha)
+      );
     });
   }
 
@@ -4021,7 +4183,7 @@ class PlayScene extends Phaser.Scene {
 
   updateLightSparkles(time = 0) {
     if (!this.resolvedLightRays?.length || time < this.nextLightSparkleAt) return;
-    const sparkleCount = Phaser.Math.Between(5, 15);
+    const sparkleCount = Phaser.Math.Between(10, 30);
     for (let i = 0; i < sparkleCount; i += 1) {
       const ray = Phaser.Utils.Array.GetRandom(this.resolvedLightRays);
       this.spawnLightSparkle(ray);
