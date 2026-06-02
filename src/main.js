@@ -42,6 +42,8 @@ const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
+const MOBILE_SWIPE_DEADZONE = 18;
+const MOBILE_JUMP_SWIPE_THRESHOLD = 34;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -143,8 +145,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-longer-routes";
-const STORY_ASSET_VERSION = "20260602-longer-routes";
+const ASSET_VERSION = "20260602-mobile-gestures";
+const STORY_ASSET_VERSION = "20260602-mobile-gestures";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -732,6 +734,14 @@ function recordBestScore(score) {
   if (nextBest !== currentBest) setBestScore(nextBest);
   updateBestScore(nextBest);
   return nextBest;
+}
+
+function isMobileTouchDevice() {
+  if (typeof window === "undefined" || typeof navigator === "undefined") return false;
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
+  const touchPoints = Number(navigator.maxTouchPoints || 0) > 0;
+  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  return Boolean((coarsePointer && touchPoints) || mobileUserAgent);
 }
 
 function wait(ms = 0) {
@@ -2696,6 +2706,86 @@ class PlayScene extends Phaser.Scene {
       action: Phaser.Input.Keyboard.KeyCodes.ENTER,
       restart: Phaser.Input.Keyboard.KeyCodes.R
     });
+    this.createMobileGestureInput();
+  }
+
+  createMobileGestureInput() {
+    this.mobileGesture = {
+      enabled: isMobileTouchDevice(),
+      active: false,
+      pointerId: null,
+      startX: 0,
+      startY: 0,
+      direction: 0,
+      jumpQueued: false
+    };
+    if (!this.mobileGesture.enabled) return;
+    this.input.addPointer(2);
+    this.input.on("pointerdown", this.handleMobilePointerDown, this);
+    this.input.on("pointermove", this.handleMobilePointerMove, this);
+    this.input.on("pointerup", this.handleMobilePointerUp, this);
+    this.input.on("pointerupoutside", this.handleMobilePointerUp, this);
+    this.input.on("pointercancel", this.resetMobileGestureInput, this);
+  }
+
+  handleMobilePointerDown(pointer) {
+    if (!this.mobileGesture?.enabled) return;
+    this.mobileGesture.active = true;
+    this.mobileGesture.pointerId = pointer.id;
+    this.mobileGesture.startX = pointer.x;
+    this.mobileGesture.startY = pointer.y;
+    this.mobileGesture.direction = 0;
+    this.mobileGesture.jumpQueued = false;
+  }
+
+  handleMobilePointerMove(pointer) {
+    if (!this.isActiveMobilePointer(pointer)) return;
+    this.updateMobileGesture(pointer);
+  }
+
+  handleMobilePointerUp(pointer) {
+    if (!this.isActiveMobilePointer(pointer)) return;
+    this.updateMobileGesture(pointer);
+    this.mobileGesture.active = false;
+    this.mobileGesture.pointerId = null;
+    this.mobileGesture.direction = 0;
+  }
+
+  updateMobileGesture(pointer) {
+    const dx = pointer.x - this.mobileGesture.startX;
+    const dy = pointer.y - this.mobileGesture.startY;
+    if (Math.abs(dx) > MOBILE_SWIPE_DEADZONE && Math.abs(dx) > Math.abs(dy) * 0.55) {
+      this.mobileGesture.direction = dx < 0 ? -1 : 1;
+    }
+    if (!this.mobileGesture.jumpQueued && dy < -MOBILE_JUMP_SWIPE_THRESHOLD && Math.abs(dy) > Math.abs(dx) * 0.62) {
+      this.mobileGesture.jumpQueued = true;
+    }
+  }
+
+  isActiveMobilePointer(pointer) {
+    return Boolean(
+      this.mobileGesture?.enabled &&
+      this.mobileGesture.active &&
+      this.mobileGesture.pointerId === pointer.id
+    );
+  }
+
+  getMobileMoveDirection() {
+    return this.mobileGesture?.enabled ? this.mobileGesture.direction || 0 : 0;
+  }
+
+  consumeMobileJump() {
+    if (!this.mobileGesture?.enabled || !this.mobileGesture.jumpQueued) return false;
+    this.mobileGesture.jumpQueued = false;
+    return true;
+  }
+
+  resetMobileGestureInput() {
+    if (!this.mobileGesture) return;
+    this.mobileGesture.active = false;
+    this.mobileGesture.pointerId = null;
+    this.mobileGesture.direction = 0;
+    this.mobileGesture.jumpQueued = false;
   }
 
   setupPhysics() {
@@ -2755,6 +2845,7 @@ class PlayScene extends Phaser.Scene {
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
     this.releaseBasketPromptControlLock();
+    this.resetMobileGestureInput();
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
@@ -2835,12 +2926,14 @@ class PlayScene extends Phaser.Scene {
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
 
-    const left = this.cursors.left.isDown || this.keysInput.left.isDown;
-    const right = this.cursors.right.isDown || this.keysInput.right.isDown;
+    const mobileDirection = this.getMobileMoveDirection();
+    const left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
+    const right = this.cursors.right.isDown || this.keysInput.right.isDown || mobileDirection > 0;
     const jump =
       Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
       Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
-      Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW);
+      Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW) ||
+      this.consumeMobileJump();
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action);
     const onFloor = this.player.body.blocked.down;
 
@@ -3241,7 +3334,8 @@ class PlayScene extends Phaser.Scene {
       this.cursors?.left?.isDown ||
       this.cursors?.right?.isDown ||
       this.keysInput?.left?.isDown ||
-      this.keysInput?.right?.isDown
+      this.keysInput?.right?.isDown ||
+      this.getMobileMoveDirection() !== 0
     );
   }
 
