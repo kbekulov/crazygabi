@@ -145,8 +145,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-level2-respawn-view";
-const STORY_ASSET_VERSION = "20260602-level2-respawn-view";
+const ASSET_VERSION = "20260602-original-death-spawn";
+const STORY_ASSET_VERSION = "20260602-original-death-spawn";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -3090,17 +3090,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   resetPlayerToSpawn() {
-    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
-    this.player.body.updateFromGameObject?.();
     this.resetPlayerMotion();
-    this.resetCameraToLevelStartView();
+    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
-  }
-
-  resetCameraToLevelStartView() {
-    if (!this.cameras?.main) return;
-    this.cameras.main.setScroll(0, 0);
   }
 
   switchPlayerToLanternSprite() {
