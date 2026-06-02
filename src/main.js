@@ -44,8 +44,7 @@ const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
 const MOBILE_SWIPE_DEADZONE = 18;
 const MOBILE_JUMP_SWIPE_THRESHOLD = 34;
-const MOBILE_JUMP_REPEAT_THRESHOLD = 42;
-const MOBILE_JUMP_MIN_INTERVAL = 180;
+const MOBILE_JUMP_REARM_THRESHOLD = 26;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -147,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-mobile-touch-actions";
-const STORY_ASSET_VERSION = "20260602-mobile-touch-actions";
+const ASSET_VERSION = "20260602-mobile-jump-strokes";
+const STORY_ASSET_VERSION = "20260602-mobile-jump-strokes";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -2715,7 +2714,7 @@ class PlayScene extends Phaser.Scene {
       startY: 0,
       jumpAnchorX: 0,
       jumpAnchorY: 0,
-      lastJumpQueuedAt: -Infinity,
+      jumpStrokeArmed: true,
       direction: 0,
       jumpQueued: false,
       actionQueued: false
@@ -2741,7 +2740,7 @@ class PlayScene extends Phaser.Scene {
     this.mobileGesture.startY = pointer.y;
     this.mobileGesture.jumpAnchorX = pointer.x;
     this.mobileGesture.jumpAnchorY = pointer.y;
-    this.mobileGesture.lastJumpQueuedAt = -Infinity;
+    this.mobileGesture.jumpStrokeArmed = true;
     this.mobileGesture.direction = 0;
     this.mobileGesture.jumpQueued = false;
   }
@@ -2767,18 +2766,20 @@ class PlayScene extends Phaser.Scene {
     }
     const jumpDx = pointer.x - this.mobileGesture.jumpAnchorX;
     const jumpDy = pointer.y - this.mobileGesture.jumpAnchorY;
-    const jumpThreshold = this.mobileGesture.lastJumpQueuedAt === -Infinity
-      ? MOBILE_JUMP_SWIPE_THRESHOLD
-      : MOBILE_JUMP_REPEAT_THRESHOLD;
-    const canQueueJump = performance.now() - this.mobileGesture.lastJumpQueuedAt >= MOBILE_JUMP_MIN_INTERVAL;
+    if (!this.mobileGesture.jumpStrokeArmed && jumpDy > MOBILE_JUMP_REARM_THRESHOLD) {
+      this.mobileGesture.jumpStrokeArmed = true;
+      this.mobileGesture.jumpAnchorX = pointer.x;
+      this.mobileGesture.jumpAnchorY = pointer.y;
+      return;
+    }
     if (
       !this.mobileGesture.jumpQueued &&
-      canQueueJump &&
-      jumpDy < -jumpThreshold &&
+      this.mobileGesture.jumpStrokeArmed &&
+      jumpDy < -MOBILE_JUMP_SWIPE_THRESHOLD &&
       Math.abs(jumpDy) > Math.abs(jumpDx) * 0.62
     ) {
       this.mobileGesture.jumpQueued = true;
-      this.mobileGesture.lastJumpQueuedAt = performance.now();
+      this.mobileGesture.jumpStrokeArmed = false;
       this.mobileGesture.jumpAnchorX = pointer.x;
       this.mobileGesture.jumpAnchorY = pointer.y;
     }
@@ -2814,7 +2815,7 @@ class PlayScene extends Phaser.Scene {
     this.mobileGesture.pointerId = null;
     this.mobileGesture.direction = 0;
     this.mobileGesture.jumpQueued = false;
-    this.mobileGesture.lastJumpQueuedAt = -Infinity;
+    this.mobileGesture.jumpStrokeArmed = true;
     this.mobileGesture.actionQueued = false;
   }
 
