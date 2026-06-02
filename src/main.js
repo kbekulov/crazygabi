@@ -143,8 +143,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-platform-riders";
-const STORY_ASSET_VERSION = "20260602-platform-riders";
+const ASSET_VERSION = "20260602-longer-routes";
+const STORY_ASSET_VERSION = "20260602-longer-routes";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -160,6 +160,8 @@ let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
 const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
+const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
+const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -188,7 +190,7 @@ const LEVELS = [
   {
     name: "Level 2",
     rows: createLevelTwo(),
-    timeLimit: 205,
+    timeLimit: 340,
     soundtrack: "bgm-lv2",
     acornDelay: [900, 1600],
     acornPace: [210, 300],
@@ -231,7 +233,7 @@ const LEVELS = [
   {
     name: "Level 3",
     rows: createLevelThree(),
-    timeLimit: 260,
+    timeLimit: 330,
     soundtrack: "bgm-lv3",
     acornDelay: [260, 1100],
     acornPace: [245, 370],
@@ -294,10 +296,10 @@ const LEVELS = [
   }
 ];
 
-function createLevelRows(height = LEVEL_HEIGHT_TILES) {
-  const rows = Array.from({ length: height }, () => Array(LEVEL_WIDTH_TILES).fill("."));
+function createLevelRows(height = LEVEL_HEIGHT_TILES, width = LEVEL_WIDTH_TILES) {
+  const rows = Array.from({ length: height }, () => Array(width).fill("."));
   const put = (row, column, value) => {
-    if (rows[row] && column >= 0 && column < LEVEL_WIDTH_TILES) rows[row][column] = value;
+    if (rows[row] && column >= 0 && column < width) rows[row][column] = value;
   };
   const run = (row, start, length, value = "#") => {
     for (let index = 0; index < length; index += 1) put(row, start + index, value);
@@ -371,12 +373,13 @@ function createLevelOne() {
 }
 
 function createLevelTwo() {
-  const { rows, put, run } = createLevelRows(26);
+  const levelWidth = LEVEL_TWO_WIDTH_TILES;
+  const { rows, put, run } = createLevelRows(26, levelWidth);
 
-  run(0, 0, LEVEL_WIDTH_TILES, "w");
+  run(0, 0, levelWidth, "w");
   for (let row = 1; row < 25; row += 1) {
     run(row, 0, 2, "w");
-    run(row, LEVEL_WIDTH_TILES - 2, 2, "w");
+    run(row, levelWidth - 2, 2, "w");
   }
 
   run(18, 2, 20);
@@ -391,6 +394,14 @@ function createLevelTwo() {
   run(13, 92, 16);
   run(10, 108, 17);
   run(16, 124, 22);
+  run(13, 150, 12);
+  run(10, 168, 14);
+  run(7, 188, 13);
+  run(10, 207, 12);
+  run(13, 224, 15);
+  run(16, 244, 14);
+  run(13, 263, 11);
+  run(16, 280, 14);
 
   run(21, 10, 3, "w");
   run(22, 10, 3, "w");
@@ -400,6 +411,12 @@ function createLevelTwo() {
   run(21, 64, 3, "w");
   run(19, 100, 4, "w");
   run(20, 100, 4, "w");
+  run(17, 164, 3, "w");
+  run(18, 164, 3, "w");
+  run(14, 198, 3, "w");
+  run(15, 198, 3, "w");
+  run(18, 236, 4, "w");
+  run(19, 236, 4, "w");
 
   [
     [16, 4, "p"],
@@ -413,18 +430,37 @@ function createLevelTwo() {
     [12, 67, "g"],
     [15, 84, "g"],
     [12, 101, "g"],
-    [9, 116, "k"],
+    [9, 116, "g"],
     [15, 132, "g"],
-    [15, 140, "d"],
+    [15, 140, "g"],
+    [12, 154, "g"],
+    [9, 175, "g"],
+    [6, 195, "g"],
+    [9, 213, "g"],
+    [12, 233, "g"],
+    [15, 252, "g"],
+    [12, 270, "k"],
+    [15, 289, "d"],
     [14, 29, "m"],
-    [12, 69, "m"]
+    [12, 69, "m"],
+    [12, 156, "m"],
+    [9, 176, "m"],
+    [6, 196, "m"],
+    [9, 212, "m"],
+    [12, 232, "m"],
+    [15, 250, "m"],
+    [12, 268, "m"],
+    [1, 160, "a"],
+    [1, 190, "a"],
+    [1, 224, "a"],
+    [1, 258, "a"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
 }
 
 function createLevelThree() {
-  const { rows, put, run } = createLevelRows(82);
+  const { rows, put, run } = createLevelRows(82, LEVEL_THREE_WIDTH_TILES);
 
   for (let row = 3; row <= 64; row += 1) {
     run(row, 0, 2, "w");
@@ -469,6 +505,12 @@ function createLevelThree() {
   run(11, 129, 10);
   run(8, 139, 9);
   run(5, 132, 16);
+  run(8, 154, 7);
+  run(11, 165, 8);
+  run(8, 178, 4, "=");
+  run(5, 190, 6);
+  run(8, 196, 4, "=");
+  run(5, 202, 14);
 
   [
     [3, 4, "p"],
@@ -513,7 +555,14 @@ function createLevelThree() {
     [10, 132, "g"],
     [7, 141, "g"],
     [4, 142, "k"],
-    [4, 145, "d"],
+    [4, 145, "g"],
+    [7, 158, "m"],
+    [10, 169, "m"],
+    [7, 180, "m"],
+    [4, 193, "g"],
+    [4, 205, "g"],
+    [4, 207, "m"],
+    [4, 213, "d"],
     [1, 18, "a"],
     [1, 42, "a"],
     [1, 61, "a"],
@@ -521,7 +570,10 @@ function createLevelThree() {
     [1, 103, "a"],
     [1, 118, "a"],
     [1, 132, "a"],
-    [1, 144, "a"]
+    [1, 144, "a"],
+    [1, 160, "a"],
+    [1, 181, "a"],
+    [1, 204, "a"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -4211,7 +4263,7 @@ class PlayScene extends Phaser.Scene {
 
   updateLightSparkles(time = 0) {
     if (!this.resolvedLightRays?.length || time < this.nextLightSparkleAt) return;
-    const sparkleCount = Phaser.Math.Between(10, 30);
+    const sparkleCount = Phaser.Math.Between(20, 60);
     for (let i = 0; i < sparkleCount; i += 1) {
       const ray = Phaser.Utils.Array.GetRandom(this.resolvedLightRays);
       this.spawnLightSparkle(ray);
