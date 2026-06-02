@@ -18,7 +18,7 @@ const FENCE_DEPTH = 1;
 const WATER_DEPTH = -1;
 const WALL_FOREGROUND_TILE_SPAN = 2;
 const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
-const LIGHT_RAY_TEXTURE_PADDING = 220;
+const LIGHT_RAY_TEXTURE_PADDING = 96;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -138,8 +138,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-crossbrowser-light-rays";
-const STORY_ASSET_VERSION = "20260602-crossbrowser-light-rays";
+const ASSET_VERSION = "20260602-world-light-rays";
+const STORY_ASSET_VERSION = "20260602-world-light-rays";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -253,12 +253,17 @@ const LEVELS = [
     catNpc: true,
     doorYOffset: -30,
     parallax: "parallax-underground",
+    lightRayAlpha: 0.82,
     lightRays: [
-      { x: 70, y: -190, topWidth: 34, bottomWidth: 150, height: 760, lean: 190, alpha: 0.34 },
-      { x: 146, y: -185, topWidth: 42, bottomWidth: 178, height: 720, lean: 200, alpha: 0.24 },
-      { x: 265, y: -175, topWidth: 58, bottomWidth: 212, height: 690, lean: 174, alpha: 0.2 },
-      { x: 410, y: -180, topWidth: 38, bottomWidth: 154, height: 670, lean: 136, alpha: 0.15 },
-      { x: 675, y: -170, topWidth: 34, bottomWidth: 128, height: 610, lean: 104, alpha: 0.1 }
+      { x: 92, y: -118, topWidth: 26, bottomWidth: 128, height: 760, lean: 178, alpha: 0.34 },
+      { x: 236, y: -96, topWidth: 46, bottomWidth: 220, height: 520, lean: 112, alpha: 0.24 },
+      { x: 486, y: -132, topWidth: 34, bottomWidth: 164, height: 690, lean: 156, alpha: 0.2 },
+      { x: 1038, y: -108, topWidth: 58, bottomWidth: 250, height: 640, lean: 128, alpha: 0.18 },
+      { x: 1515, y: -88, topWidth: 30, bottomWidth: 124, height: 430, lean: 92, alpha: 0.15 },
+      { x: 1924, y: -126, topWidth: 42, bottomWidth: 190, height: 700, lean: 168, alpha: 0.19 },
+      { x: 2708, y: -112, topWidth: 36, bottomWidth: 172, height: 560, lean: 116, alpha: 0.16 },
+      { x: 3444, y: -130, topWidth: 52, bottomWidth: 238, height: 620, lean: 142, alpha: 0.17 },
+      { x: 4168, y: -102, topWidth: 28, bottomWidth: 136, height: 480, lean: 84, alpha: 0.14 }
     ],
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
@@ -1437,49 +1442,135 @@ class PlayScene extends Phaser.Scene {
   }
 
   createLightRays() {
+    this.lightRayLayers = [];
     this.lightRayLayer = null;
     if (!this.level.lightRays?.length) return;
 
-    const textureKey = `level-light-rays-${state.levelIndex}`;
-    if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
-    this.textures.addCanvas(textureKey, this.createLightRayCanvas());
+    this.level.lightRays.forEach((ray, index) => {
+      const resolvedRay = this.resolveWorldLightRay(ray);
+      if (resolvedRay.height < 90) return;
 
-    const layer = this.add.image(-LIGHT_RAY_TEXTURE_PADDING, -LIGHT_RAY_TEXTURE_PADDING, textureKey);
-    layer.setOrigin(0, 0);
-    layer.setScrollFactor(0);
-    layer.setDepth(LIGHT_RAY_DEPTH);
-    layer.setAlpha(this.level.lightRayAlpha ?? 0.78);
-    layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
-    this.lightRayLayer = layer;
+      const textureKey = `level-light-ray-${state.levelIndex}-${index}`;
+      if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
+      this.textures.addCanvas(textureKey, this.createLightRayCanvas(resolvedRay));
+
+      const layer = this.add.image(resolvedRay.textureX, resolvedRay.textureY, textureKey);
+      layer.setOrigin(0, 0);
+      layer.setScrollFactor(1);
+      layer.setDepth(LIGHT_RAY_DEPTH);
+      layer.setAlpha((this.level.lightRayAlpha ?? 0.82) * (resolvedRay.layerAlpha ?? 1));
+      layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+      this.lightRayLayers.push({
+        layer,
+        baseAlpha: layer.alpha,
+        phase: this.wallPlacementNoise(index + 7, index + 29) * Math.PI * 2
+      });
+    });
+
+    this.lightRayLayer = this.lightRayLayers[0]?.layer || null;
   }
 
-  createLightRayCanvas() {
+  resolveWorldLightRay(ray) {
+    const candidate = {
+      ...ray,
+      y: ray.y ?? -96,
+      height: this.getLightRayBlockedHeight(ray)
+    };
+    const bounds = this.getLightRayBounds(candidate);
+    return {
+      ...candidate,
+      ...bounds,
+      localX: candidate.x - bounds.textureX,
+      localY: candidate.y - bounds.textureY
+    };
+  }
+
+  getLightRayBlockedHeight(ray) {
+    const desiredHeight = ray.height ?? 680;
+    const topY = ray.y ?? -96;
+    const lean = ray.lean ?? 140;
+    const steps = Math.max(40, Math.ceil(desiredHeight / 10));
+
+    for (let step = 1; step <= steps; step += 1) {
+      const t = step / steps;
+      const y = topY + desiredHeight * t;
+      const centerX = (ray.x ?? 0) + lean * t;
+      const halfWidth = Phaser.Math.Linear(ray.topWidth ?? 42, ray.bottomWidth ?? 160, t) / 2;
+      for (const sample of [-0.38, -0.12, 0.12, 0.38]) {
+        if (this.isLightBlockedAtWorldPoint(centerX + halfWidth * sample, y)) {
+          return Math.max(96, y - topY - 18);
+        }
+      }
+    }
+
+    return desiredHeight;
+  }
+
+  isLightBlockedAtWorldPoint(x, y) {
+    if (y < 0 || x < 0 || x >= this.levelWidth || y >= this.levelHeight) return false;
+    return this.isLightBlockingCell(Math.floor(y / TILE), Math.floor(x / TILE));
+  }
+
+  isLightBlockingCell(rowIndex, columnIndex) {
+    return ["#", "w", "="].includes(this.levelRows[rowIndex]?.[columnIndex]);
+  }
+
+  getLightRayBounds(ray) {
     const padding = LIGHT_RAY_TEXTURE_PADDING;
-    const width = VIEW_WIDTH + padding * 2;
-    const height = PLAY_HEIGHT + padding * 2;
+    const outer = this.getLightRayGeometry(ray, 0, 2.15);
+    const inner = this.getLightRayGeometry(ray, 0, 0.7);
+    const crackHalfWidth = (ray.topWidth ?? 42) * 3.4;
+    const minX = Math.floor(Math.min(outer.topLeft, outer.bottomLeft, inner.topLeft, inner.bottomLeft, outer.topX - crackHalfWidth) - padding);
+    const maxX = Math.ceil(Math.max(outer.topRight, outer.bottomRight, inner.topRight, inner.bottomRight, outer.topX + crackHalfWidth) + padding);
+    const minY = Math.floor(Math.min(outer.topY, inner.topY) - padding - 30);
+    const maxY = Math.ceil(Math.max(outer.bottomY, inner.bottomY) + padding);
+    return {
+      textureX: minX,
+      textureY: minY,
+      textureWidth: Math.max(1, maxX - minX),
+      textureHeight: Math.max(1, maxY - minY)
+    };
+  }
+
+  createLightRayCanvas(ray) {
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = ray.textureWidth;
+    canvas.height = ray.textureHeight;
+    const localRay = {
+      ...ray,
+      x: ray.localX,
+      y: ray.localY
+    };
 
     const context = canvas.getContext("2d");
-    context.clearRect(0, 0, width, height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
     context.globalCompositeOperation = "lighter";
-
-    this.paintRoofGlow(context, width, padding);
-    this.level.lightRays.forEach((ray, index) => {
-      this.paintSoftLightRay(context, padding, ray, index);
-    });
-    this.paintLightDust(context, padding);
+    this.paintCeilingCrackGlow(context, localRay);
+    this.paintSoftLightRay(context, 0, localRay);
+    this.paintLightDust(context, 0, [localRay]);
     return canvas;
   }
 
-  paintRoofGlow(context, width, padding) {
-    const glow = context.createLinearGradient(0, 0, 0, padding + 220);
-    glow.addColorStop(0, "rgba(255, 238, 192, 0.16)");
-    glow.addColorStop(0.34, "rgba(255, 238, 192, 0.08)");
-    glow.addColorStop(1, "rgba(255, 238, 192, 0)");
+  paintCeilingCrackGlow(context, ray) {
+    const x = ray.x ?? 0;
+    const y = ray.y ?? 0;
+    const width = ray.topWidth ?? 42;
+    const glow = context.createRadialGradient(x, y, 1, x, y, width * 3.4);
+    glow.addColorStop(0, this.lightRayRgba((ray.alpha ?? 0.16) * 0.34));
+    glow.addColorStop(0.42, this.lightRayRgba((ray.alpha ?? 0.16) * 0.12));
+    glow.addColorStop(1, "rgba(255, 239, 198, 0)");
     context.fillStyle = glow;
-    context.fillRect(0, 0, width, padding + 220);
+    context.beginPath();
+    context.ellipse(x, y, width * 3.2, 28, -0.16, 0, Math.PI * 2);
+    context.fill();
+
+    context.strokeStyle = this.lightRayRgba((ray.alpha ?? 0.16) * 0.42);
+    context.lineWidth = 2;
+    context.lineCap = "round";
+    context.beginPath();
+    context.moveTo(x - width * 0.58, y + 1);
+    context.lineTo(x + width * 0.52, y - 2);
+    context.stroke();
   }
 
   paintSoftLightRay(context, padding, ray, index = 0) {
@@ -1527,14 +1618,16 @@ class PlayScene extends Phaser.Scene {
 
   paintLightStreaks(context, padding, ray, index = 0) {
     const geometry = this.getLightRayGeometry(ray, padding, 0.7);
+    const span = Math.max(1, geometry.bottomY - geometry.topY);
 
     for (let streak = 0; streak < 3; streak += 1) {
       const t = 0.18 + streak * 0.19;
       const drift = (this.wallPlacementNoise(index + 17, streak + 31) - 0.5) * (ray.topWidth ?? 42) * 0.7;
       const startX = Phaser.Math.Linear(geometry.topX, geometry.bottomX, t * 0.2) + drift;
       const endX = startX + (ray.lean ?? 140) * (0.68 + streak * 0.06);
-      const startY = geometry.topY + 26 + streak * 24;
-      const endY = geometry.bottomY - 130 - streak * 26;
+      const startY = geometry.topY + Math.min(26 + streak * 24, span * 0.22);
+      const endY = geometry.topY + span * Math.max(0.48, 0.82 - streak * 0.08);
+      if (endY <= startY + 24) continue;
       const lineGradient = context.createLinearGradient(startX, startY, endX, endY);
       const alpha = (ray.alpha ?? 0.16) * (0.045 + streak * 0.012);
       lineGradient.addColorStop(0, "rgba(255, 247, 220, 0)");
@@ -1552,8 +1645,8 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  paintLightDust(context, padding) {
-    (this.level.lightRays || []).forEach((ray, rayIndex) => {
+  paintLightDust(context, padding, rays = null) {
+    (rays || this.level.lightRays || []).forEach((ray, rayIndex) => {
       const geometry = this.getLightRayGeometry(ray, padding, 0.9);
       for (let i = 0; i < 24; i += 1) {
         const seedA = this.wallPlacementNoise(rayIndex + i * 3, i + 41);
@@ -3750,10 +3843,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateLightRays(time = 0) {
-    if (!this.lightRayLayer) return;
-    const baseAlpha = this.level.lightRayAlpha ?? 0.78;
-    const pulse = baseAlpha + Math.sin(time * 0.0008) * 0.025 + Math.sin(time * 0.00031) * 0.018;
-    this.lightRayLayer.setAlpha(Phaser.Math.Clamp(pulse, baseAlpha - 0.06, baseAlpha + 0.04));
+    if (!this.lightRayLayers?.length) return;
+    this.lightRayLayers.forEach(({ layer, baseAlpha, phase }) => {
+      const pulse = baseAlpha + Math.sin(time * 0.0008 + phase) * 0.018 + Math.sin(time * 0.00031 + phase) * 0.012;
+      layer.setAlpha(Phaser.Math.Clamp(pulse, baseAlpha - 0.045, baseAlpha + 0.03));
+    });
   }
 
   startTimer() {
