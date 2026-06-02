@@ -145,8 +145,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-level2-safe-respawn";
-const STORY_ASSET_VERSION = "20260602-level2-safe-respawn";
+const ASSET_VERSION = "20260602-level2-start-respawn";
+const STORY_ASSET_VERSION = "20260602-level2-start-respawn";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -3090,34 +3090,17 @@ class PlayScene extends Phaser.Scene {
   }
 
   resetPlayerToSpawn() {
-    const spawn = this.getSafePlayerSpawnPoint();
-    this.player.setPosition(spawn.x, spawn.y);
+    this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.player.body.updateFromGameObject?.();
     this.resetPlayerMotion();
+    this.snapCameraToPlayer();
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
   }
 
-  getSafePlayerSpawnPoint() {
-    if (!this.player?.body) return this.spawnPoint;
-    const support = this.findSpawnSupport(this.spawnPoint.x, this.spawnPoint.y);
-    if (!support) return this.spawnPoint;
-    const bodyBottomOffset = this.player.body.bottom - this.player.y;
-    const bodyHalfWidth = Math.max(TILE * 0.65, this.player.body.width / 2);
-    return {
-      x: Phaser.Math.Clamp(this.spawnPoint.x, support.startX + bodyHalfWidth, support.endX - bodyHalfWidth),
-      y: support.topY - bodyBottomOffset - 1
-    };
-  }
-
-  findSpawnSupport(x, y) {
-    return this.platformRuns
-      .filter((run) => x >= run.startX - TILE && x <= run.endX + TILE && run.topY >= y - TILE && run.topY <= y + TILE * 6)
-      .sort((a, b) => {
-        const aCenter = (a.startX + a.endX) / 2;
-        const bCenter = (b.startX + b.endX) / 2;
-        return a.topY - b.topY || Math.abs(aCenter - x) - Math.abs(bCenter - x);
-      })[0];
+  snapCameraToPlayer() {
+    if (!this.player || !this.cameras?.main) return;
+    this.cameras.main.centerOn(this.player.x, this.player.y);
   }
 
   switchPlayerToLanternSprite() {
