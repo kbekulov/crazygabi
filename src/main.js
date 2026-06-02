@@ -33,6 +33,7 @@ const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
 const LIGHT_RAY_FRONT_DEPTH = ITEM_DEPTH + 0.75;
 const LIGHT_SPARKLE_DEPTH = ITEM_DEPTH + 1;
+const LIGHT_RAY_BLINDING_DEPTH = LIGHT_SPARKLE_DEPTH + 0.55;
 const ITEM_SCALE = 0.32;
 const BASKET_SCALE = 0.17;
 const LANTERN_SCALE = 0.23;
@@ -141,8 +142,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-varied-light-rays";
-const STORY_ASSET_VERSION = "20260602-varied-light-rays";
+const ASSET_VERSION = "20260602-bright-light-rays";
+const STORY_ASSET_VERSION = "20260602-bright-light-rays";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -258,20 +259,20 @@ const LEVELS = [
     parallax: "parallax-underground",
     lightRayAlpha: 0.94,
     lightRays: [
-      { x: 82, y: -124, topWidth: 18, bottomWidth: 92, height: 1780, lean: 310, alpha: 0.36, thickness: 4, foreground: true, frontAlpha: 0.18, opacityMode: "dim" },
+      { x: 82, y: -124, topWidth: 18, bottomWidth: 92, height: 1780, lean: 310, alpha: 0.36, thickness: 4, foreground: true, frontAlpha: 0.52, blinding: true, opacityMode: "dim" },
       { x: 118, y: -132, topWidth: 12, bottomWidth: 62, height: 1340, lean: 255, alpha: 0.18, thickness: 1, opacityMode: "steady" },
       { x: 224, y: -100, topWidth: 22, bottomWidth: 118, height: 1120, lean: 172, alpha: 0.24, thickness: 2, opacityMode: "pulse" },
       { x: 470, y: -136, topWidth: 16, bottomWidth: 86, height: 1540, lean: 236, alpha: 0.24, thickness: 3, foreground: true, frontAlpha: 0.12, opacityMode: "dim" },
       { x: 512, y: -128, topWidth: 10, bottomWidth: 52, height: 1180, lean: 198, alpha: 0.14, thickness: 1, opacityMode: "steady" },
       { x: 780, y: -112, topWidth: 15, bottomWidth: 78, height: 760, lean: 120, alpha: 0.16, thickness: 1, opacityMode: "pulse" },
-      { x: 1038, y: -116, topWidth: 18, bottomWidth: 86, height: 1320, lean: 184, alpha: 0.22, thickness: 4, foreground: true, frontAlpha: 0.1, opacityMode: "steady" },
+      { x: 1038, y: -116, topWidth: 18, bottomWidth: 86, height: 1320, lean: 184, alpha: 0.22, thickness: 4, foreground: true, frontAlpha: 0.46, blinding: true, opacityMode: "steady" },
       { x: 1084, y: -124, topWidth: 14, bottomWidth: 68, height: 980, lean: 138, alpha: 0.14, thickness: 2, opacityMode: "dim" },
       { x: 1518, y: -92, topWidth: 18, bottomWidth: 82, height: 850, lean: 132, alpha: 0.17, thickness: 2, opacityMode: "pulse" },
-      { x: 1920, y: -128, topWidth: 18, bottomWidth: 94, height: 1520, lean: 260, alpha: 0.23, thickness: 3, foreground: true, frontAlpha: 0.11, opacityMode: "dim" },
+      { x: 1920, y: -128, topWidth: 18, bottomWidth: 94, height: 1520, lean: 260, alpha: 0.23, thickness: 3, foreground: true, frontAlpha: 0.42, blinding: true, opacityMode: "dim" },
       { x: 1966, y: -118, topWidth: 11, bottomWidth: 54, height: 1020, lean: 206, alpha: 0.13, thickness: 1, opacityMode: "steady" },
       { x: 2380, y: -106, topWidth: 15, bottomWidth: 74, height: 980, lean: 136, alpha: 0.16, thickness: 2, opacityMode: "pulse" },
       { x: 2700, y: -114, topWidth: 14, bottomWidth: 72, height: 1180, lean: 174, alpha: 0.2, thickness: 3, foreground: true, frontAlpha: 0.09, opacityMode: "dim" },
-      { x: 3440, y: -132, topWidth: 18, bottomWidth: 94, height: 1440, lean: 206, alpha: 0.22, thickness: 4, foreground: true, frontAlpha: 0.1, opacityMode: "dim" },
+      { x: 3440, y: -132, topWidth: 18, bottomWidth: 94, height: 1440, lean: 206, alpha: 0.22, thickness: 4, foreground: true, frontAlpha: 0.44, blinding: true, opacityMode: "dim" },
       { x: 3486, y: -126, topWidth: 12, bottomWidth: 60, height: 980, lean: 162, alpha: 0.13, thickness: 1, opacityMode: "steady" },
       { x: 4168, y: -104, topWidth: 15, bottomWidth: 78, height: 980, lean: 112, alpha: 0.17, thickness: 2, opacityMode: "pulse" }
     ],
@@ -912,30 +913,30 @@ function makeLightFxTextures(scene) {
 
 function createLightImpactGlowCanvas() {
   const canvas = document.createElement("canvas");
-  canvas.width = 160;
-  canvas.height = 30;
+  canvas.width = 192;
+  canvas.height = 44;
   const context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.save();
   context.translate(canvas.width / 2, canvas.height / 2);
-  context.scale(1, 0.18);
-  const glow = context.createRadialGradient(0, 0, 1, 0, 0, 76);
-  glow.addColorStop(0, "rgba(255, 250, 224, 0.58)");
-  glow.addColorStop(0.22, "rgba(255, 239, 198, 0.32)");
-  glow.addColorStop(0.55, "rgba(255, 226, 162, 0.11)");
+  context.scale(1, 0.22);
+  const glow = context.createRadialGradient(0, 0, 1, 0, 0, 92);
+  glow.addColorStop(0, "rgba(255, 252, 230, 0.82)");
+  glow.addColorStop(0.24, "rgba(255, 240, 196, 0.42)");
+  glow.addColorStop(0.58, "rgba(255, 226, 162, 0.16)");
   glow.addColorStop(1, "rgba(255, 226, 162, 0)");
   context.fillStyle = glow;
   context.beginPath();
-  context.arc(0, 0, 78, 0, Math.PI * 2);
+  context.arc(0, 0, 94, 0, Math.PI * 2);
   context.fill();
   context.restore();
 
-  const core = context.createLinearGradient(28, canvas.height / 2, 132, canvas.height / 2);
+  const core = context.createLinearGradient(32, canvas.height / 2, 160, canvas.height / 2);
   core.addColorStop(0, "rgba(255, 242, 204, 0)");
-  core.addColorStop(0.5, "rgba(255, 252, 232, 0.26)");
+  core.addColorStop(0.5, "rgba(255, 255, 238, 0.38)");
   core.addColorStop(1, "rgba(255, 242, 204, 0)");
   context.fillStyle = core;
-  context.fillRect(24, 12, 112, 5);
+  context.fillRect(28, 18, 136, 7);
   return canvas;
 }
 
@@ -1531,13 +1532,13 @@ class PlayScene extends Phaser.Scene {
       if (resolvedRay.foreground) {
         const frontTextureKey = `level-light-ray-front-${state.levelIndex}-${index}`;
         if (this.textures.exists(frontTextureKey)) this.textures.remove(frontTextureKey);
-        this.textures.addCanvas(frontTextureKey, this.createLightRayCanvas(resolvedRay, { maskObstructions: true, frontPass: true }));
+        this.textures.addCanvas(frontTextureKey, this.createLightRayCanvas(resolvedRay, { maskObstructions: true, frontPass: true, blindingPass: resolvedRay.blinding }));
         const frontLayer = this.add.image(resolvedRay.textureX, resolvedRay.textureY, frontTextureKey);
         frontLayer.setOrigin(0, 0);
         frontLayer.setScrollFactor(1);
-        frontLayer.setDepth(LIGHT_RAY_FRONT_DEPTH);
+        frontLayer.setDepth(resolvedRay.blinding ? LIGHT_RAY_BLINDING_DEPTH : LIGHT_RAY_FRONT_DEPTH);
         frontLayer.setAlpha(resolvedRay.frontAlpha ?? 0.14);
-        frontLayer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+        frontLayer.setBlendMode(resolvedRay.blinding ? Phaser.BlendModes.ADD : (Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD));
         this.trackLightRayLayer(frontLayer, resolvedRay, index + 37);
       }
 
@@ -1614,8 +1615,8 @@ class PlayScene extends Phaser.Scene {
         impacts.push({
           x: contactX,
           y: contactY,
-          width: Phaser.Math.Clamp(halfWidth * 1.05, 34, 145),
-          alpha: Phaser.Math.Clamp((ray.alpha ?? 0.16) * 1.35, 0.12, 0.38)
+          width: Phaser.Math.Clamp(halfWidth * 1.2, 46, 170),
+          alpha: Phaser.Math.Clamp((ray.alpha ?? 0.16) * 2.05, 0.22, 0.66)
         });
         if (impacts.length >= 7) return impacts;
       }
@@ -1658,7 +1659,7 @@ class PlayScene extends Phaser.Scene {
       ...ray,
       x: ray.localX,
       y: ray.localY,
-      alpha: options.frontPass ? (ray.alpha ?? 0.16) * 0.7 : ray.alpha
+      alpha: options.blindingPass ? Math.max((ray.alpha ?? 0.16) * 1.75, 0.42) : (options.frontPass ? (ray.alpha ?? 0.16) * 0.7 : ray.alpha)
     };
 
     const context = canvas.getContext("2d");
@@ -1692,9 +1693,9 @@ class PlayScene extends Phaser.Scene {
     (ray.impacts || []).forEach((impact, impactIndex) => {
       const glow = this.add.image(impact.x, impact.y, "light-impact-glow");
       glow.setOrigin(0.5, 0.5);
-      glow.setScale(Phaser.Math.Clamp(impact.width / 120, 0.38, 1.45), Phaser.Math.Clamp(impact.width / 520, 0.12, 0.34));
+      glow.setScale(Phaser.Math.Clamp(impact.width / 118, 0.5, 1.65), Phaser.Math.Clamp(impact.width / 360, 0.24, 0.5));
       glow.setDepth(LIGHT_RAY_IMPACT_DEPTH);
-      glow.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+      glow.setBlendMode(Phaser.BlendModes.ADD);
       glow.setAlpha(impact.alpha);
       this.lightImpactGlows.push({
         glow,
@@ -4020,7 +4021,7 @@ class PlayScene extends Phaser.Scene {
 
   updateLightSparkles(time = 0) {
     if (!this.resolvedLightRays?.length || time < this.nextLightSparkleAt) return;
-    const sparkleCount = Phaser.Math.Between(1, 3);
+    const sparkleCount = Phaser.Math.Between(5, 15);
     for (let i = 0; i < sparkleCount; i += 1) {
       const ray = Phaser.Utils.Array.GetRandom(this.resolvedLightRays);
       this.spawnLightSparkle(ray);
