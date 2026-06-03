@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-cat-guide-run";
-const STORY_ASSET_VERSION = "20260603-cat-guide-run";
+const ASSET_VERSION = "20260603-level-4-base";
+const STORY_ASSET_VERSION = "20260603-level-4-base";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -169,6 +169,7 @@ const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
+const LEVEL_FOUR_WIDTH_TILES = 184;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -308,6 +309,31 @@ const LEVELS = [
       ]
     },
     introCopy: "Follow the strange cat through the lower city, collect coins, claim the acorn basket, and fight your way to the brass key and exit."
+  },
+  {
+    name: "Level 4",
+    rows: createLevelFour(),
+    timeLimit: 300,
+    soundtrack: "bgm-lv1",
+    enemySprite: "robot-lv1",
+    actionAbility: null,
+    startSpeech: "",
+    showStartingHouse: false,
+    catNpc: true,
+    doorYOffset: -30,
+    parallax: "parallax-city",
+    platformTexture: "platform-strip",
+    fenceTexture: "platform-fence",
+    lightRayAlpha: 0.47,
+    lightRays: [
+      { x: 420, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: 114, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
+      { x: 1060, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: 150, alpha: 0.12, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "dim" },
+      { x: 1860, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: 132, alpha: 0.11, thickness: 2, opacityMode: "steady" },
+      { x: 3120, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: 174, alpha: 0.12, thickness: 3, foreground: true, frontAlpha: 0.08, opacityMode: "dim" },
+      { x: 4320, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: 124, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
+      { x: 5220, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: 156, alpha: 0.11, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "steady" }
+    ],
+    introCopy: "The strange cat keeps leading the way across the rooftops. Follow carefully, collect what you can, and find the next door."
   }
 ];
 
@@ -600,6 +626,85 @@ function createLevelThree() {
     [1, 160, "a"],
     [1, 181, "a"],
     [1, 204, "a"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
+
+function createLevelFour() {
+  const { rows, put, run } = createLevelRows(22, LEVEL_FOUR_WIDTH_TILES);
+
+  run(20, 0, 30);
+  run(20, 36, 24);
+  run(20, 68, 36);
+  run(20, 112, 28);
+  run(20, 148, 36);
+
+  run(17, 24, 9);
+  run(17, 44, 8);
+  run(17, 75, 11);
+  run(17, 99, 4, "=");
+  run(17, 116, 10);
+  run(17, 137, 4, "=");
+  run(17, 155, 11);
+
+  run(14, 38, 10);
+  run(14, 62, 5, "=");
+  run(14, 82, 12);
+  run(14, 107, 9);
+  run(14, 129, 10);
+  run(14, 151, 4, "=");
+
+  run(11, 54, 9);
+  run(11, 78, 10);
+  run(11, 101, 4, "=");
+  run(11, 120, 11);
+  run(11, 144, 9);
+
+  run(8, 70, 11);
+  run(8, 94, 8);
+  run(8, 118, 4, "=");
+  run(8, 139, 11);
+  run(8, 162, 8);
+
+  run(5, 86, 8);
+  run(5, 111, 11);
+  run(5, 139, 4, "=");
+  run(5, 160, 10);
+
+  [
+    [18, 4, "p"],
+    [19, 18, "g"],
+    [19, 43, "g"],
+    [19, 52, "m"],
+    [19, 76, "g"],
+    [19, 95, "g"],
+    [19, 121, "m"],
+    [19, 133, "g"],
+    [19, 158, "g"],
+    [16, 28, "g"],
+    [16, 48, "g"],
+    [16, 80, "m"],
+    [16, 83, "g"],
+    [16, 121, "g"],
+    [16, 159, "g"],
+    [13, 43, "m"],
+    [13, 64, "g"],
+    [13, 89, "g"],
+    [13, 111, "m"],
+    [13, 134, "g"],
+    [10, 58, "g"],
+    [10, 84, "m"],
+    [10, 122, "g"],
+    [10, 148, "g"],
+    [7, 75, "g"],
+    [7, 98, "g"],
+    [7, 145, "m"],
+    [7, 166, "g"],
+    [4, 90, "g"],
+    [4, 116, "g"],
+    [4, 164, "k"],
+    [16, 173, "d"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
