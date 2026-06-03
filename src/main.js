@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-difficulty-toggle";
-const STORY_ASSET_VERSION = "20260603-difficulty-toggle";
+const ASSET_VERSION = "20260603-cat-guide-run";
+const STORY_ASSET_VERSION = "20260603-cat-guide-run";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -3816,47 +3816,113 @@ class PlayScene extends Phaser.Scene {
 
     const fromX = this.cat.x;
     const fromY = this.cat.y;
-    const distance = Phaser.Math.Distance.Between(fromX, fromY, target.x, target.y);
-    const sameRun = target.run && this.catGuideIndex >= 0 && this.isSameCatRun(target.run, this.catGuidePath[this.catGuideIndex]?.run);
+    const fromRun = this.getCatGuideRunAt(fromX, fromY) || this.catGuidePath[this.catGuideIndex]?.run;
+    const phases = this.buildCatGuideTravelPhases(fromX, fromY, fromRun, target);
+    const duration = phases.reduce((total, phase) => total + phase.duration, 0);
     this.catGuideTravel = {
       targetIndex,
-      fromX,
-      fromY,
       toX: target.x,
       toY: target.y,
       startedAt: time,
-      duration: Phaser.Math.Clamp((distance / CAT_RUN_SPEED) * 1000, 360, 1500),
-      arc: sameRun ? 0 : Phaser.Math.Clamp(36 + Math.abs(target.x - fromX) * 0.16 + Math.max(0, fromY - target.y) * 0.24, 42, 132)
+      duration,
+      phases
     };
     this.cat.setFlipX(target.x < fromX);
     this.cat.play("cat-run", true);
+  }
+
+  getCatGuideRunAt(x, y) {
+    return this.platformRuns
+      .filter((run) => {
+        const withinRun = x >= run.startX - 54 && x <= run.endX + 54;
+        const nearCatY = Math.abs(y - this.getCatGuideY(run)) < 72;
+        return withinRun && nearCatY;
+      })
+      .sort((a, b) => Math.abs(y - this.getCatGuideY(a)) - Math.abs(y - this.getCatGuideY(b)))[0] || null;
+  }
+
+  buildCatGuideTravelPhases(fromX, fromY, fromRun, target) {
+    const fallback = () => [this.createCatGuidePhase("jump", fromX, fromY, target.x, target.y)];
+    if (!target.run || !fromRun) return fallback();
+
+    const sameRun = this.isSameCatRun(fromRun, target.run);
+    if (sameRun) return [this.createCatGuidePhase("run", fromX, this.getCatGuideY(fromRun), target.x, this.getCatGuideY(target.run))];
+
+    const direction = target.x >= fromX ? 1 : -1;
+    const fromEdgeX = direction > 0
+      ? fromRun.endX - CAT_EDGE_TARGET_PADDING
+      : fromRun.startX + CAT_EDGE_TARGET_PADDING;
+    const targetEdgeX = direction > 0
+      ? target.run.startX + CAT_EDGE_TARGET_PADDING
+      : target.run.endX - CAT_EDGE_TARGET_PADDING;
+    const landingX = Phaser.Math.Clamp(targetEdgeX, target.run.startX + CAT_GUIDE_RUN_PADDING, target.run.endX - CAT_GUIDE_RUN_PADDING);
+    const fromRunY = this.getCatGuideY(fromRun);
+    const targetRunY = this.getCatGuideY(target.run);
+    const phases = [];
+
+    if (Math.abs(fromX - fromEdgeX) > 18) {
+      phases.push(this.createCatGuidePhase("run", fromX, fromRunY, fromEdgeX, fromRunY));
+    }
+    phases.push(this.createCatGuidePhase("jump", fromEdgeX, fromRunY, landingX, targetRunY));
+    if (Math.abs(landingX - target.x) > 18) {
+      phases.push(this.createCatGuidePhase("run", landingX, targetRunY, target.x, targetRunY));
+    }
+    return phases;
+  }
+
+  createCatGuidePhase(kind, fromX, fromY, toX, toY) {
+    const distance = Phaser.Math.Distance.Between(fromX, fromY, toX, toY);
+    const isJump = kind === "jump";
+    return {
+      kind,
+      fromX,
+      fromY,
+      toX,
+      toY,
+      duration: Phaser.Math.Clamp((distance / CAT_RUN_SPEED) * 1000, isJump ? 300 : 260, isJump ? 1100 : 1250),
+      arc: isJump ? Phaser.Math.Clamp(34 + Math.abs(toX - fromX) * 0.13 + Math.max(0, fromY - toY) * 0.22, 42, 118) : 0
+    };
   }
 
   updateCatGuideTravel(time = 0) {
     const travel = this.catGuideTravel;
     if (!travel) return;
 
-    const progress = Phaser.Math.Clamp((time - travel.startedAt) / travel.duration, 0, 1);
+    const elapsed = Phaser.Math.Clamp(time - travel.startedAt, 0, travel.duration);
+    const phase = this.getCatGuideTravelPhase(travel, elapsed);
+    const progress = Phaser.Math.Clamp(phase.elapsed / Math.max(1, phase.duration), 0, 1);
     const eased = Phaser.Math.Easing.Sine.InOut(progress);
-    const x = Phaser.Math.Linear(travel.fromX, travel.toX, eased);
-    const baseY = Phaser.Math.Linear(travel.fromY, travel.toY, eased);
-    const arcY = travel.arc * Math.sin(Math.PI * progress);
+    const x = Phaser.Math.Linear(phase.fromX, phase.toX, eased);
+    const baseY = Phaser.Math.Linear(phase.fromY, phase.toY, eased);
+    const arcY = phase.arc * Math.sin(Math.PI * progress);
     const y = baseY - arcY;
 
     this.setCatGuidePosition(x, y);
-    if (travel.arc > 0) {
+    this.cat.setFlipX(phase.toX < phase.fromX);
+    if (phase.kind === "jump") {
       this.cat.anims.stop();
       this.cat.setFrame(progress < 0.55 ? 5 : 6);
     } else {
       this.cat.play("cat-run", true);
     }
 
-    if (progress < 1) return;
+    if (elapsed < travel.duration) return;
     this.catGuideIndex = travel.targetIndex;
     this.finishCatGuideTravel();
     const stop = this.catGuidePath[this.catGuideIndex];
     if (stop?.kind === "k" && !state.hasKey) this.revealKey();
     this.playCatGuideIdle();
+  }
+
+  getCatGuideTravelPhase(travel, elapsed) {
+    let consumed = 0;
+    for (const phase of travel.phases) {
+      const phaseEnd = consumed + phase.duration;
+      if (elapsed <= phaseEnd) return { ...phase, elapsed: elapsed - consumed };
+      consumed = phaseEnd;
+    }
+    const lastPhase = travel.phases[travel.phases.length - 1];
+    return { ...lastPhase, elapsed: lastPhase.duration };
   }
 
   finishCatGuideTravel() {
