@@ -147,8 +147,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-starting-ruins";
-const STORY_ASSET_VERSION = "20260603-starting-ruins";
+const ASSET_VERSION = "20260603-starting-ruins-pair";
+const STORY_ASSET_VERSION = "20260603-starting-ruins-pair";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -334,7 +334,10 @@ const LEVELS = [
     actionAbility: null,
     startSpeech: "",
     showStartingHouse: false,
-    showStartingRuins: true,
+    startingRuins: [
+      { key: "starting-ruins-1", src: "./public/assets/environment/starting_ruins_1.png", x: 18, floorRow: 20, scale: 0.38 },
+      { key: "starting-ruins-2", src: "./public/assets/environment/starting_ruins_2.png", x: 1780, floorRow: 20, scale: 0.42 }
+    ],
     catNpc: true,
     doorYOffset: -30,
     parallax: "parallax-cathedral",
@@ -691,6 +694,7 @@ function createLevelFour() {
   [
     [18, 4, "p"],
     [19, 18, "g"],
+    [19, 24, "j"],
     [19, 43, "g"],
     [19, 52, "m"],
     [19, 76, "g"],
@@ -710,7 +714,6 @@ function createLevelFour() {
     [13, 111, "m"],
     [13, 134, "g"],
     [10, 58, "g"],
-    [10, 81, "j"],
     [10, 84, "m"],
     [10, 122, "g"],
     [10, 148, "g"],
@@ -1331,7 +1334,7 @@ class PlayScene extends Phaser.Scene {
     this.createBackdrop();
     if (this.level.showWater !== false) this.createWaterBelow();
     if (this.level.showStartingHouse) this.createStartingHouse();
-    if (this.level.showStartingRuins) this.createStartingRuins();
+    if (this.level.startingRuins?.length) this.createStartingRuins();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
@@ -1520,7 +1523,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
-      if (level.showStartingRuins) image("starting-ruins", "./public/assets/environment/starting_ruins.png");
+      (level.startingRuins || []).forEach((ruins) => image(ruins.key, ruins.src));
       if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
       image("door-key", "./public/assets/environment/door_key.png");
@@ -2308,10 +2311,12 @@ class PlayScene extends Phaser.Scene {
   }
 
   createStartingRuins() {
-    const ruins = this.add.image(18, 20 * TILE + 4, "starting-ruins");
-    ruins.setOrigin(0, 1);
-    ruins.setScale(STARTING_RUINS_SCALE);
-    ruins.setDepth(STARTING_HOUSE_DEPTH);
+    (this.level.startingRuins || []).forEach((ruinsConfig) => {
+      const ruins = this.add.image(ruinsConfig.x, ruinsConfig.floorRow * TILE + 4, ruinsConfig.key);
+      ruins.setOrigin(0, 1);
+      ruins.setScale(ruinsConfig.scale ?? STARTING_RUINS_SCALE);
+      ruins.setDepth(STARTING_HOUSE_DEPTH);
+    });
   }
 
   createBillboardPrompt() {
