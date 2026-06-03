@@ -340,12 +340,12 @@ const LEVELS = [
     fenceTexture: "platform-fence",
     lightRayAlpha: 0.47,
     lightRays: [
-      { x: 420, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: 114, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
-      { x: 1060, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: 150, alpha: 0.12, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "dim" },
-      { x: 1860, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: 132, alpha: 0.11, thickness: 2, opacityMode: "steady" },
-      { x: 3120, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: 174, alpha: 0.12, thickness: 3, foreground: true, frontAlpha: 0.08, opacityMode: "dim" },
-      { x: 4320, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: 124, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
-      { x: 5220, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: 156, alpha: 0.11, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "steady" }
+      { x: 534, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: -114, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
+      { x: 1210, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: -150, alpha: 0.12, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "dim" },
+      { x: 1992, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: -132, alpha: 0.11, thickness: 2, opacityMode: "steady" },
+      { x: 3294, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: -174, alpha: 0.12, thickness: 3, foreground: true, frontAlpha: 0.08, opacityMode: "dim" },
+      { x: 4444, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: -124, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
+      { x: 5376, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: -156, alpha: 0.11, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "steady" }
     ],
     introCopy: "The strange cat keeps leading the way across the rooftops. Follow carefully, collect what you can, and find the next door."
   }
