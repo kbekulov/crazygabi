@@ -147,8 +147,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-starting-ruins-pair";
-const STORY_ASSET_VERSION = "20260603-starting-ruins-pair";
+const ASSET_VERSION = "20260603-ruins-1";
+const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -335,8 +335,8 @@ const LEVELS = [
     startSpeech: "",
     showStartingHouse: false,
     startingRuins: [
-      { key: "starting-ruins-1", src: "./public/assets/environment/starting_ruins_1.png", x: 18, floorRow: 20, scale: 0.57 },
-      { key: "starting-ruins-2", src: "./public/assets/environment/starting_ruins_2.png", x: 2800, floorRow: 20, scale: 0.63 }
+      { key: "ruins-1", src: "./public/assets/environment/ruins_1.png", x: 18, floorRow: 20, scale: 0.285 },
+      { key: "ruins-1-later", src: "./public/assets/environment/ruins_1.png", x: 2800, floorRow: 20, scale: 0.315 }
     ],
     catNpc: true,
     doorYOffset: -30,
