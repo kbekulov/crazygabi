@@ -464,10 +464,20 @@ button:active {
 
 .difficulty-toggle button.is-active {
   color: #17130a;
-  background: #ffd76b;
-  border-color: #ffd76b;
   text-shadow: none;
   box-shadow: 0 5px 0 #a46d25;
+}
+
+#difficulty-easy.is-active {
+  background: #56d46d;
+  border-color: #56d46d;
+  box-shadow: 0 5px 0 #237a32;
+}
+
+#difficulty-hard.is-active {
+  background: #f04a3f;
+  border-color: #f04a3f;
+  box-shadow: 0 5px 0 #8b1f18;
 }
 
 .main-menu-subtitle {
