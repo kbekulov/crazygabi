@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260602-mobile-jump-strokes";
-const STORY_ASSET_VERSION = "20260602-mobile-jump-strokes";
+const ASSET_VERSION = "20260603-level2-navigation";
+const STORY_ASSET_VERSION = "20260603-level2-navigation";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -228,7 +228,7 @@ const LEVELS = [
       floorRow: 18,
       speech: "This tunnel is dark, young lady. Please pick up that lantern over there to proceed."
     },
-    introCopy: "Find the lantern before the tunnel goes dark, then use its light to reach the brass key and escape before the shadows close in."
+    introCopy: "Find the lantern, move carefully through the dark tunnel, and survive what waits just beyond the edge of the light."
   },
   {
     name: "Level 3",
@@ -382,74 +382,68 @@ function createLevelTwo() {
     run(row, levelWidth - 2, 2, "w");
   }
 
-  run(18, 2, 20);
-  run(15, 20, 13);
-  run(12, 8, 17);
-  run(9, 26, 17);
-  run(6, 14, 17);
-  run(8, 34, 10);
-  run(10, 45, 15);
-  run(13, 60, 15);
-  run(16, 76, 17);
-  run(13, 92, 16);
-  run(10, 108, 17);
-  run(16, 124, 22);
-  run(13, 150, 12);
-  run(10, 168, 14);
-  run(7, 188, 13);
-  run(10, 207, 12);
-  run(13, 224, 15);
-  run(16, 244, 14);
-  run(13, 263, 11);
-  run(16, 280, 14);
+  run(18, 2, 25);
+  run(16, 24, 16);
+  run(14, 39, 17);
+  run(16, 55, 17);
+  run(18, 72, 18);
+  run(16, 90, 18);
+  run(14, 108, 18);
+  run(16, 126, 17);
+  run(18, 143, 18);
+  run(16, 160, 18);
+  run(14, 178, 18);
+  run(16, 196, 18);
+  run(18, 214, 17);
+  run(16, 231, 18);
+  run(14, 249, 18);
+  run(13, 266, 20);
+  run(16, 282, 12);
 
   run(21, 10, 3, "w");
   run(22, 10, 3, "w");
-  run(18, 34, 3, "w");
-  run(19, 34, 3, "w");
-  run(20, 64, 3, "w");
-  run(21, 64, 3, "w");
-  run(19, 100, 4, "w");
-  run(20, 100, 4, "w");
-  run(17, 164, 3, "w");
-  run(18, 164, 3, "w");
-  run(14, 198, 3, "w");
-  run(15, 198, 3, "w");
-  run(18, 236, 4, "w");
-  run(19, 236, 4, "w");
+  run(18, 48, 3, "w");
+  run(19, 48, 3, "w");
+  run(19, 83, 4, "w");
+  run(20, 83, 4, "w");
+  run(17, 118, 3, "w");
+  run(18, 118, 3, "w");
+  run(19, 151, 4, "w");
+  run(20, 151, 4, "w");
+  run(17, 206, 3, "w");
+  run(18, 206, 3, "w");
+  run(18, 239, 4, "w");
+  run(19, 239, 4, "w");
 
   [
     [16, 4, "p"],
     [17, 9, "g"],
     [17, 19, "l"],
-    [11, 13, "g"],
-    [8, 34, "g"],
-    [5, 20, "g"],
-    [7, 39, "g"],
-    [9, 52, "g"],
-    [12, 67, "g"],
-    [15, 84, "g"],
-    [12, 101, "g"],
-    [9, 116, "g"],
-    [15, 132, "g"],
-    [15, 140, "g"],
-    [12, 154, "g"],
-    [9, 175, "g"],
-    [6, 195, "g"],
-    [9, 213, "g"],
-    [12, 233, "g"],
-    [15, 252, "g"],
-    [12, 270, "k"],
+    [15, 31, "g"],
+    [13, 45, "g"],
+    [15, 63, "g"],
+    [17, 80, "g"],
+    [15, 99, "g"],
+    [13, 118, "g"],
+    [15, 134, "g"],
+    [17, 152, "g"],
+    [15, 170, "g"],
+    [13, 187, "g"],
+    [15, 205, "g"],
+    [17, 222, "g"],
+    [15, 240, "g"],
+    [13, 258, "g"],
+    [12, 276, "k"],
     [15, 289, "d"],
-    [14, 29, "m"],
-    [12, 69, "m"],
-    [12, 156, "m"],
-    [9, 176, "m"],
-    [6, 196, "m"],
-    [9, 212, "m"],
-    [12, 232, "m"],
-    [15, 250, "m"],
-    [12, 268, "m"]
+    [15, 36, "m"],
+    [13, 53, "m"],
+    [17, 86, "m"],
+    [13, 124, "m"],
+    [17, 157, "m"],
+    [13, 192, "m"],
+    [17, 226, "m"],
+    [13, 264, "m"],
+    [12, 279, "m"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
