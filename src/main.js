@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-labyrinth-quake-light";
-const STORY_ASSET_VERSION = "20260603-labyrinth-quake-light";
+const ASSET_VERSION = "20260603-level2-flow-fix";
+const STORY_ASSET_VERSION = "20260603-level2-flow-fix";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -386,6 +386,15 @@ function createLevelOne() {
 function createLevelTwo() {
   const levelWidth = LEVEL_TWO_WIDTH_TILES;
   const { rows, put, run } = createLevelRows(26, levelWidth);
+  const decorateRun = (row, start, length) => {
+    for (let index = 0; index < length; index += 1) {
+      const column = start + index;
+      if (rows[row]?.[column] === ".") put(row, column, "v");
+    }
+  };
+  const decorateColumn = (rowStart, rowEnd, start, length) => {
+    for (let row = rowStart; row <= rowEnd; row += 1) decorateRun(row, start, length);
+  };
 
   run(0, 0, levelWidth, "w");
   for (let row = 1; row < 25; row += 1) {
@@ -394,68 +403,80 @@ function createLevelTwo() {
   }
 
   run(18, 2, 25);
-  run(16, 24, 15);
-  run(14, 38, 17);
-  run(16, 54, 17);
-  run(18, 70, 19);
-  run(20, 88, 16);
-  run(18, 103, 17);
-  run(16, 119, 18);
-  run(14, 136, 17);
-  run(16, 152, 17);
-  run(18, 168, 19);
-  run(16, 186, 19);
-  run(14, 204, 17);
-  run(12, 220, 17);
-  run(14, 236, 19);
-  run(16, 254, 17);
-  run(14, 270, 16);
-  run(16, 284, 10);
+  run(17, 25, 14);
+  run(19, 39, 15);
+  run(21, 54, 16);
+  run(19, 70, 16);
+  run(17, 86, 16);
+  run(15, 102, 17);
+  run(17, 119, 17);
+  run(19, 136, 18);
+  run(17, 154, 17);
+  run(15, 171, 17);
+  run(17, 188, 18);
+  run(20, 206, 18);
+  run(18, 224, 18);
+  run(16, 242, 17);
+  run(14, 259, 16);
+  run(16, 275, 19);
 
-  run(21, 10, 3, "w");
-  run(22, 10, 3, "w");
-  for (let row = 8; row <= 13; row += 1) run(row, 50, 2, "w");
-  for (let row = 14; row <= 19; row += 1) run(row, 82, 3, "w");
-  for (let row = 7; row <= 14; row += 1) run(row, 128, 3, "w");
-  for (let row = 15; row <= 22; row += 1) run(row, 181, 3, "w");
-  for (let row = 8; row <= 13; row += 1) run(row, 241, 3, "w");
-  run(21, 92, 4, "w");
-  run(22, 92, 4, "w");
-  run(20, 146, 4, "w");
-  run(21, 146, 4, "w");
-  run(18, 212, 4, "w");
-  run(19, 212, 4, "w");
+  run(19, 57, 9);
+  run(19, 90, 11);
+  run(15, 126, 11);
+  run(19, 163, 12);
+  run(16, 207, 10);
+  run(18, 248, 10);
+
+  decorateColumn(6, 16, 34, 3);
+  decorateColumn(10, 22, 76, 4);
+  decorateColumn(5, 14, 125, 4);
+  decorateColumn(13, 23, 181, 4);
+  decorateColumn(6, 15, 238, 4);
+  decorateRun(8, 42, 18);
+  decorateRun(9, 42, 10);
+  decorateRun(7, 145, 22);
+  decorateRun(8, 154, 13);
+  decorateRun(10, 220, 20);
+  decorateRun(11, 228, 12);
+  decorateRun(22, 108, 12);
+  decorateRun(23, 108, 12);
+  decorateRun(23, 199, 16);
 
   [
     [16, 4, "p"],
     [17, 9, "g"],
     [17, 19, "l"],
-    [15, 31, "g"],
-    [13, 45, "g"],
-    [15, 63, "g"],
-    [17, 77, "g"],
-    [19, 98, "g"],
-    [17, 111, "g"],
-    [15, 130, "g"],
-    [13, 144, "g"],
-    [15, 162, "g"],
-    [17, 175, "g"],
-    [15, 197, "g"],
-    [13, 212, "g"],
-    [11, 229, "g"],
-    [13, 246, "g"],
-    [15, 263, "g"],
-    [13, 279, "k"],
+    [16, 31, "g"],
+    [18, 46, "g"],
+    [20, 61, "g"],
+    [18, 78, "g"],
+    [16, 94, "g"],
+    [14, 110, "g"],
+    [16, 127, "g"],
+    [18, 145, "g"],
+    [16, 162, "g"],
+    [14, 179, "g"],
+    [16, 196, "g"],
+    [19, 215, "g"],
+    [17, 233, "g"],
+    [15, 250, "g"],
+    [13, 267, "g"],
+    [15, 284, "k"],
     [15, 289, "d"],
-    [15, 36, "m"],
-    [13, 53, "m"],
-    [19, 96, "m"],
-    [15, 134, "m"],
-    [17, 171, "m"],
-    [15, 201, "m"],
-    [11, 232, "m"],
-    [15, 260, "m"],
-    [13, 278, "m"]
+    [18, 63, "g"],
+    [18, 96, "g"],
+    [14, 132, "g"],
+    [18, 169, "g"],
+    [15, 214, "g"],
+    [17, 253, "g"],
+    [18, 48, "m"],
+    [20, 67, "m"],
+    [16, 98, "m"],
+    [18, 149, "m"],
+    [14, 183, "m"],
+    [19, 220, "m"],
+    [15, 246, "m"],
+    [15, 279, "m"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -2254,6 +2275,9 @@ class PlayScene extends Phaser.Scene {
             this.createWallTileVisual(x, y, rowIndex, columnIndex);
           }
         }
+        if (cell === "v") {
+          this.createWallTileVisual(x, y, rowIndex, columnIndex);
+        }
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "coin");
           gem.setScale(ITEM_SCALE);
@@ -2382,7 +2406,7 @@ class PlayScene extends Phaser.Scene {
     const candidates = [];
     this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
-        if (cell !== "w" || !this.canPlaceWallForegroundAt(rowIndex, columnIndex)) return;
+        if (!this.isWallCell(rowIndex, columnIndex) || !this.canPlaceWallForegroundAt(rowIndex, columnIndex)) return;
         candidates.push({ rowIndex, columnIndex, score: this.wallPlacementNoise(rowIndex, columnIndex) });
       });
     });
@@ -2466,7 +2490,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   isWallCell(rowIndex, columnIndex) {
-    return this.levelRows[rowIndex]?.[columnIndex] === "w";
+    const cell = this.levelRows[rowIndex]?.[columnIndex];
+    return cell === "w" || cell === "v";
   }
 
   createPlatformVisuals() {
