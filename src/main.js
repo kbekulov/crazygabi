@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-level2-navigation";
-const STORY_ASSET_VERSION = "20260603-level2-navigation";
+const ASSET_VERSION = "20260603-labyrinth-quake-light";
+const STORY_ASSET_VERSION = "20260603-labyrinth-quake-light";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -208,6 +208,17 @@ const LEVELS = [
     parallax: "parallax-tunnel",
     platformTexture: "platform-underground",
     fenceTexture: "platform-fence-underground",
+    wallTiles: {
+      backdropSheet: "level2-wall-backdrop",
+      backdropFrames: 30,
+      foreground: [
+        "underground-wall-1",
+        "underground-wall-2",
+        "underground-wall-3",
+        "underground-wall-4",
+        "underground-wall-5"
+      ]
+    },
     lanternPlayerSheet: "gabi-lantern-sheet",
     lanternAnimationPrefix: "gabi-lantern",
     darkness: {
@@ -383,37 +394,37 @@ function createLevelTwo() {
   }
 
   run(18, 2, 25);
-  run(16, 24, 16);
-  run(14, 39, 17);
-  run(16, 55, 17);
-  run(18, 72, 18);
-  run(16, 90, 18);
-  run(14, 108, 18);
-  run(16, 126, 17);
-  run(18, 143, 18);
-  run(16, 160, 18);
-  run(14, 178, 18);
-  run(16, 196, 18);
-  run(18, 214, 17);
-  run(16, 231, 18);
-  run(14, 249, 18);
-  run(13, 266, 20);
-  run(16, 282, 12);
+  run(16, 24, 15);
+  run(14, 38, 17);
+  run(16, 54, 17);
+  run(18, 70, 19);
+  run(20, 88, 16);
+  run(18, 103, 17);
+  run(16, 119, 18);
+  run(14, 136, 17);
+  run(16, 152, 17);
+  run(18, 168, 19);
+  run(16, 186, 19);
+  run(14, 204, 17);
+  run(12, 220, 17);
+  run(14, 236, 19);
+  run(16, 254, 17);
+  run(14, 270, 16);
+  run(16, 284, 10);
 
   run(21, 10, 3, "w");
   run(22, 10, 3, "w");
-  run(18, 48, 3, "w");
-  run(19, 48, 3, "w");
-  run(19, 83, 4, "w");
-  run(20, 83, 4, "w");
-  run(17, 118, 3, "w");
-  run(18, 118, 3, "w");
-  run(19, 151, 4, "w");
-  run(20, 151, 4, "w");
-  run(17, 206, 3, "w");
-  run(18, 206, 3, "w");
-  run(18, 239, 4, "w");
-  run(19, 239, 4, "w");
+  for (let row = 8; row <= 13; row += 1) run(row, 50, 2, "w");
+  for (let row = 14; row <= 19; row += 1) run(row, 82, 3, "w");
+  for (let row = 7; row <= 14; row += 1) run(row, 128, 3, "w");
+  for (let row = 15; row <= 22; row += 1) run(row, 181, 3, "w");
+  for (let row = 8; row <= 13; row += 1) run(row, 241, 3, "w");
+  run(21, 92, 4, "w");
+  run(22, 92, 4, "w");
+  run(20, 146, 4, "w");
+  run(21, 146, 4, "w");
+  run(18, 212, 4, "w");
+  run(19, 212, 4, "w");
 
   [
     [16, 4, "p"],
@@ -422,28 +433,29 @@ function createLevelTwo() {
     [15, 31, "g"],
     [13, 45, "g"],
     [15, 63, "g"],
-    [17, 80, "g"],
-    [15, 99, "g"],
-    [13, 118, "g"],
-    [15, 134, "g"],
-    [17, 152, "g"],
-    [15, 170, "g"],
-    [13, 187, "g"],
-    [15, 205, "g"],
-    [17, 222, "g"],
-    [15, 240, "g"],
-    [13, 258, "g"],
-    [12, 276, "k"],
+    [17, 77, "g"],
+    [19, 98, "g"],
+    [17, 111, "g"],
+    [15, 130, "g"],
+    [13, 144, "g"],
+    [15, 162, "g"],
+    [17, 175, "g"],
+    [15, 197, "g"],
+    [13, 212, "g"],
+    [11, 229, "g"],
+    [13, 246, "g"],
+    [15, 263, "g"],
+    [13, 279, "k"],
     [15, 289, "d"],
     [15, 36, "m"],
     [13, 53, "m"],
-    [17, 86, "m"],
-    [13, 124, "m"],
-    [17, 157, "m"],
-    [13, 192, "m"],
-    [17, 226, "m"],
-    [13, 264, "m"],
-    [12, 279, "m"]
+    [19, 96, "m"],
+    [15, 134, "m"],
+    [17, 171, "m"],
+    [15, 201, "m"],
+    [11, 232, "m"],
+    [15, 260, "m"],
+    [13, 278, "m"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -489,18 +501,24 @@ function createLevelThree() {
 
   run(18, 101, 4, "=");
   run(18, 110, 12);
+  run(19, 119, 5, "=");
   run(21, 126, 10);
   run(17, 139, 9);
   run(14, 113, 10);
+  run(14, 124, 5, "=");
   run(11, 129, 10);
   run(8, 139, 9);
   run(5, 132, 16);
   run(8, 154, 7);
+  run(12, 153, 5, "=");
   run(11, 165, 8);
+  run(11, 174, 5, "=");
   run(8, 178, 4, "=");
+  run(5, 183, 5, "=");
   run(5, 190, 6);
   run(8, 196, 4, "=");
   run(5, 202, 14);
+  run(8, 210, 4, "=");
 
   [
     [3, 4, "p"],
@@ -4271,12 +4289,41 @@ class PlayScene extends Phaser.Scene {
     this.quakeDropUntil = this.quakeDropStartsAt + quake.burstDuration;
     this.cameras.main.shake(quake.shakeDuration, quake.shakeIntensity);
     this.playLevelSfx(quake.sfx, 0.68);
+    this.positionQuakeBricksNearLightImpacts();
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active) return;
       acorn.setData("nextDrop", this.quakeDropStartsAt + Phaser.Math.Between(...quake.brickDropDelay));
       acorn.setData("pace", Phaser.Math.Between(...quake.brickPace));
     });
     this.scheduleNextQuake(this.quakeDropUntil);
+  }
+
+  positionQuakeBricksNearLightImpacts() {
+    const impacts = this.getCurrentLightImpactDropPoints();
+    if (!impacts.length) return;
+    let brickIndex = 0;
+    this.acorns.children.iterate((acorn) => {
+      if (!acorn || !acorn.active) return;
+      const impact = impacts[brickIndex % impacts.length];
+      const jitterRange = Math.round(Math.max(18, impact.width * 0.36));
+      const jitter = Phaser.Math.Between(-jitterRange, jitterRange);
+      const homeX = Phaser.Math.Clamp(impact.x + jitter, 32, this.levelWidth - 32);
+      acorn.setData("homeX", homeX);
+      if (!acorn.body.enable) {
+        acorn.setPosition(homeX, this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
+      }
+      brickIndex += 1;
+    });
+  }
+
+  getCurrentLightImpactDropPoints() {
+    const impacts = (this.resolvedLightRays || []).flatMap((ray) => ray.impacts || []);
+    if (!impacts.length) return [];
+    const camera = this.cameras.main;
+    const visibleImpacts = impacts.filter((impact) => {
+      return impact.x >= camera.scrollX - 180 && impact.x <= camera.scrollX + VIEW_WIDTH + 180;
+    });
+    return visibleImpacts.length ? visibleImpacts : impacts;
   }
 
   updateAcorns(time) {
