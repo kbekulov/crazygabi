@@ -28,6 +28,7 @@ const WATER_SPEED = 6;
 const WATER_Y_OFFSET = 18;
 const STARTING_HOUSE_DEPTH = 0;
 const STARTING_HOUSE_SCALE = 0.48;
+const STARTING_RUINS_SCALE = 0.42;
 const STARTING_BILLBOARD_DEPTH = FENCE_DEPTH + 0.5;
 const STARTING_BILLBOARD_SCALE = 0.36;
 const BILLBOARD_INTERACT_DISTANCE = 92;
@@ -146,8 +147,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-loading-sprite-frame";
-const STORY_ASSET_VERSION = "20260603-loading-sprite-frame";
+const ASSET_VERSION = "20260603-starting-ruins";
+const STORY_ASSET_VERSION = "20260603-starting-ruins";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -333,6 +334,7 @@ const LEVELS = [
     actionAbility: null,
     startSpeech: "",
     showStartingHouse: false,
+    showStartingRuins: true,
     catNpc: true,
     doorYOffset: -30,
     parallax: "parallax-cathedral",
@@ -1329,6 +1331,7 @@ class PlayScene extends Phaser.Scene {
     this.createBackdrop();
     if (this.level.showWater !== false) this.createWaterBelow();
     if (this.level.showStartingHouse) this.createStartingHouse();
+    if (this.level.showStartingRuins) this.createStartingRuins();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
@@ -1517,6 +1520,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
+      if (level.showStartingRuins) image("starting-ruins", "./public/assets/environment/starting_ruins.png");
       if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
       image("door-key", "./public/assets/environment/door_key.png");
@@ -2301,6 +2305,13 @@ class PlayScene extends Phaser.Scene {
     this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
     this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
     this.createBillboardPrompt();
+  }
+
+  createStartingRuins() {
+    const ruins = this.add.image(18, 20 * TILE + 4, "starting-ruins");
+    ruins.setOrigin(0, 1);
+    ruins.setScale(STARTING_RUINS_SCALE);
+    ruins.setDepth(STARTING_HOUSE_DEPTH);
   }
 
   createBillboardPrompt() {
