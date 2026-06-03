@@ -329,6 +329,10 @@ const LEVELS = [
     name: "Level 4",
     rows: createLevelFour(),
     timeLimit: 300,
+    storyFrames: [
+      { key: "story-level-4-frame-1", src: "./public/assets/story/level-4/frame_1.png" },
+      { key: "story-level-4-frame-2", src: "./public/assets/story/level-4/frame_2.png" }
+    ],
     soundtrack: "bgm-lv1",
     enemySprite: "robot-lv1",
     actionAbility: null,
