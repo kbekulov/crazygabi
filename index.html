@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260603-level-4-base" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260603-loading-runner" />
   </head>
   <body>
     <main id="shell">
@@ -40,13 +40,18 @@
         </div>
         <div id="game"></div>
         <div id="loading" class="loading-panel" role="status" aria-live="polite">
-          <h1>Loading</h1>
+          <div id="loading-runner" class="loading-runner loading-runner-gabi" aria-hidden="true">
+            <div class="loading-speech">Loading...</div>
+            <div class="loading-sprite-frame">
+              <img id="loading-runner-image" src="./public/assets/character/main_char_sprite.png?v=20260603-loading-runner" alt="" />
+            </div>
+          </div>
           <div class="loading-track"><span id="loading-bar"></span></div>
           <p id="loading-text">Preparing assets...</p>
         </div>
         <div id="main-menu" class="main-menu">
           <div class="main-menu-card">
-            <img class="main-menu-promo" src="./public/assets/menu/menu_promo_2.png?v=20260603-level-4-base" alt="" />
+            <img class="main-menu-promo" src="./public/assets/menu/menu_promo_2.png?v=20260603-loading-runner" alt="" />
             <div class="main-menu-actions">
               <div class="main-menu-best-score">
                 <span>Your Best Score</span>
@@ -116,6 +121,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260603-level-4-base"></script>
+    <script type="module" src="./src/main.js?v=20260603-loading-runner"></script>
   </body>
 </html>

@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-level-4-base";
-const STORY_ASSET_VERSION = "20260603-level-4-base";
+const ASSET_VERSION = "20260603-loading-runner";
+const STORY_ASSET_VERSION = "20260603-loading-runner";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -161,6 +161,20 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" }
+];
+const LOADING_RUNNERS = [
+  {
+    key: "gabi",
+    className: "loading-runner-gabi",
+    src: "./public/assets/character/main_char_sprite.png",
+    frameCount: 2
+  },
+  {
+    key: "cat",
+    className: "loading-runner-cat",
+    src: "./public/assets/character/grey_cat.png",
+    frameCount: 4
+  }
 ];
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
@@ -321,7 +335,7 @@ const LEVELS = [
     showStartingHouse: false,
     catNpc: true,
     doorYOffset: -30,
-    parallax: "parallax-city",
+    parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     lightRayAlpha: 0.47,
@@ -737,6 +751,8 @@ const hud = {
   time: document.querySelector("#time"),
   key: document.querySelector("#key"),
   loading: document.querySelector("#loading"),
+  loadingRunner: document.querySelector("#loading-runner"),
+  loadingRunnerImage: document.querySelector("#loading-runner-image"),
   loadingBar: document.querySelector("#loading-bar"),
   loadingText: document.querySelector("#loading-text"),
   message: document.querySelector("#message"),
@@ -781,7 +797,15 @@ hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
 updateBestScore();
 
 function setLoadingVisible(visible) {
+  if (visible) randomizeLoadingRunner();
   hud.loading.hidden = !visible;
+}
+
+function randomizeLoadingRunner() {
+  const runner = LOADING_RUNNERS[Math.floor(Math.random() * LOADING_RUNNERS.length)] || LOADING_RUNNERS[0];
+  hud.loadingRunner.className = `loading-runner ${runner.className}`;
+  hud.loadingRunner.style.setProperty("--loading-runner-frames", runner.frameCount);
+  hud.loadingRunnerImage.src = `${runner.src}?v=${ASSET_VERSION}`;
 }
 
 function setGameAssetsReady(ready) {
@@ -1486,6 +1510,7 @@ class PlayScene extends Phaser.Scene {
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
       if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
+      if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
       if (level.showStartingHouse) {
         image("starting-house", "./public/assets/environment/starting_house.png");

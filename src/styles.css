@@ -244,12 +244,72 @@ button:active {
   display: none;
 }
 
-.loading-panel h1 {
-  margin: 0;
-  color: #fff200;
-  font-size: clamp(2.2rem, 7vw, 4.8rem);
-  line-height: 0.9;
-  text-shadow: 4px 4px 0 #ff2020, 8px 8px 0 #124cff;
+.loading-runner {
+  --loading-runner-frames: 2;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  min-height: 152px;
+}
+
+.loading-speech {
+  position: relative;
+  min-width: 116px;
+  padding: 9px 14px;
+  color: #f4f0dc;
+  background: rgba(5, 5, 5, 0.92);
+  border-radius: 5px;
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.loading-speech::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 9px solid rgba(5, 5, 5, 0.92);
+  transform: translateX(-50%);
+}
+
+.loading-sprite-frame {
+  width: 238px;
+  height: 238px;
+  overflow: hidden;
+  image-rendering: pixelated;
+  transform: scale(0.46);
+  transform-origin: center top;
+  margin-bottom: -128px;
+}
+
+.loading-sprite-frame img {
+  display: block;
+  width: auto;
+  max-width: none;
+  height: 238px;
+  image-rendering: pixelated;
+  animation: loading-runner-run 420ms steps(var(--loading-runner-frames)) infinite;
+}
+
+.loading-runner-cat .loading-sprite-frame {
+  transform: scale(0.42);
+  margin-bottom: -138px;
+}
+
+@keyframes loading-runner-run {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-238px * var(--loading-runner-frames)));
+  }
 }
 
 .loading-track {
@@ -1065,7 +1125,6 @@ button:active {
   }
 
   .panel h1,
-  .loading-panel h1,
   .game-over-card h1,
   .cheat-panel h1 {
     font-size: clamp(1.45rem, 7vmin, 2.8rem);
