@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-loading-runner";
-const STORY_ASSET_VERSION = "20260603-loading-runner";
+const ASSET_VERSION = "20260603-loading-sprite-frame";
+const STORY_ASSET_VERSION = "20260603-loading-sprite-frame";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -338,14 +338,14 @@ const LEVELS = [
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
-    lightRayAlpha: 0.47,
+    lightRayAlpha: 0.94,
     lightRays: [
-      { x: 534, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: -114, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
-      { x: 1210, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: -150, alpha: 0.12, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "dim" },
-      { x: 1992, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: -132, alpha: 0.11, thickness: 2, opacityMode: "steady" },
-      { x: 3294, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: -174, alpha: 0.12, thickness: 3, foreground: true, frontAlpha: 0.08, opacityMode: "dim" },
-      { x: 4444, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: -124, alpha: 0.1, thickness: 1, opacityMode: "pulse" },
-      { x: 5376, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: -156, alpha: 0.11, thickness: 2, foreground: true, frontAlpha: 0.06, opacityMode: "steady" }
+      { x: 534, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: -114, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
+      { x: 1210, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: -150, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "dim" },
+      { x: 1992, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: -132, alpha: 0.22, thickness: 2, opacityMode: "steady" },
+      { x: 3294, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: -174, alpha: 0.24, thickness: 3, foreground: true, frontAlpha: 0.16, opacityMode: "dim" },
+      { x: 4444, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: -124, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
+      { x: 5376, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: -156, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady" }
     ],
     introCopy: "The strange cat keeps leading the way across the rooftops. Follow carefully, collect what you can, and find the next door."
   }
@@ -752,7 +752,7 @@ const hud = {
   key: document.querySelector("#key"),
   loading: document.querySelector("#loading"),
   loadingRunner: document.querySelector("#loading-runner"),
-  loadingRunnerImage: document.querySelector("#loading-runner-image"),
+  loadingRunnerSprite: document.querySelector("#loading-runner-sprite"),
   loadingBar: document.querySelector("#loading-bar"),
   loadingText: document.querySelector("#loading-text"),
   message: document.querySelector("#message"),
@@ -805,7 +805,7 @@ function randomizeLoadingRunner() {
   const runner = LOADING_RUNNERS[Math.floor(Math.random() * LOADING_RUNNERS.length)] || LOADING_RUNNERS[0];
   hud.loadingRunner.className = `loading-runner ${runner.className}`;
   hud.loadingRunner.style.setProperty("--loading-runner-frames", runner.frameCount);
-  hud.loadingRunnerImage.src = `${runner.src}?v=${ASSET_VERSION}`;
+  hud.loadingRunnerSprite.style.backgroundImage = `url("${runner.src}?v=${ASSET_VERSION}")`;
 }
 
 function setGameAssetsReady(ready) {

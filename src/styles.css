@@ -288,13 +288,18 @@ button:active {
   margin-bottom: -128px;
 }
 
-.loading-sprite-frame img {
-  display: block;
-  width: auto;
-  max-width: none;
+.loading-runner-sprite {
+  width: 238px;
   height: 238px;
+  background-position: 0 0;
+  background-repeat: no-repeat;
+  background-size: auto 714px;
   image-rendering: pixelated;
   animation: loading-runner-run 420ms steps(var(--loading-runner-frames)) infinite;
+}
+
+.loading-runner-gabi .loading-runner-sprite {
+  background-size: auto 715px;
 }
 
 .loading-runner-cat .loading-sprite-frame {
@@ -308,7 +313,7 @@ button:active {
   }
 
   to {
-    transform: translateX(calc(-238px * var(--loading-runner-frames)));
+    background-position-x: calc(-238px * var(--loading-runner-frames));
   }
 }
 
