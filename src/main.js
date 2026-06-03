@@ -146,8 +146,12 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-level2-reachable-pickups";
-const STORY_ASSET_VERSION = "20260603-level2-reachable-pickups";
+const ASSET_VERSION = "20260603-difficulty-toggle";
+const STORY_ASSET_VERSION = "20260603-difficulty-toggle";
+const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
+const DIFFICULTY_EASY = "easy";
+const DIFFICULTY_HARD = "hard";
+const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -616,7 +620,8 @@ const state = {
   won: false,
   resetProgressOnCreate: true,
   autoStartLevel: false,
-  pendingLevelPrompt: null
+  pendingLevelPrompt: null,
+  difficulty: DIFFICULTY_HARD
 };
 
 const hud = {
@@ -654,6 +659,8 @@ const hud = {
   menuSelectLevel: document.querySelector("#menu-select-level"),
   menuMusicBox: document.querySelector("#menu-music-box"),
   menuCredits: document.querySelector("#menu-credits"),
+  difficultyEasy: document.querySelector("#difficulty-easy"),
+  difficultyHard: document.querySelector("#difficulty-hard"),
   menuPanel: document.querySelector("#menu-panel"),
   menuPanelTitle: document.querySelector("#menu-panel-title"),
   menuPanelCopy: document.querySelector("#menu-panel-copy"),
@@ -755,6 +762,44 @@ function recordBestScore(score) {
   updateBestScore(nextBest);
   return nextBest;
 }
+
+function normalizeDifficulty(value) {
+  return value === DIFFICULTY_EASY ? DIFFICULTY_EASY : DIFFICULTY_HARD;
+}
+
+function getDifficultySetting() {
+  return normalizeDifficulty(getCookieValue(DIFFICULTY_COOKIE));
+}
+
+function setDifficultySetting(value) {
+  state.difficulty = normalizeDifficulty(value);
+  document.cookie = [
+    `${DIFFICULTY_COOKIE}=${encodeURIComponent(state.difficulty)}`,
+    "max-age=31536000",
+    "path=/",
+    "SameSite=Lax"
+  ].join("; ");
+  updateDifficultyToggle();
+}
+
+function updateDifficultyToggle() {
+  const isEasy = state.difficulty === DIFFICULTY_EASY;
+  hud.difficultyEasy.classList.toggle("is-active", isEasy);
+  hud.difficultyHard.classList.toggle("is-active", !isEasy);
+  hud.difficultyEasy.setAttribute("aria-pressed", String(isEasy));
+  hud.difficultyHard.setAttribute("aria-pressed", String(!isEasy));
+}
+
+function getScoreMultiplier() {
+  return state.difficulty === DIFFICULTY_EASY ? 0.5 : 1;
+}
+
+function awardScore(points) {
+  state.score += Math.max(0, Math.floor((points || 0) * getScoreMultiplier()));
+}
+
+state.difficulty = getDifficultySetting();
+updateDifficultyToggle();
 
 function isMobileTouchDevice() {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
@@ -2257,8 +2302,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   buildLevel() {
+    this.difficultyCellCounts = { m: 0, a: 0 };
     this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
+        if (!this.shouldKeepDifficultyCell(cell)) return;
         const x = columnIndex * TILE + TILE / 2;
         const y = rowIndex * TILE + TILE / 2;
         if (cell === "#" || cell === "w") {
@@ -3205,6 +3252,14 @@ class PlayScene extends Phaser.Scene {
         }
       });
     });
+  }
+
+  shouldKeepDifficultyCell(cell) {
+    if (cell !== "m" && cell !== "a") return true;
+    const cellCount = this.difficultyCellCounts[cell] || 0;
+    this.difficultyCellCounts[cell] = cellCount + 1;
+    if (state.difficulty !== DIFFICULTY_EASY) return true;
+    return cellCount % EASY_DIFFICULTY_KEEP_INTERVAL !== EASY_DIFFICULTY_KEEP_INTERVAL - 1;
   }
 
   maybeShowPickupSpeech(kind) {
@@ -4681,7 +4736,7 @@ class PlayScene extends Phaser.Scene {
   collectGem(_player, gem) {
     gem.disableBody(true, true);
     state.gems += 1;
-    state.score += 100;
+    awardScore(100);
     updateHud();
     this.maybeShowPickupSpeech("coin");
   }
@@ -4690,7 +4745,7 @@ class PlayScene extends Phaser.Scene {
     if (this.time.now < (heart.getData("armedAt") || 0)) return;
     heart.disableBody(true, true);
     state.lives += 1;
-    state.score += 150;
+    awardScore(150);
     updateHud();
     this.maybeShowPickupSpeech("heart");
   }
@@ -4698,7 +4753,7 @@ class PlayScene extends Phaser.Scene {
   collectDoubleJump(_player, doubleJump) {
     doubleJump.disableBody(true, true);
     state.hasDoubleJump = true;
-    state.score += 300;
+    awardScore(300);
     updateHud();
     this.maybeShowPickupSpeech("wing");
   }
@@ -4706,7 +4761,7 @@ class PlayScene extends Phaser.Scene {
   collectLantern(_player, lantern) {
     lantern.disableBody(true, true);
     state.hasLantern = true;
-    state.score += 350;
+    awardScore(350);
     this.lanternPromptActive = true;
     this.lockPlayerForBasketPrompt();
     this.switchPlayerToLanternSprite();
@@ -4722,7 +4777,7 @@ class PlayScene extends Phaser.Scene {
   collectAcornBasket(_player, basket) {
     basket.disableBody(true, true);
     state.hasAcornBasket = true;
-    state.score += 400;
+    awardScore(400);
     this.basketPromptActive = true;
     this.lastActionAt = -Infinity;
     this.catWaiting = false;
@@ -4760,7 +4815,7 @@ class PlayScene extends Phaser.Scene {
   collectKey(_player, key) {
     key.disableBody(true, true);
     state.hasKey = true;
-    state.score += 500;
+    awardScore(500);
     updateHud();
   }
 
@@ -4820,7 +4875,7 @@ class PlayScene extends Phaser.Scene {
     if (player.body.velocity.y > 120 && player.y < enemy.y - 5) {
       this.defeatEnemy(enemy);
       player.setVelocityY(-330);
-      state.score += 250;
+      awardScore(250);
       updateHud();
       return;
     }
@@ -4831,7 +4886,7 @@ class PlayScene extends Phaser.Scene {
     if (!state.running || !item.active || !enemy.active) return;
     this.ricochetThrownItemFromEnemy(item, enemy);
     this.defeatEnemy(enemy);
-    state.score += 350;
+    awardScore(350);
     updateHud();
   }
 
@@ -4886,8 +4941,8 @@ class PlayScene extends Phaser.Scene {
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
     if (this.timerEvent) this.timerEvent.remove(false);
-    state.score += state.gems === state.totalGems ? 1000 : 350;
-    state.score += state.timeLeft * 10;
+    awardScore(state.gems === state.totalGems ? 1000 : 350);
+    awardScore(state.timeLeft * 10);
     updateHud();
     if (state.levelIndex < LEVELS.length - 1) {
       this.advanceToNextLevel();
@@ -5020,6 +5075,8 @@ hud.gameOverMenu.addEventListener("click", () => {
 hud.menuSelectLevel.addEventListener("click", () => showLevelSelectPanel());
 hud.menuMusicBox.addEventListener("click", () => showMusicBoxPanel());
 hud.menuCredits.addEventListener("click", () => showCreditsPanel());
+hud.difficultyEasy.addEventListener("click", () => setDifficultySetting(DIFFICULTY_EASY));
+hud.difficultyHard.addEventListener("click", () => setDifficultySetting(DIFFICULTY_HARD));
 hud.menuPanelClose.addEventListener("click", () => {
   setMenuPanelVisible(false);
   if (!hud.mainMenu.hidden) return;
