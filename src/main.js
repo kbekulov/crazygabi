@@ -336,7 +336,7 @@ const LEVELS = [
     showStartingHouse: false,
     startingRuins: [
       { key: "ruins-1", src: "./public/assets/environment/ruins_1.png", x: 18, floorRow: 20, scale: 0.228 },
-      { key: "ruins-1-later", src: "./public/assets/environment/ruins_1.png", x: 2800, floorRow: 20, scale: 0.252 }
+      { key: "ruins-2", src: "./public/assets/environment/ruins_2.png", x: 2800, floorRow: 20, scale: 0.252 }
     ],
     catNpc: true,
     doorYOffset: -30,
