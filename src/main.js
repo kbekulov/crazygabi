@@ -146,8 +146,8 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-level2-flow-fix";
-const STORY_ASSET_VERSION = "20260603-level2-flow-fix";
+const ASSET_VERSION = "20260603-level2-route-mobile";
+const STORY_ASSET_VERSION = "20260603-level2-route-mobile";
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -402,81 +402,79 @@ function createLevelTwo() {
     run(row, levelWidth - 2, 2, "w");
   }
 
-  run(18, 2, 25);
-  run(17, 25, 14);
-  run(19, 39, 15);
-  run(21, 54, 16);
-  run(19, 70, 16);
-  run(17, 86, 16);
-  run(15, 102, 17);
-  run(17, 119, 17);
-  run(19, 136, 18);
-  run(17, 154, 17);
-  run(15, 171, 17);
-  run(17, 188, 18);
-  run(20, 206, 18);
-  run(18, 224, 18);
-  run(16, 242, 17);
-  run(14, 259, 16);
-  run(16, 275, 19);
+  run(18, 2, 34);
+  run(16, 32, 10);
+  run(14, 45, 10);
+  run(12, 57, 12);
+  run(15, 68, 10);
+  run(18, 75, 12);
+  run(21, 72, 45);
 
-  run(19, 57, 9);
-  run(19, 90, 11);
-  run(15, 126, 11);
-  run(19, 163, 12);
-  run(16, 207, 10);
-  run(18, 248, 10);
+  run(19, 106, 12);
+  run(17, 116, 12);
+  run(15, 126, 12);
+  run(13, 136, 12);
+  run(11, 148, 12);
 
-  decorateColumn(6, 16, 34, 3);
-  decorateColumn(10, 22, 76, 4);
-  decorateColumn(5, 14, 125, 4);
-  decorateColumn(13, 23, 181, 4);
-  decorateColumn(6, 15, 238, 4);
-  decorateRun(8, 42, 18);
-  decorateRun(9, 42, 10);
-  decorateRun(7, 145, 22);
-  decorateRun(8, 154, 13);
-  decorateRun(10, 220, 20);
-  decorateRun(11, 228, 12);
-  decorateRun(22, 108, 12);
-  decorateRun(23, 108, 12);
-  decorateRun(23, 199, 16);
+  run(10, 156, 62);
+  run(13, 174, 12);
+  run(15, 190, 12);
+  run(17, 208, 12);
+  run(8, 220, 55);
+  run(12, 260, 16);
+  run(16, 278, 16);
+
+  decorateColumn(12, 22, 66, 4);
+  decorateColumn(12, 22, 116, 4);
+  decorateRun(12, 72, 44);
+  decorateRun(13, 78, 34);
+  decorateRun(22, 72, 45);
+  decorateColumn(9, 20, 140, 4);
+  decorateColumn(9, 20, 158, 4);
+  decorateRun(8, 142, 22);
+  decorateRun(20, 144, 18);
+  decorateColumn(5, 13, 216, 4);
+  decorateColumn(5, 13, 274, 4);
+  decorateRun(5, 220, 58);
+  decorateRun(13, 224, 44);
+  decorateColumn(6, 17, 292, 2);
+  decorateRun(6, 260, 34);
+  decorateRun(17, 266, 28);
+  decorateColumn(8, 17, 246, 4);
 
   [
     [16, 4, "p"],
     [17, 9, "g"],
     [17, 19, "l"],
-    [16, 31, "g"],
-    [18, 46, "g"],
-    [20, 61, "g"],
-    [18, 78, "g"],
-    [16, 94, "g"],
-    [14, 110, "g"],
-    [16, 127, "g"],
-    [18, 145, "g"],
-    [16, 162, "g"],
-    [14, 179, "g"],
-    [16, 196, "g"],
-    [19, 215, "g"],
-    [17, 233, "g"],
-    [15, 250, "g"],
-    [13, 267, "g"],
-    [15, 284, "k"],
+    [15, 36, "g"],
+    [13, 50, "g"],
+    [11, 63, "g"],
+    [17, 80, "g"],
+    [20, 88, "g"],
+    [20, 108, "g"],
+    [18, 113, "g"],
+    [16, 123, "g"],
+    [14, 133, "g"],
+    [12, 143, "g"],
+    [10, 154, "g"],
+    [9, 176, "g"],
+    [9, 201, "g"],
+    [12, 181, "g"],
+    [14, 196, "g"],
+    [16, 214, "g"],
+    [7, 228, "g"],
+    [7, 253, "g"],
+    [7, 267, "k"],
+    [11, 267, "g"],
     [15, 289, "d"],
-    [18, 63, "g"],
-    [18, 96, "g"],
-    [14, 132, "g"],
-    [18, 169, "g"],
-    [15, 214, "g"],
-    [17, 253, "g"],
-    [18, 48, "m"],
-    [20, 67, "m"],
-    [16, 98, "m"],
-    [18, 149, "m"],
-    [14, 183, "m"],
-    [19, 220, "m"],
-    [15, 246, "m"],
-    [15, 279, "m"]
+    [20, 84, "m"],
+    [20, 109, "m"],
+    [16, 122, "m"],
+    [14, 132, "m"],
+    [9, 190, "m"],
+    [7, 244, "m"],
+    [11, 270, "m"],
+    [15, 284, "m"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));

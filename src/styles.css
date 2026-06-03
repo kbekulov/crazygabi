@@ -904,3 +904,225 @@ button:active {
     height: min(68vh, 100%);
   }
 }
+
+@media (hover: none) and (pointer: coarse), (max-width: 680px) {
+  button {
+    border-radius: 5px;
+    padding: 0.48rem 0.78rem;
+    font-size: clamp(0.72rem, 2.8vmin, 0.95rem);
+    line-height: 1.1;
+    box-shadow: 0 3px 0 #a46d25;
+  }
+
+  button:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 #a46d25;
+  }
+
+  .main-menu,
+  .menu-panel,
+  .panel,
+  .loading-panel,
+  .game-over-panel,
+  .story-intro,
+  .item-pickup {
+    position: fixed;
+    inset: 0;
+    padding: max(7px, env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) max(7px, env(safe-area-inset-bottom)) max(7px, env(safe-area-inset-left));
+  }
+
+  .main-menu-card,
+  .menu-panel-card,
+  .game-over-card,
+  .item-card {
+    max-height: calc(100% - 10px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .main-menu-card {
+    width: min(720px, 96%);
+    grid-template-columns: minmax(120px, 0.72fr) minmax(160px, 1fr);
+    max-height: calc(100% - 10px);
+  }
+
+  .main-menu-promo {
+    min-height: 0;
+    object-fit: cover;
+  }
+
+  .main-menu-actions {
+    gap: clamp(5px, 1.4vmin, 9px);
+    padding: clamp(9px, 2.8vmin, 18px);
+  }
+
+  .main-menu-best-score {
+    gap: 1px;
+    margin-bottom: 0;
+  }
+
+  .main-menu-best-score span,
+  .menu-panel-card p,
+  .panel p,
+  .loading-panel p,
+  .game-over-card p,
+  .item-card p,
+  .main-menu-subtitle {
+    font-size: clamp(0.64rem, 2.4vmin, 0.9rem);
+    line-height: 1.22;
+  }
+
+  .main-menu-best-score strong {
+    font-size: clamp(1rem, 4.2vmin, 1.55rem);
+  }
+
+  .menu-panel-card {
+    width: min(520px, 94%);
+    gap: clamp(7px, 1.9vmin, 12px);
+    padding: clamp(10px, 2.8vmin, 18px);
+  }
+
+  .menu-panel-content,
+  .main-menu-actions {
+    width: min(270px, 100%);
+  }
+
+  .menu-panel-card h2,
+  .item-card h2 {
+    font-size: clamp(1.05rem, 5vmin, 1.8rem);
+  }
+
+  .panel {
+    gap: clamp(7px, 2vmin, 12px);
+  }
+
+  .panel h1,
+  .loading-panel h1,
+  .game-over-card h1,
+  .cheat-panel h1 {
+    font-size: clamp(1.45rem, 7vmin, 2.8rem);
+    text-shadow: 3px 3px 0 #ff2020, 5px 5px 0 #124cff;
+  }
+
+  .loading-panel {
+    gap: clamp(7px, 2vmin, 12px);
+  }
+
+  .loading-track {
+    width: min(360px, 78vw);
+    height: 12px;
+    border-width: 2px;
+  }
+
+  .game-over-card {
+    width: min(520px, 94%);
+    gap: clamp(8px, 2vmin, 14px);
+    padding: clamp(11px, 3vmin, 20px);
+  }
+
+  .game-over-score strong {
+    font-size: clamp(1.15rem, 5.8vmin, 2rem);
+  }
+
+  .game-over-actions {
+    gap: 8px;
+  }
+
+  .story-panels {
+    inset: 4% 5% 12%;
+    gap: 8px;
+    max-height: 78%;
+  }
+
+  .story-panels.tall .story-frame {
+    height: min(58vh, 100%);
+  }
+
+  .story-panels.wide .story-frame {
+    width: 90%;
+    max-height: min(30vh, 100%);
+  }
+
+  .item-card {
+    min-width: min(280px, 92%);
+    gap: 7px;
+    padding: clamp(10px, 3vmin, 16px) clamp(12px, 3.5vmin, 20px);
+  }
+
+  .item-card img {
+    width: min(128px, 24vmin);
+    height: min(128px, 24vmin);
+  }
+
+  #item-pickup-ok {
+    min-width: 84px;
+    padding: 0.46rem 0.9rem;
+  }
+
+  .cheat-levels {
+    grid-template-columns: repeat(2, minmax(0, 130px));
+    gap: 7px;
+  }
+
+  .menu-panel.credits-panel {
+    padding: 8px;
+  }
+
+  .menu-panel.credits-panel .menu-panel-card {
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .menu-panel.credits-panel .menu-panel-card h2 {
+    font-size: clamp(1.45rem, 7vmin, 2.8rem);
+  }
+
+  .menu-panel.credits-panel .credits-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: portrait), (max-width: 680px) and (orientation: portrait) {
+  .main-menu-card {
+    grid-template-columns: 1fr;
+    width: min(390px, 94%);
+  }
+
+  .main-menu-promo {
+    height: min(26dvh, 34vw, 150px);
+    border-right: 0;
+    border-bottom: 3px solid rgba(244, 220, 176, 0.58);
+  }
+
+  .main-menu-actions {
+    justify-self: center;
+    width: min(280px, 100%);
+    padding: clamp(8px, 2.6vmin, 14px);
+  }
+
+  .menu-panel.credits-panel .credits-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 520px), (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
+  .main-menu-card {
+    width: min(690px, 96%);
+  }
+
+  .main-menu-promo {
+    max-height: calc(100vh - 24px);
+  }
+
+  .main-menu-subtitle {
+    margin-top: 2px;
+  }
+
+  .menu-panel-card,
+  .game-over-card,
+  .item-card {
+    max-height: calc(100vh - 16px);
+  }
+}
