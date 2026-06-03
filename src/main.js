@@ -690,6 +690,7 @@ function createLevelFour() {
   run(5, 111, 11);
   run(5, 139, 4, "=");
   run(5, 160, 10);
+  run(17, 170, 9);
 
   [
     [18, 4, "p"],
