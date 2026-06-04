@@ -348,6 +348,13 @@ const LEVELS = [
       { key: "ruins-2", src: "./public/assets/environment/ruins_2.png", x: 2800, floorRow: 20, scale: 0.252 }
     ],
     catNpc: true,
+    finalElevator: {
+      startColumn: 172,
+      widthTiles: 4,
+      baseRow: 20,
+      topRow: 5,
+      speed: 82
+    },
     doorYOffset: -30,
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
@@ -361,7 +368,7 @@ const LEVELS = [
       { x: 4320, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: 96, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
       { x: 5220, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: 156, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady" }
     ],
-    introCopy: "The strange cat keeps leading the way across the rooftops. Follow carefully, collect what you can, and find the next door."
+    introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator to the final door."
   }
 ];
 
@@ -699,7 +706,8 @@ function createLevelFour() {
   run(5, 111, 11);
   run(5, 139, 4, "=");
   run(5, 160, 10);
-  run(17, 170, 9);
+  run(5, 176, 8);
+  for (let row = 6; row < 20; row += 1) run(row, 176, 8, "w");
 
   [
     [18, 4, "p"],
@@ -734,7 +742,8 @@ function createLevelFour() {
     [4, 90, "g"],
     [4, 116, "g"],
     [4, 164, "k"],
-    [16, 173, "d"]
+    [19, 173, "e"],
+    [4, 181, "d"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1348,6 +1357,9 @@ class PlayScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
+    this.finalElevator = null;
+    this.finalElevatorActive = false;
+    this.finalElevatorCompleted = false;
     this.platformShadows = [];
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -1554,6 +1566,7 @@ class PlayScene extends Phaser.Scene {
       });
       audio(level.soundtrack || "bgm-lv1", this.getSoundtrackPath(level.soundtrack));
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
+      if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
@@ -2568,13 +2581,17 @@ class PlayScene extends Phaser.Scene {
     });
     this.createPlatformVisuals();
     this.createMovingPlatforms();
+    this.createFinalElevator();
     this.createPlatformShadows();
   }
 
   createWallTileVisual(x, y, rowIndex, columnIndex) {
     const wallTiles = this.level.wallTiles;
     if (!wallTiles) {
-      const wall = this.add.rectangle(x, y, TILE + 1, TILE + 1, 0x020202, 1);
+      const wall = this.add.image(x, y, this.level.platformTexture || "platform-strip", Math.abs(rowIndex * 3 + columnIndex) % 3);
+      wall.setDisplaySize(TILE + 1, TILE + 1);
+      wall.setTint(0x4a4a4a);
+      wall.setAlpha(0.96);
       wall.setDepth(0);
       this.platformVisuals.add(wall);
       return;
@@ -2814,6 +2831,46 @@ class PlayScene extends Phaser.Scene {
       lastX: centerX,
       deltaX: 0
     });
+  }
+
+  createFinalElevator() {
+    const config = this.level.finalElevator;
+    if (!config) return;
+
+    const worldWidth = config.widthTiles * TILE;
+    const centerX = config.startColumn * TILE + worldWidth / 2;
+    const baseTopY = config.baseRow * TILE;
+    const topTopY = config.topRow * TILE;
+    const body = this.movingPlatforms.create(centerX, baseTopY + TILE / 2, "tile-ground");
+    body.setVisible(false);
+    body.body.allowGravity = false;
+    body.body.immovable = true;
+    body.body.setSize(worldWidth, TILE);
+    body.body.setOffset((TILE - worldWidth) / 2, 0);
+    body.setVelocity(0, 0);
+
+    const visuals = [];
+    const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
+    const platformTexture = this.level.platformTexture || "platform-strip";
+    for (let index = 0; index < segments; index += 1) {
+      const segmentWidth = Math.min(PLATFORM_SEGMENT_WIDTH, worldWidth - index * PLATFORM_SEGMENT_WIDTH);
+      const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + segmentWidth / 2;
+      const platform = this.add.image(centerX + offsetX, baseTopY + PLATFORM_Y_OFFSET, platformTexture, index % 3);
+      platform.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
+      platform.setDepth(PLATFORM_DEPTH + 0.2);
+      visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
+    }
+
+    this.finalElevator = {
+      body,
+      visuals,
+      width: worldWidth,
+      baseY: baseTopY + TILE / 2,
+      topY: topTopY + TILE / 2,
+      speed: config.speed || 82,
+      catOffsetX: 28,
+      playerOffsetX: -24
+    };
   }
 
   createPlatformShadows() {
@@ -3120,6 +3177,7 @@ class PlayScene extends Phaser.Scene {
     this.quakeDropUntil = 0;
     this.releaseBasketPromptControlLock();
     this.resetMobileGestureInput();
+    this.resetFinalElevator();
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
@@ -3188,6 +3246,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.isItemPromptActive()) this.moveEnemies();
     this.updateEnemyLabels();
     this.updateMovingPlatforms();
+    this.updateFinalElevator(time, delta);
     this.updateEnvironmentalQuake(time);
     this.updateAcorns(time);
     this.updateThrownItems();
@@ -3199,6 +3258,10 @@ class PlayScene extends Phaser.Scene {
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
     this.updateBillboardPrompt();
+    if (this.finalElevatorActive) {
+      this.setGabiAnimation("idle");
+      return;
+    }
     if (!state.running || state.won) return;
 
     const mobileDirection = this.getMobileMoveDirection();
@@ -3622,6 +3685,126 @@ class PlayScene extends Phaser.Scene {
     this.updatePlatformShadows();
   }
 
+  updateFinalElevator(time = 0, delta = 0) {
+    const elevator = this.finalElevator;
+    if (!elevator || this.finalElevatorCompleted) return;
+
+    if (!this.finalElevatorActive) {
+      if (!state.running || !state.hasKey || !this.isPlayerOnFinalElevator()) return;
+      this.startFinalElevator(time);
+    }
+
+    const nextY = Math.max(elevator.topY, elevator.body.y - (elevator.speed * delta) / 1000);
+    elevator.body.setPosition(elevator.body.x, nextY);
+    elevator.body.body.updateFromGameObject();
+    this.positionFinalElevatorVisuals();
+    this.positionFinalElevatorRiders();
+
+    if (nextY > elevator.topY) return;
+    this.finishFinalElevator();
+  }
+
+  isPlayerOnFinalElevator() {
+    const elevator = this.finalElevator;
+    if (!elevator?.body?.body || !this.player?.body) return false;
+    const platformBody = elevator.body.body;
+    const playerBody = this.player.body;
+    const overlapsHorizontally =
+      playerBody.x + playerBody.width > platformBody.x + 8 &&
+      playerBody.x < platformBody.x + platformBody.width - 8;
+    const restsOnTop =
+      playerBody.y + playerBody.height >= platformBody.y - 8 &&
+      playerBody.y + playerBody.height <= platformBody.y + 18;
+    return overlapsHorizontally && restsOnTop;
+  }
+
+  startFinalElevator(time = 0) {
+    const elevator = this.finalElevator;
+    if (!elevator) return;
+    this.finalElevatorActive = true;
+    this.finishCatGuideTravel();
+    const elevatorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "e") ?? -1;
+    if (elevatorStopIndex >= 0) this.catGuideIndex = elevatorStopIndex;
+
+    this.player.setAcceleration(0, 0);
+    this.player.setVelocity(0, 0);
+    this.player.body.moves = false;
+    this.player.body.setAllowGravity(false);
+    this.setGabiAnimation("idle");
+    elevator.playerOffsetX = Phaser.Math.Clamp(
+      this.player.x - elevator.body.x,
+      -elevator.width / 2 + 28,
+      elevator.width / 2 - 28
+    );
+    elevator.playerOffsetY = this.player.y - elevator.body.y;
+    if (this.cat) {
+      this.cat.setVelocity(0, 0);
+      this.cat.setAcceleration(0, 0);
+      this.cat.play("cat-idle", true);
+    }
+
+    const duration = Math.ceil(((elevator.baseY - elevator.topY) / elevator.speed) * 1000) + 250;
+    this.cameras.main.shake(duration, 0.006);
+    this.playLevelSfx(EARTHQUAKE_SFX_KEY, 0.38);
+    this.finalElevatorStartedAt = time;
+    this.positionFinalElevatorRiders();
+  }
+
+  finishFinalElevator() {
+    const elevator = this.finalElevator;
+    if (!elevator) return;
+    this.finalElevatorActive = false;
+    this.finalElevatorCompleted = true;
+    elevator.body.setVelocity(0, 0);
+    elevator.body.setPosition(elevator.body.x, elevator.topY);
+    elevator.body.body.updateFromGameObject();
+    this.positionFinalElevatorVisuals();
+    this.positionFinalElevatorRiders();
+    this.cameras.main.shakeEffect?.reset();
+
+    this.player.body.moves = true;
+    this.player.body.setAllowGravity(true);
+    this.player.setVelocity(0, 0);
+    this.catGuideTravel = null;
+  }
+
+  resetFinalElevator() {
+    const elevator = this.finalElevator;
+    if (!elevator) return;
+    this.finalElevatorActive = false;
+    this.finalElevatorCompleted = false;
+    elevator.body.setVelocity(0, 0);
+    elevator.body.setPosition(elevator.body.x, elevator.baseY);
+    elevator.body.body.updateFromGameObject();
+    this.positionFinalElevatorVisuals();
+    this.cameras.main.shakeEffect?.reset();
+  }
+
+  positionFinalElevatorVisuals() {
+    const elevator = this.finalElevator;
+    if (!elevator) return;
+    elevator.visuals.forEach(({ sprite, offsetX, offsetY }) => {
+      sprite.setPosition(elevator.body.x + offsetX, elevator.body.y + offsetY);
+    });
+  }
+
+  positionFinalElevatorRiders() {
+    const elevator = this.finalElevator;
+    if (!elevator) return;
+    if (this.player?.body) {
+      this.player.setPosition(elevator.body.x + elevator.playerOffsetX, elevator.body.y + elevator.playerOffsetY);
+      this.player.body.updateFromGameObject();
+    }
+    if (this.cat) {
+      this.setCatGuidePosition(
+        elevator.body.x + elevator.catOffsetX,
+        elevator.body.body.y - 2 - CAT_GUIDE_PLATFORM_Y
+      );
+      this.cat.setFlipX(this.player.x < this.cat.x);
+      this.cat.play("cat-idle", true);
+    }
+  }
+
   carryMovingPlatformRiders() {
     const playerIsSteering = this.isPlayerSteeringHorizontally();
     [this.player, this.cat].forEach((sprite) => {
@@ -3794,6 +3977,12 @@ class PlayScene extends Phaser.Scene {
 
   updateCatNpc(time = 0) {
     if (!this.cat || !this.cat.active || !this.cat.visible) return;
+    if (this.finalElevatorActive) {
+      this.cat.setVelocity(0, 0);
+      this.cat.setAcceleration(0, 0);
+      this.cat.play("cat-idle", true);
+      return;
+    }
     if (!state.running || state.won) {
       this.cat.setAccelerationX(0);
       this.cat.setVelocityX(0);
@@ -3871,7 +4060,7 @@ class PlayScene extends Phaser.Scene {
     const stops = [];
     this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
-        if (!["g", "j", "b", "k", "d"].includes(cell)) return;
+        if (!["g", "j", "b", "k", "e", "d"].includes(cell)) return;
         const x = columnIndex * TILE + TILE / 2;
         const itemY = rowIndex * TILE + TILE / 2;
         const run = this.findGuidePlatformRun(x, itemY);
@@ -3962,10 +4151,12 @@ class PlayScene extends Phaser.Scene {
     if (!this.catGuidePath?.length) return -1;
     const basketIndex = this.catGuidePath.findIndex((stop) => stop.kind === "b");
     const keyIndex = this.catGuidePath.findIndex((stop) => stop.kind === "k");
+    const elevatorIndex = this.catGuidePath.findIndex((stop) => stop.kind === "e");
     const doorIndex = this.catGuidePath.findIndex((stop) => stop.kind === "d");
 
     if (!state.hasAcornBasket && basketIndex >= 0) return basketIndex;
     if (!state.hasKey && keyIndex >= 0) return keyIndex;
+    if (this.level.finalElevator && !this.finalElevatorCompleted && elevatorIndex >= 0) return elevatorIndex;
     return doorIndex >= 0 ? doorIndex : this.catGuidePath.length - 1;
   }
 
@@ -5193,6 +5384,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     state.timeLeft = Math.max(45, state.timeLeft);
+    this.resetFinalElevator();
     this.resetPlayerToSpawn();
     this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
     this.airJumpsUsed = 0;
@@ -5209,6 +5401,7 @@ class PlayScene extends Phaser.Scene {
 
   enterDoor() {
     if (!state.running || !state.hasKey) return;
+    if (this.level.finalElevator && !this.finalElevatorCompleted) return;
     state.running = false;
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
