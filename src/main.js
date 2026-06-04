@@ -63,12 +63,8 @@ const CAT_FRAME_WIDTH = 238;
 const CAT_FRAME_HEIGHT = 238;
 const CAT_SCALE = 0.2;
 const CAT_SAFE_DISTANCE = 210;
-const CAT_RUN_SPEED = 168;
-const CAT_JUMP_TRAVEL_SPEED = 210;
+const CAT_RUN_SPEED = 276;
 const CAT_JUMP_SPEED = 545;
-const CAT_MAX_LEVEL_JUMP_GAP = 250;
-const CAT_MAX_UPWARD_JUMP_GAP = 245;
-const CAT_MAX_DROP_GAP = 280;
 const CAT_SCREEN_MARGIN = 150;
 const CAT_PLATFORM_Y = 48;
 const CAT_GUIDE_PLATFORM_Y = Math.round((CAT_FRAME_HEIGHT * CAT_SCALE) / 2);
@@ -3822,7 +3818,7 @@ class PlayScene extends Phaser.Scene {
     const stops = [];
     this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
-        if (!["j", "b", "k", "d"].includes(cell)) return;
+        if (!["g", "j", "b", "k", "d"].includes(cell)) return;
         const x = columnIndex * TILE + TILE / 2;
         const itemY = rowIndex * TILE + TILE / 2;
         const run = this.findGuidePlatformRun(x, itemY);
@@ -4004,87 +4000,39 @@ class PlayScene extends Phaser.Scene {
     const sameRun = this.isSameCatRun(fromRun, target.run);
     if (sameRun) return [this.createCatGuidePhase("run", fromX, this.getCatGuideY(fromRun), target.x, this.getCatGuideY(target.run))];
 
-    const runRoute = this.buildCatGuideRunRoute(fromRun, target.run, target);
-    if (!runRoute?.length) return fallback();
-
+    const direction = target.x >= fromX ? 1 : -1;
+    const fromEdgeX = direction > 0
+      ? fromRun.endX - CAT_EDGE_TARGET_PADDING
+      : fromRun.startX + CAT_EDGE_TARGET_PADDING;
+    const targetEdgeX = direction > 0
+      ? target.run.startX + CAT_EDGE_TARGET_PADDING
+      : target.run.endX - CAT_EDGE_TARGET_PADDING;
+    const landingX = Phaser.Math.Clamp(targetEdgeX, target.run.startX + CAT_GUIDE_RUN_PADDING, target.run.endX - CAT_GUIDE_RUN_PADDING);
+    const fromRunY = this.getCatGuideY(fromRun);
+    const targetRunY = this.getCatGuideY(target.run);
     const phases = [];
-    let currentX = fromX;
-    let currentRun = runRoute[0];
 
-    for (let index = 1; index < runRoute.length; index += 1) {
-      const nextRun = runRoute[index];
-      const direction = this.getCatRouteDirection(currentRun, nextRun, currentX);
-      const fromEdgeX = direction > 0
-        ? currentRun.endX - CAT_EDGE_TARGET_PADDING
-        : currentRun.startX + CAT_EDGE_TARGET_PADDING;
-      const targetEdgeX = direction > 0
-        ? nextRun.startX + CAT_EDGE_TARGET_PADDING
-        : nextRun.endX - CAT_EDGE_TARGET_PADDING;
-      const landingX = Phaser.Math.Clamp(targetEdgeX, nextRun.startX + CAT_GUIDE_RUN_PADDING, nextRun.endX - CAT_GUIDE_RUN_PADDING);
-      const currentY = this.getCatGuideY(currentRun);
-      const nextY = this.getCatGuideY(nextRun);
-
-      if (Math.abs(currentX - fromEdgeX) > 18) {
-        phases.push(this.createCatGuidePhase("run", currentX, currentY, fromEdgeX, currentY));
-      }
-      phases.push(this.createCatGuidePhase("jump", fromEdgeX, currentY, landingX, nextY));
-      currentX = landingX;
-      currentRun = nextRun;
+    if (Math.abs(fromX - fromEdgeX) > 18) {
+      phases.push(this.createCatGuidePhase("run", fromX, fromRunY, fromEdgeX, fromRunY));
     }
-
-    if (Math.abs(currentX - target.x) > 18) {
-      phases.push(this.createCatGuidePhase("run", currentX, this.getCatGuideY(currentRun), target.x, target.y));
+    phases.push(this.createCatGuidePhase("jump", fromEdgeX, fromRunY, landingX, targetRunY));
+    if (Math.abs(landingX - target.x) > 18) {
+      phases.push(this.createCatGuidePhase("run", landingX, targetRunY, target.x, targetRunY));
     }
     return phases;
-  }
-
-  buildCatGuideRunRoute(fromRun, targetRun, target) {
-    const runs = this.getCatNavRuns();
-    const startIndex = runs.findIndex((run) => this.isSameCatRun(run, fromRun));
-    const goalIndex = runs.findIndex((run) => this.isSameCatRun(run, targetRun));
-    if (startIndex < 0 || goalIndex < 0) return null;
-    if (startIndex === goalIndex) return [runs[startIndex]];
-
-    const costs = Array(runs.length).fill(Infinity);
-    const previous = Array(runs.length).fill(-1);
-    const queue = [startIndex];
-    costs[startIndex] = 0;
-
-    while (queue.length) {
-      queue.sort((a, b) => costs[a] - costs[b] || this.catRunGoalDistance(runs[a], target) - this.catRunGoalDistance(runs[b], target));
-      const index = queue.shift();
-      if (index === goalIndex) break;
-
-      this.getCatRouteNeighbors(index, runs, target).forEach((neighborIndex) => {
-        const nextCost = costs[index] + this.catTransitionCost(runs[index], runs[neighborIndex], target);
-        if (nextCost >= costs[neighborIndex]) return;
-        costs[neighborIndex] = nextCost;
-        previous[neighborIndex] = index;
-        if (!queue.includes(neighborIndex)) queue.push(neighborIndex);
-      });
-    }
-
-    if (!Number.isFinite(costs[goalIndex])) return null;
-    const route = [];
-    for (let index = goalIndex; index >= 0; index = previous[index]) {
-      route.unshift(runs[index]);
-      if (index === startIndex) break;
-    }
-    return route[0] === runs[startIndex] ? route : null;
   }
 
   createCatGuidePhase(kind, fromX, fromY, toX, toY) {
     const distance = Phaser.Math.Distance.Between(fromX, fromY, toX, toY);
     const isJump = kind === "jump";
-    const travelSpeed = isJump ? CAT_JUMP_TRAVEL_SPEED : CAT_RUN_SPEED;
     return {
       kind,
       fromX,
       fromY,
       toX,
       toY,
-      duration: Phaser.Math.Clamp((distance / travelSpeed) * 1000, isJump ? 420 : 300, isJump ? 1450 : 1800),
-      arc: isJump ? Phaser.Math.Clamp(32 + Math.abs(toX - fromX) * 0.1 + Math.max(0, fromY - toY) * 0.2, 40, 104) : 0
+      duration: Phaser.Math.Clamp((distance / CAT_RUN_SPEED) * 1000, isJump ? 300 : 260, isJump ? 1100 : 1250),
+      arc: isJump ? Phaser.Math.Clamp(34 + Math.abs(toX - fromX) * 0.13 + Math.max(0, fromY - toY) * 0.22, 42, 118) : 0
     };
   }
 
@@ -4263,12 +4211,12 @@ class PlayScene extends Phaser.Scene {
       : Math.min(Math.abs(to.startX - from.endX), Math.abs(from.startX - to.endX));
 
     if (vertical > 12) {
-      const leftEdgeReach = to.endX > from.startX - CAT_MAX_DROP_GAP && to.startX <= from.startX + 20;
-      const rightEdgeReach = to.startX < from.endX + CAT_MAX_DROP_GAP && to.endX >= from.endX - 20;
-      return vertical < 330 && horizontalGap < CAT_MAX_DROP_GAP && (leftEdgeReach || rightEdgeReach);
+      const leftEdgeReach = to.endX > from.startX - 340 && to.startX <= from.startX + 20;
+      const rightEdgeReach = to.startX < from.endX + 340 && to.endX >= from.endX - 20;
+      return vertical < 330 && horizontalGap < 390 && (leftEdgeReach || rightEdgeReach);
     }
-    if (vertical < -12) return vertical > -205 && horizontalGap < CAT_MAX_UPWARD_JUMP_GAP;
-    return horizontalGap < CAT_MAX_LEVEL_JUMP_GAP || overlap > 20;
+    if (vertical < -12) return vertical > -205 && horizontalGap < 310;
+    return horizontalGap < 300 || overlap > 20;
   }
 
   catTransitionCost(from, to, goal) {
@@ -4429,10 +4377,10 @@ class PlayScene extends Phaser.Scene {
     this.updateCatAnimation(false, time);
   }
 
-  getCatRouteDirection(currentRun, nextRun, referenceX = this.cat.x) {
+  getCatRouteDirection(currentRun, nextRun) {
     if (nextRun.startX >= currentRun.endX - 6) return 1;
     if (nextRun.endX <= currentRun.startX + 6) return -1;
-    return this.getCatRunCenterX(nextRun) >= referenceX ? 1 : -1;
+    return this.getCatRunCenterX(nextRun) >= this.cat.x ? 1 : -1;
   }
 
   getCatRunCenterX(run) {
