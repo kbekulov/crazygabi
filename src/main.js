@@ -6,6 +6,12 @@ const TIME_LIMIT = 220;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
+const BIRD_FRAME_WIDTH = 243;
+const BIRD_FRAME_HEIGHT = 243;
+const BIRD_MIN_FLOCK_SIZE = 5;
+const BIRD_MAX_FLOCK_SIZE = 15;
+const BIRD_NORMAL_DELAY = [5200, 9800];
+const BIRD_ELEVATOR_DELAY = [850, 1800];
 const GLIDE_DELAY_MS = 1000;
 const GLIDE_SPEED = 620;
 const GLIDE_ANGLE_RADIANS = (20 * Math.PI) / 180;
@@ -1401,6 +1407,10 @@ class PlayScene extends Phaser.Scene {
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
+    this.birdFlocks = [];
+    this.nextBirdFlockAt = 0;
+    this.elevatorSignBubble = null;
+    this.elevatorSignPromptShown = false;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -1551,6 +1561,7 @@ class PlayScene extends Phaser.Scene {
       sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
+      if (level.finalElevator) sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -1561,7 +1572,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
-      if (level.finalElevator) image("starting-billboard", "./public/assets/environment/starting_billboard.png");
+      if (level.finalElevator) image("elevator-sign", "./public/assets/environment/elevator_sign.png");
       (level.startingRuins || []).forEach((ruins) => image(ruins.key, ruins.src));
       if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
@@ -2494,6 +2505,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (this.textures.exists("white-bird") && !this.anims.exists("white-bird-fly")) {
+      this.anims.create({
+        key: "white-bird-fly",
+        frames: this.anims.generateFrameNumbers("white-bird", { frames: [0, 1, 2, 3] }),
+        frameRate: 9,
+        repeat: -1
+      });
+    }
   }
 
   buildLevel() {
@@ -2877,6 +2896,7 @@ class PlayScene extends Phaser.Scene {
     const visuals = [];
     const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
     const platformTexture = this.level.platformTexture || "platform-strip";
+    const fenceTexture = this.level.fenceTexture || "platform-fence";
     for (let index = 0; index < segments; index += 1) {
       const segmentWidth = Math.min(PLATFORM_SEGMENT_WIDTH, worldWidth - index * PLATFORM_SEGMENT_WIDTH);
       const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + segmentWidth / 2;
@@ -2884,17 +2904,23 @@ class PlayScene extends Phaser.Scene {
       platform.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
       platform.setDepth(PLATFORM_DEPTH + 0.2);
       visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
+
+      const fence = this.add.image(centerX + offsetX, baseTopY + FENCE_Y_OFFSET, fenceTexture, index % 2);
+      fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
+      fence.setDepth(FENCE_DEPTH);
+      visuals.push({ sprite: fence, offsetX, offsetY: FENCE_Y_OFFSET - TILE / 2 });
     }
 
-    const sign = this.add.image(centerX, baseTopY + 5, "starting-billboard");
+    const sign = this.add.image(centerX - worldWidth / 2 + 20, baseTopY + 6, "elevator-sign");
     sign.setOrigin(0.5, 1);
-    sign.setScale(0.14);
+    sign.setScale(0.38);
     sign.setDepth(STARTING_BILLBOARD_DEPTH);
-    visuals.push({ sprite: sign, offsetX: 0, offsetY: 5 - TILE / 2 });
+    visuals.push({ sprite: sign, offsetX: -worldWidth / 2 + 20, offsetY: 6 - TILE / 2 });
 
     this.finalElevator = {
       body,
       visuals,
+      sign,
       width: worldWidth,
       baseY: baseTopY + TILE / 2,
       topY: topTopY + TILE / 2,
@@ -3202,11 +3228,14 @@ class PlayScene extends Phaser.Scene {
     this.speechBubble = null;
     this.catSpeechBubble?.destroy(true);
     this.catSpeechBubble = null;
+    this.elevatorSignBubble?.destroy(true);
+    this.elevatorSignBubble = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
+    if (this.level.finalElevator) this.nextBirdFlockAt = this.time.now + 1400;
     this.releaseBasketPromptControlLock();
     this.resetMobileGestureInput();
     this.resetFinalElevator();
@@ -3287,8 +3316,10 @@ class PlayScene extends Phaser.Scene {
     this.updateWater(delta);
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
+    this.updateBirdFlocks(time, delta);
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
+    this.updateElevatorSignBubble();
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
 
@@ -3346,6 +3377,7 @@ class PlayScene extends Phaser.Scene {
 
     this.updateGlideState(time, left, right, onFloor);
     if (action) this.performAction(time);
+    this.constrainPlayerToActiveFinalElevator();
 
     if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
@@ -3722,6 +3754,11 @@ class PlayScene extends Phaser.Scene {
       this.startFinalElevator(time);
     }
 
+    if (this.shouldResetFinalElevatorAfterFall()) {
+      this.resetFinalElevator();
+      return;
+    }
+
     const carryPlayer = this.isPlayerOnFinalElevator();
     const previousY = elevator.body.y;
     const nextY = Math.max(elevator.topY, elevator.body.y - (elevator.speed * delta) / 1000);
@@ -3770,6 +3807,7 @@ class PlayScene extends Phaser.Scene {
     this.playLevelSfx(EARTHQUAKE_SFX_KEY, 0.38);
     this.finalElevatorStartedAt = time;
     this.positionFinalElevatorCat();
+    this.nextBirdFlockAt = Math.min(this.nextBirdFlockAt || Infinity, time + 250);
   }
 
   finishFinalElevator() {
@@ -3828,6 +3866,154 @@ class PlayScene extends Phaser.Scene {
       this.cat.setFlipX(this.player.x < this.cat.x);
       this.cat.play("cat-idle", true);
     }
+  }
+
+  constrainPlayerToActiveFinalElevator() {
+    const elevator = this.finalElevator;
+    if (!this.finalElevatorActive || !elevator?.body?.body || !this.player?.body) return;
+    const platformBody = elevator.body.body;
+    const body = this.player.body;
+    const closeEnoughVertically =
+      body.y + body.height > platformBody.y - 190 &&
+      body.y < platformBody.y + platformBody.height + 42;
+    if (!closeEnoughVertically) return;
+
+    const minX = platformBody.x + 8 + body.width / 2;
+    const maxX = platformBody.x + platformBody.width - 8 - body.width / 2;
+    const clampedX = Phaser.Math.Clamp(this.player.x, minX, maxX);
+    if (Math.abs(clampedX - this.player.x) < 0.01) return;
+    this.player.x = clampedX;
+    if ((clampedX <= minX && body.velocity.x < 0) || (clampedX >= maxX && body.velocity.x > 0)) {
+      this.player.setVelocityX(0);
+    }
+    this.player.body.updateFromGameObject();
+  }
+
+  shouldResetFinalElevatorAfterFall() {
+    const elevator = this.finalElevator;
+    if (!this.finalElevatorActive || !elevator?.body?.body || !this.player?.body) return false;
+    if (this.isPlayerOnFinalElevator()) return false;
+    const playerBottom = this.player.body.y + this.player.body.height;
+    const returnedToBase = playerBottom > elevator.baseY - TILE * 0.45;
+    const belowElevator = playerBottom > elevator.body.body.y + TILE * 1.5;
+    return returnedToBase && belowElevator;
+  }
+
+  updateElevatorSignBubble() {
+    const elevator = this.finalElevator;
+    const sign = elevator?.sign;
+    if (this.elevatorSignBubble && sign) {
+      this.elevatorSignBubble.setPosition(sign.x, sign.y - 82);
+    }
+    if (!sign || this.elevatorSignPromptShown || state.hasKey || !state.running || state.won) return;
+    const passedSign = this.player.x > sign.x + 14;
+    const closeVertically = Math.abs(this.player.y - sign.y) < 145;
+    if (!passedSign || !closeVertically) return;
+    this.showElevatorSignBubble();
+  }
+
+  showElevatorSignBubble() {
+    const sign = this.finalElevator?.sign;
+    if (!sign) return;
+    this.elevatorSignPromptShown = true;
+    this.elevatorSignBubble?.destroy(true);
+    const bubbleWidth = 92;
+    const bubbleHeight = 28;
+    const container = this.add.container(sign.x, sign.y - 82);
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0x050505, 0.9);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
+    const label = this.add.text(0, -bubbleHeight / 2, "KEY PLEASE", {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "10px",
+      color: "#f4f0dc",
+      align: "center"
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add([bubble, label]);
+    container.setDepth(DARKNESS_DEPTH + 2);
+    this.elevatorSignBubble = container;
+    this.time.delayedCall(2600, () => {
+      if (!this.elevatorSignBubble) return;
+      this.tweens.add({
+        targets: this.elevatorSignBubble,
+        alpha: 0,
+        duration: 220,
+        onComplete: () => {
+          this.elevatorSignBubble?.destroy(true);
+          this.elevatorSignBubble = null;
+        }
+      });
+    });
+  }
+
+  updateBirdFlocks(time = 0, delta = 0) {
+    if (!this.level.finalElevator || !state.running || state.won) return;
+    if (!this.nextBirdFlockAt) this.scheduleNextBirdFlock(time);
+    if (time >= this.nextBirdFlockAt) {
+      this.spawnBirdFlock(time);
+      this.scheduleNextBirdFlock(time);
+    }
+
+    const seconds = delta / 1000;
+    this.birdFlocks = this.birdFlocks.filter((bird) => {
+      if (!bird?.active) return false;
+      bird.x += bird.vx * seconds;
+      bird.y += bird.vy * seconds;
+      bird.rotation = Phaser.Math.Linear(bird.rotation, bird.targetRotation, 0.04);
+      const camera = this.cameras.main;
+      const outside =
+        bird.x < camera.scrollX - 220 ||
+        bird.x > camera.scrollX + VIEW_WIDTH + 220 ||
+        bird.y < camera.scrollY - 180 ||
+        bird.y > camera.scrollY + PLAY_HEIGHT + 180;
+      if (!outside) return true;
+      bird.destroy();
+      return false;
+    });
+  }
+
+  scheduleNextBirdFlock(time = 0) {
+    const delayRange = this.finalElevatorActive ? BIRD_ELEVATOR_DELAY : BIRD_NORMAL_DELAY;
+    this.nextBirdFlockAt = time + Phaser.Math.Between(...delayRange);
+  }
+
+  spawnBirdFlock(time = 0) {
+    if (!this.textures.exists("white-bird")) return;
+    const camera = this.cameras.main;
+    const count = Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
+    const fromLeft = Phaser.Math.Between(0, 1) === 0;
+    const fromTop = Phaser.Math.Between(0, 100) < 22;
+    const directionX = fromLeft ? 1 : -1;
+    const baseX = fromTop
+      ? camera.scrollX + Phaser.Math.Between(-90, VIEW_WIDTH + 90)
+      : camera.scrollX + (fromLeft ? -120 : VIEW_WIDTH + 120);
+    const baseY = fromTop
+      ? camera.scrollY - 90
+      : camera.scrollY + Phaser.Math.Between(36, Math.max(72, PLAY_HEIGHT - 120));
+    const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
+    const baseVy = fromTop ? Phaser.Math.Between(34, 88) : Phaser.Math.Between(-42, 42);
+
+    for (let index = 0; index < count; index += 1) {
+      const bird = this.add.sprite(
+        baseX + Phaser.Math.Between(-60, 60),
+        baseY + Phaser.Math.Between(-34, 34),
+        "white-bird",
+        Phaser.Math.Between(0, 3)
+      );
+      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
+      bird.setDepth(Phaser.Math.Between(0, 100) < 35 ? LIGHT_RAY_FRONT_DEPTH + 0.2 : WATER_DEPTH + 0.45);
+      bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
+      bird.setFlipX(directionX < 0);
+      bird.play("white-bird-fly", true);
+      bird.vx = baseSpeed + Phaser.Math.Between(-26, 30);
+      bird.vy = baseVy + Phaser.Math.Between(-18, 18);
+      bird.targetRotation = Phaser.Math.Clamp(Math.atan2(bird.vy, Math.abs(bird.vx)) * 0.18, -0.16, 0.16) * directionX;
+      bird.rotation = bird.targetRotation;
+      this.birdFlocks.push(bird);
+    }
+    this.nextBirdFlockAt = Math.max(this.nextBirdFlockAt || 0, time + 200);
   }
 
   carryMovingPlatformRiders() {
@@ -5199,6 +5385,10 @@ class PlayScene extends Phaser.Scene {
     this.speechBubble = null;
     this.catSpeechBubble?.destroy(true);
     this.catSpeechBubble = null;
+    this.elevatorSignBubble?.destroy(true);
+    this.elevatorSignBubble = null;
+    this.birdFlocks?.forEach((bird) => bird?.destroy?.());
+    this.birdFlocks = [];
     this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
