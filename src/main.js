@@ -384,6 +384,7 @@ const LEVELS = [
       ]
     },
     lightRayAlpha: 0.94,
+    lightImpactAlphaScale: 0.5,
     lightRays: [
       { x: 520, y: -128, topWidth: 46, bottomWidth: 238, height: 2300, lean: -210, alpha: 0.28, thickness: 2, layerAlpha: 1.15, foreground: true, frontAlpha: 0.16, opacityMode: "pulse" },
       { x: 610, y: -96, topWidth: 34, bottomWidth: 170, height: 2100, lean: -170, alpha: 0.2, thickness: 2, layerAlpha: 1.1, opacityMode: "steady", skipCrackGlow: true },
@@ -2072,16 +2073,18 @@ class PlayScene extends Phaser.Scene {
   }
 
   createLightImpactGlows(ray, index = 0) {
+    const alphaScale = this.level.lightImpactAlphaScale ?? 1;
     (ray.impacts || []).forEach((impact, impactIndex) => {
+      const alpha = impact.alpha * alphaScale;
       const glow = this.add.image(impact.x, impact.y, "light-impact-glow");
       glow.setOrigin(0.5, 0.5);
       glow.setScale(Phaser.Math.Clamp(impact.width / 118, 0.5, 1.65), Phaser.Math.Clamp(impact.width / 360, 0.24, 0.5));
       glow.setDepth(LIGHT_RAY_IMPACT_DEPTH);
       glow.setBlendMode(Phaser.BlendModes.ADD);
-      glow.setAlpha(impact.alpha);
+      glow.setAlpha(alpha);
       this.lightImpactGlows.push({
         glow,
-        baseAlpha: impact.alpha,
+        baseAlpha: alpha,
         phase: this.wallPlacementNoise(index + impactIndex * 13, impactIndex + 61) * Math.PI * 2
       });
     });
@@ -4372,14 +4375,19 @@ class PlayScene extends Phaser.Scene {
     this.levelRows.forEach((row, rowIndex) => {
       [...row].forEach((cell, columnIndex) => {
         if (!["g", "j", "b", "k", "e", "d"].includes(cell)) return;
-        const x = columnIndex * TILE + TILE / 2;
+        const markerX = columnIndex * TILE + TILE / 2;
+        const elevatorCenterX = cell === "e" && this.level.finalElevator
+          ? (this.level.finalElevator.startColumn + this.level.finalElevator.widthTiles / 2) * TILE
+          : markerX;
         const itemY = rowIndex * TILE + TILE / 2;
-        const run = this.findGuidePlatformRun(x, itemY);
+        const run = this.findGuidePlatformRun(elevatorCenterX, itemY) || this.findGuidePlatformRun(markerX, itemY);
         stops.push({
           kind: cell,
           row: rowIndex,
           column: columnIndex,
-          x: run ? this.getCatGuideXBesideItem(x, run, cell) : x,
+          x: run
+            ? (cell === "e" ? this.getCatGuideXInRun(elevatorCenterX, run) : this.getCatGuideXBesideItem(markerX, run, cell))
+            : elevatorCenterX,
           y: run ? this.getCatGuideY(run) : itemY,
           run
         });
