@@ -2987,7 +2987,7 @@ class PlayScene extends Phaser.Scene {
       baseY: baseTopY + TILE / 2,
       topY: topTopY + TILE / 2,
       speed: config.speed || 82,
-      catOffsetX: 64,
+      catOffsetX: 0,
       lastY: baseTopY + TILE / 2,
       deltaY: 0
     };
