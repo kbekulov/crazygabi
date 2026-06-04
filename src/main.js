@@ -11,8 +11,6 @@ const GLIDE_SPEED = 620;
 const GLIDE_ANGLE_RADIANS = (20 * Math.PI) / 180;
 const GLIDE_HORIZONTAL_SPEED = Math.cos(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
 const GLIDE_FALL_SPEED = Math.sin(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
-const GLIDE_FRAME_SIZE = 748;
-const GLIDE_SCALE = 0.15;
 const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
@@ -1513,7 +1511,7 @@ class PlayScene extends Phaser.Scene {
 
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
-      sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide_v2.png", GLIDE_FRAME_SIZE, GLIDE_FRAME_SIZE);
+      sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       if (level.lanternPlayerSheet) {
         sheet("gabi-lantern-sheet", "./public/assets/character/main_char_lantern_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       }
@@ -2385,7 +2383,7 @@ class PlayScene extends Phaser.Scene {
     if (this.textures.exists("gabi-glide-sheet") && !this.anims.exists("gabi-glide")) {
       this.anims.create({
         key: "gabi-glide",
-        frames: this.anims.generateFrameNumbers("gabi-glide-sheet", { frames: [0, 1] }),
+        frames: this.anims.generateFrameNumbers("gabi-glide-sheet", { frames: [2, 3] }),
         frameRate: 6,
         repeat: -1
       });
@@ -3350,7 +3348,6 @@ class PlayScene extends Phaser.Scene {
   setGabiAnimation(name) {
     if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
-    this.player.setScale(name === "glide" ? GLIDE_SCALE : GABI_SCALE);
     const animationKey = name === "wing-jump"
       ? "gabi-wing-jump"
       : name === "glide"
