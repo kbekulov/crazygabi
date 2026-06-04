@@ -6,6 +6,11 @@ const TIME_LIMIT = 220;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
+const GLIDE_DELAY_MS = 1000;
+const GLIDE_SPEED = 225;
+const GLIDE_ANGLE_RADIANS = (40 * Math.PI) / 180;
+const GLIDE_HORIZONTAL_SPEED = Math.cos(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
+const GLIDE_FALL_SPEED = Math.sin(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
 const PLATFORM_FRAME_WIDTH = 238;
 const PLATFORM_FRAME_HEIGHT = 238;
 const PLATFORM_SCALE = 0.28;
@@ -1506,6 +1511,7 @@ class PlayScene extends Phaser.Scene {
 
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       if (level.lanternPlayerSheet) {
         sheet("gabi-lantern-sheet", "./public/assets/character/main_char_lantern_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       }
@@ -2374,6 +2380,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (this.textures.exists("gabi-glide-sheet") && !this.anims.exists("gabi-glide")) {
+      this.anims.create({
+        key: "gabi-glide",
+        frames: this.anims.generateFrameNumbers("gabi-glide-sheet", { frames: [2, 3] }),
+        frameRate: 6,
+        repeat: -1
+      });
+    }
     if (this.textures.exists("gabi-sheet") && !this.anims.exists("gabi-hurt")) {
       this.anims.create({
         key: "gabi-hurt",
@@ -3109,6 +3123,7 @@ class PlayScene extends Phaser.Scene {
     this.resetPlayerToSpawn();
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
+    this.resetGlideState();
     if (!state.hasKey) this.resetKeyReveal();
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     this.thrownItems.clear(true, true);
@@ -3226,6 +3241,7 @@ class PlayScene extends Phaser.Scene {
     if (onFloor) {
       this.airJumpsUsed = 0;
       this.usingWingJump = false;
+      this.resetGlideState();
     }
 
     if (jump && onFloor) {
@@ -3233,9 +3249,11 @@ class PlayScene extends Phaser.Scene {
     } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
       this.airJumpsUsed += 1;
       this.usingWingJump = true;
+      this.resetGlideState();
       this.player.setVelocityY(-490);
     }
 
+    this.updateGlideState(time, left, right, onFloor);
     if (action) this.performAction(time);
 
     if (this.player.y > this.levelHeight + 56) this.loseLife();
@@ -3330,18 +3348,50 @@ class PlayScene extends Phaser.Scene {
   setGabiAnimation(name) {
     if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
-    const animationKey = name === "wing-jump" ? "gabi-wing-jump" : `${this.playerAnimationPrefix || "gabi"}-${name}`;
+    const animationKey = name === "wing-jump"
+      ? "gabi-wing-jump"
+      : name === "glide"
+        ? "gabi-glide"
+        : `${this.playerAnimationPrefix || "gabi"}-${name}`;
     this.player.play(animationKey, true);
   }
 
   updateGabiAnimation(isMoving, onFloor) {
     if (!onFloor) {
-      this.setGabiAnimation(this.usingWingJump ? "wing-jump" : "jump");
+      this.setGabiAnimation(this.isGliding ? "glide" : this.usingWingJump ? "wing-jump" : "jump");
     } else if (isMoving) {
       this.setGabiAnimation("walk");
     } else {
       this.setGabiAnimation("idle");
     }
+  }
+
+  resetGlideState() {
+    this.glideDescendingSince = 0;
+    this.isGliding = false;
+    this.glideDirection = this.player?.flipX ? -1 : 1;
+  }
+
+  updateGlideState(time = 0, left = false, right = false, onFloor = false) {
+    if (!this.player?.body || onFloor || !this.usingWingJump) {
+      if (!this.usingWingJump || onFloor) this.resetGlideState();
+      return;
+    }
+
+    if (this.player.body.velocity.y <= 20) {
+      this.glideDescendingSince = 0;
+      this.isGliding = false;
+      return;
+    }
+
+    if (!this.glideDescendingSince) this.glideDescendingSince = time;
+    if (time - this.glideDescendingSince < GLIDE_DELAY_MS) return;
+
+    if (left !== right) this.glideDirection = left ? -1 : 1;
+    this.isGliding = true;
+    this.player.setAccelerationX(0);
+    this.player.setVelocity(this.glideDirection * GLIDE_HORIZONTAL_SPEED, GLIDE_FALL_SPEED);
+    this.setGabiFlip(this.glideDirection < 0);
   }
 
   resetPlayerMotion({ freeze = false } = {}) {
@@ -3356,6 +3406,7 @@ class PlayScene extends Phaser.Scene {
 
   resetPlayerToSpawn() {
     this.resetPlayerMotion();
+    this.resetGlideState();
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
@@ -5144,6 +5195,7 @@ class PlayScene extends Phaser.Scene {
     this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
+    this.resetGlideState();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     setItemPickupVisible(false);
