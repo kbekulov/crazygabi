@@ -353,7 +353,8 @@ const LEVELS = [
       widthTiles: 4,
       baseRow: 160,
       topRow: 5,
-      speed: 112
+      speed: 112,
+      wallFaceColumn: 176
     },
     doorYOffset: -30,
     parallax: "parallax-cathedral",
@@ -1560,6 +1561,7 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
+      if (level.finalElevator) image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       (level.startingRuins || []).forEach((ruins) => image(ruins.key, ruins.src));
       if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
@@ -2601,6 +2603,13 @@ class PlayScene extends Phaser.Scene {
 
   createWallTileVisual(x, y, rowIndex, columnIndex) {
     const wallTiles = this.level.wallTiles;
+    const wallFaceColumn = this.level.finalElevator?.wallFaceColumn;
+    if (wallFaceColumn !== undefined && columnIndex > wallFaceColumn) {
+      const interior = this.add.rectangle(x, y, TILE + 1, TILE + 1, 0x000000, 1);
+      interior.setDepth(0);
+      this.platformVisuals.add(interior);
+      return;
+    }
     if (!wallTiles) {
       const wall = this.add.image(x, y, this.level.platformTexture || "platform-strip", Math.abs(rowIndex * 3 + columnIndex) % 3);
       wall.setDisplaySize(TILE + 1, TILE + 1);
@@ -2681,8 +2690,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   canPlaceWallForegroundAt(rowIndex, columnIndex) {
+    const wallFaceColumn = this.level.finalElevator?.wallFaceColumn;
     for (let rowOffset = 0; rowOffset < WALL_FOREGROUND_TILE_SPAN; rowOffset += 1) {
       for (let columnOffset = 0; columnOffset < WALL_FOREGROUND_TILE_SPAN; columnOffset += 1) {
+        if (wallFaceColumn !== undefined && columnIndex + columnOffset >= wallFaceColumn) return false;
         if (!this.isWallCell(rowIndex + rowOffset, columnIndex + columnOffset)) return false;
       }
     }
@@ -2875,6 +2886,12 @@ class PlayScene extends Phaser.Scene {
       visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
     }
 
+    const sign = this.add.image(centerX, baseTopY + 5, "starting-billboard");
+    sign.setOrigin(0.5, 1);
+    sign.setScale(0.14);
+    sign.setDepth(STARTING_BILLBOARD_DEPTH);
+    visuals.push({ sprite: sign, offsetX: 0, offsetY: 5 - TILE / 2 });
+
     this.finalElevator = {
       body,
       visuals,
@@ -2883,7 +2900,8 @@ class PlayScene extends Phaser.Scene {
       topY: topTopY + TILE / 2,
       speed: config.speed || 82,
       catOffsetX: 28,
-      playerOffsetX: -24
+      lastY: baseTopY + TILE / 2,
+      deltaY: 0
     };
   }
 
@@ -3272,10 +3290,6 @@ class PlayScene extends Phaser.Scene {
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
     this.updateBillboardPrompt();
-    if (this.finalElevatorActive) {
-      this.setGabiAnimation("idle");
-      return;
-    }
     if (!state.running || state.won) return;
 
     const mobileDirection = this.getMobileMoveDirection();
@@ -3708,11 +3722,16 @@ class PlayScene extends Phaser.Scene {
       this.startFinalElevator(time);
     }
 
+    const carryPlayer = this.isPlayerOnFinalElevator();
+    const previousY = elevator.body.y;
     const nextY = Math.max(elevator.topY, elevator.body.y - (elevator.speed * delta) / 1000);
     elevator.body.setPosition(elevator.body.x, nextY);
     elevator.body.body.updateFromGameObject();
+    elevator.deltaY = nextY - previousY;
+    elevator.lastY = nextY;
+    if (carryPlayer) this.carryFinalElevatorPlayer(elevator.deltaY);
     this.positionFinalElevatorVisuals();
-    this.positionFinalElevatorRiders();
+    this.positionFinalElevatorCat();
 
     if (nextY > elevator.topY) return;
     this.finishFinalElevator();
@@ -3740,17 +3759,6 @@ class PlayScene extends Phaser.Scene {
     const elevatorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "e") ?? -1;
     if (elevatorStopIndex >= 0) this.catGuideIndex = elevatorStopIndex;
 
-    this.player.setAcceleration(0, 0);
-    this.player.setVelocity(0, 0);
-    this.player.body.moves = false;
-    this.player.body.setAllowGravity(false);
-    this.setGabiAnimation("idle");
-    elevator.playerOffsetX = Phaser.Math.Clamp(
-      this.player.x - elevator.body.x,
-      -elevator.width / 2 + 28,
-      elevator.width / 2 - 28
-    );
-    elevator.playerOffsetY = this.player.y - elevator.body.y;
     if (this.cat) {
       this.cat.setVelocity(0, 0);
       this.cat.setAcceleration(0, 0);
@@ -3761,7 +3769,7 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(duration, 0.006);
     this.playLevelSfx(EARTHQUAKE_SFX_KEY, 0.38);
     this.finalElevatorStartedAt = time;
-    this.positionFinalElevatorRiders();
+    this.positionFinalElevatorCat();
   }
 
   finishFinalElevator() {
@@ -3773,12 +3781,9 @@ class PlayScene extends Phaser.Scene {
     elevator.body.setPosition(elevator.body.x, elevator.topY);
     elevator.body.body.updateFromGameObject();
     this.positionFinalElevatorVisuals();
-    this.positionFinalElevatorRiders();
+    this.positionFinalElevatorCat();
     this.cameras.main.shakeEffect?.reset();
 
-    this.player.body.moves = true;
-    this.player.body.setAllowGravity(true);
-    this.player.setVelocity(0, 0);
     this.catGuideTravel = null;
     const doorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "d") ?? -1;
     if (doorStopIndex >= 0) this.catGuideIndex = doorStopIndex;
@@ -3792,6 +3797,8 @@ class PlayScene extends Phaser.Scene {
     elevator.body.setVelocity(0, 0);
     elevator.body.setPosition(elevator.body.x, elevator.baseY);
     elevator.body.body.updateFromGameObject();
+    elevator.lastY = elevator.baseY;
+    elevator.deltaY = 0;
     this.positionFinalElevatorVisuals();
     this.cameras.main.shakeEffect?.reset();
   }
@@ -3804,13 +3811,15 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  positionFinalElevatorRiders() {
+  carryFinalElevatorPlayer(deltaY) {
+    if (!this.player?.body || !Number.isFinite(deltaY) || deltaY === 0) return;
+    this.player.y += deltaY;
+    this.player.body.updateFromGameObject();
+  }
+
+  positionFinalElevatorCat() {
     const elevator = this.finalElevator;
     if (!elevator) return;
-    if (this.player?.body) {
-      this.player.setPosition(elevator.body.x + elevator.playerOffsetX, elevator.body.y + elevator.playerOffsetY);
-      this.player.body.updateFromGameObject();
-    }
     if (this.cat) {
       this.setCatGuidePosition(
         elevator.body.x + elevator.catOffsetX,
