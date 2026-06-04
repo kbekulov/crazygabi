@@ -362,11 +362,11 @@ const LEVELS = [
     catNpc: true,
     finalElevator: {
       startColumn: 172,
-      widthTiles: 4,
+      widthTiles: 6,
       baseRow: 160,
       topRow: 5,
       speed: 112,
-      wallFaceColumn: 176
+      wallFaceColumn: 178
     },
     doorYOffset: -30,
     parallax: "parallax-cathedral",
@@ -385,26 +385,26 @@ const LEVELS = [
     },
     lightRayAlpha: 0.94,
     lightRays: [
-      { x: 520, y: -128, topWidth: 42, bottomWidth: 220, height: 2300, lean: -210, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, opacityMode: "pulse" },
-      { x: 610, y: -96, topWidth: 30, bottomWidth: 150, height: 2100, lean: -170, alpha: 0.16, thickness: 2, opacityMode: "steady", skipCrackGlow: true },
-      { x: 1180, y: -132, topWidth: 55, bottomWidth: 300, height: 2500, lean: -110, alpha: 0.27, thickness: 2, foreground: true, frontAlpha: 0.18, blinding: true, opacityMode: "dim" },
-      { x: 1288, y: -112, topWidth: 36, bottomWidth: 190, height: 2280, lean: -60, alpha: 0.16, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 1990, y: -110, topWidth: 44, bottomWidth: 245, height: 2360, lean: -22, alpha: 0.24, thickness: 2, opacityMode: "steady" },
-      { x: 3180, y: -136, topWidth: 58, bottomWidth: 320, height: 2520, lean: 62, alpha: 0.26, thickness: 2, foreground: true, frontAlpha: 0.17, opacityMode: "dim" },
-      { x: 3288, y: -118, topWidth: 32, bottomWidth: 176, height: 2240, lean: 110, alpha: 0.15, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 4300, y: -112, topWidth: 46, bottomWidth: 260, height: 2400, lean: 180, alpha: 0.23, thickness: 2, opacityMode: "pulse" },
-      { x: 5140, y: -126, topWidth: 62, bottomWidth: 340, height: 2600, lean: 240, alpha: 0.28, thickness: 2, foreground: true, frontAlpha: 0.18, blinding: true, opacityMode: "steady" },
-      { x: 5260, y: -110, topWidth: 34, bottomWidth: 188, height: 2320, lean: 280, alpha: 0.16, thickness: 2, opacityMode: "dim", skipCrackGlow: true },
-      { x: 780, y: 1480, topWidth: 46, bottomWidth: 260, height: 2300, lean: -160, alpha: 0.2, thickness: 2, foreground: true, frontAlpha: 0.1, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 1470, y: 1540, topWidth: 70, bottomWidth: 380, height: 2480, lean: -80, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.13, opacityMode: "dim", skipCrackGlow: true },
-      { x: 2380, y: 1450, topWidth: 50, bottomWidth: 285, height: 2400, lean: 18, alpha: 0.21, thickness: 2, opacityMode: "steady", skipCrackGlow: true },
-      { x: 3540, y: 1500, topWidth: 74, bottomWidth: 420, height: 2600, lean: 112, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, blinding: true, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 4480, y: 1420, topWidth: 48, bottomWidth: 270, height: 2400, lean: 190, alpha: 0.2, thickness: 2, opacityMode: "dim", skipCrackGlow: true },
-      { x: 1010, y: 3040, topWidth: 58, bottomWidth: 330, height: 2100, lean: -120, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady", skipCrackGlow: true },
-      { x: 1920, y: 2980, topWidth: 44, bottomWidth: 250, height: 2200, lean: -20, alpha: 0.2, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 3020, y: 3040, topWidth: 68, bottomWidth: 390, height: 2180, lean: 70, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.13, opacityMode: "dim", skipCrackGlow: true },
-      { x: 4210, y: 2960, topWidth: 52, bottomWidth: 300, height: 2260, lean: 160, alpha: 0.21, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
-      { x: 5120, y: 3160, topWidth: 78, bottomWidth: 440, height: 2040, lean: 220, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, blinding: true, opacityMode: "steady", skipCrackGlow: true }
+      { x: 520, y: -128, topWidth: 46, bottomWidth: 238, height: 2300, lean: -210, alpha: 0.28, thickness: 2, layerAlpha: 1.15, foreground: true, frontAlpha: 0.16, opacityMode: "pulse" },
+      { x: 610, y: -96, topWidth: 34, bottomWidth: 170, height: 2100, lean: -170, alpha: 0.2, thickness: 2, layerAlpha: 1.1, opacityMode: "steady", skipCrackGlow: true },
+      { x: 1180, y: -132, topWidth: 60, bottomWidth: 320, height: 2500, lean: -110, alpha: 0.31, thickness: 2, layerAlpha: 1.18, foreground: true, frontAlpha: 0.2, blinding: true, opacityMode: "dim" },
+      { x: 1288, y: -112, topWidth: 40, bottomWidth: 210, height: 2280, lean: -60, alpha: 0.2, thickness: 2, layerAlpha: 1.1, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 1990, y: -110, topWidth: 48, bottomWidth: 270, height: 2360, lean: -22, alpha: 0.28, thickness: 2, layerAlpha: 1.12, opacityMode: "steady" },
+      { x: 3180, y: -136, topWidth: 62, bottomWidth: 345, height: 2520, lean: 62, alpha: 0.31, thickness: 2, layerAlpha: 1.18, foreground: true, frontAlpha: 0.19, opacityMode: "dim" },
+      { x: 3288, y: -118, topWidth: 36, bottomWidth: 195, height: 2240, lean: 110, alpha: 0.19, thickness: 2, layerAlpha: 1.1, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 4300, y: -112, topWidth: 50, bottomWidth: 282, height: 2400, lean: 180, alpha: 0.27, thickness: 2, layerAlpha: 1.12, opacityMode: "pulse" },
+      { x: 5140, y: -126, topWidth: 68, bottomWidth: 370, height: 2600, lean: 240, alpha: 0.32, thickness: 2, layerAlpha: 1.2, foreground: true, frontAlpha: 0.2, blinding: true, opacityMode: "steady" },
+      { x: 5260, y: -110, topWidth: 38, bottomWidth: 210, height: 2320, lean: 280, alpha: 0.2, thickness: 2, layerAlpha: 1.1, opacityMode: "dim", skipCrackGlow: true },
+      { x: 780, y: 1480, topWidth: 64, bottomWidth: 360, height: 2450, lean: -160, alpha: 0.34, thickness: 2, layerAlpha: 1.65, foreground: true, frontAlpha: 0.22, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 1.9 },
+      { x: 1470, y: 1540, topWidth: 92, bottomWidth: 520, height: 2620, lean: -80, alpha: 0.37, thickness: 2, layerAlpha: 1.75, foreground: true, frontAlpha: 0.26, opacityMode: "dim", skipCrackGlow: true, beamBoost: 2.1 },
+      { x: 2380, y: 1450, topWidth: 70, bottomWidth: 420, height: 2560, lean: 18, alpha: 0.34, thickness: 2, layerAlpha: 1.65, opacityMode: "steady", skipCrackGlow: true, beamBoost: 1.9 },
+      { x: 3540, y: 1500, topWidth: 96, bottomWidth: 560, height: 2700, lean: 112, alpha: 0.38, thickness: 2, layerAlpha: 1.8, foreground: true, frontAlpha: 0.28, blinding: true, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 2.2 },
+      { x: 4480, y: 1420, topWidth: 68, bottomWidth: 390, height: 2540, lean: 190, alpha: 0.33, thickness: 2, layerAlpha: 1.6, opacityMode: "dim", skipCrackGlow: true, beamBoost: 1.8 },
+      { x: 1010, y: 3040, topWidth: 86, bottomWidth: 500, height: 2180, lean: -120, alpha: 0.38, thickness: 2, layerAlpha: 2.05, foreground: true, frontAlpha: 0.3, opacityMode: "steady", skipCrackGlow: true, beamBoost: 2.55 },
+      { x: 1920, y: 2980, topWidth: 66, bottomWidth: 390, height: 2300, lean: -20, alpha: 0.34, thickness: 2, layerAlpha: 1.9, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 2.35 },
+      { x: 3020, y: 3040, topWidth: 96, bottomWidth: 560, height: 2260, lean: 70, alpha: 0.39, thickness: 2, layerAlpha: 2.1, foreground: true, frontAlpha: 0.32, opacityMode: "dim", skipCrackGlow: true, beamBoost: 2.6 },
+      { x: 4210, y: 2960, topWidth: 74, bottomWidth: 430, height: 2360, lean: 160, alpha: 0.35, thickness: 2, layerAlpha: 1.95, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 2.4 },
+      { x: 5120, y: 3160, topWidth: 106, bottomWidth: 620, height: 2140, lean: 220, alpha: 0.4, thickness: 2, layerAlpha: 2.15, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "steady", skipCrackGlow: true, beamBoost: 2.75 }
     ],
     introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator to the final door."
   }
@@ -747,8 +747,8 @@ function createLevelFour() {
   routeRun(5, 111, 11);
   routeRun(5, 139, 4, "=");
   routeRun(5, 160, 10);
-  run(5, 176, 8);
-  for (let row = 6; row < 160; row += 1) run(row, 176, 8, "w");
+  run(5, 178, 8);
+  for (let row = 6; row < 160; row += 1) run(row, 178, 8, "w");
 
   [
     [18, 4, "p"],
@@ -2030,11 +2030,18 @@ class PlayScene extends Phaser.Scene {
     const canvas = document.createElement("canvas");
     canvas.width = ray.textureWidth;
     canvas.height = ray.textureHeight;
+    const beamBoost = ray.beamBoost ?? 1;
+    const baseAlpha = ray.alpha ?? 0.16;
+    const boostedAlpha = options.blindingPass
+      ? Math.max(baseAlpha * 1.75 * beamBoost, 0.42)
+      : options.frontPass
+        ? baseAlpha * 0.7 * beamBoost
+        : baseAlpha * beamBoost;
     const localRay = {
       ...ray,
       x: ray.localX,
       y: ray.localY,
-      alpha: options.blindingPass ? Math.max((ray.alpha ?? 0.16) * 1.75, 0.42) : (options.frontPass ? (ray.alpha ?? 0.16) * 0.7 : ray.alpha)
+      alpha: Phaser.Math.Clamp(boostedAlpha, 0.02, options.frontPass ? 0.68 : 0.82)
     };
 
     const context = canvas.getContext("2d");
@@ -2922,7 +2929,7 @@ class PlayScene extends Phaser.Scene {
     const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
     const platformTexture = this.level.platformTexture || "platform-strip";
     const fenceTexture = this.level.fenceTexture || "platform-fence";
-    const gazeboX = centerX + 38;
+    const gazeboX = centerX;
     const gazeboBottomY = baseTopY + 7;
     const gazeboWidth = 585 * GAZEBO_SCALE;
     const gazeboHeight = 636 * GAZEBO_SCALE;
