@@ -12,6 +12,12 @@ const BIRD_MIN_FLOCK_SIZE = 5;
 const BIRD_MAX_FLOCK_SIZE = 15;
 const BIRD_NORMAL_DELAY = [5200, 9800];
 const BIRD_ELEVATOR_DELAY = [850, 1800];
+const BIRD_FLOCK_MIN_Y = 60;
+const BIRD_FLOCK_BASE_MARGIN = 210;
+const BIRD_DEPTH = -9.6;
+const GAZEBO_SCALE = 0.33;
+const GAZEBO_BACK_DEPTH = -9;
+const GAZEBO_FRONT_DEPTH = 34;
 const GLIDE_DELAY_MS = 1000;
 const GLIDE_SPEED = 620;
 const GLIDE_ANGLE_RADIANS = (20 * Math.PI) / 180;
@@ -355,8 +361,8 @@ const LEVELS = [
     ],
     catNpc: true,
     finalElevator: {
-      startColumn: 172,
-      widthTiles: 4,
+      startColumn: 168,
+      widthTiles: 8,
       baseRow: 160,
       topRow: 5,
       speed: 112,
@@ -379,12 +385,12 @@ const LEVELS = [
     },
     lightRayAlpha: 0.94,
     lightRays: [
-      { x: 560, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: -150, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
-      { x: 1224, y: -124, topWidth: 18, bottomWidth: 84, height: 820, lean: -94, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "dim" },
-      { x: 1998, y: -108, topWidth: 16, bottomWidth: 78, height: 760, lean: -34, alpha: 0.22, thickness: 2, opacityMode: "steady" },
-      { x: 3260, y: -130, topWidth: 17, bottomWidth: 88, height: 900, lean: 28, alpha: 0.24, thickness: 3, foreground: true, frontAlpha: 0.16, opacityMode: "dim" },
-      { x: 4320, y: -112, topWidth: 14, bottomWidth: 70, height: 720, lean: 96, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
-      { x: 5220, y: -126, topWidth: 18, bottomWidth: 86, height: 820, lean: 156, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady" }
+      { x: 560, y: -118, topWidth: 14, bottomWidth: 104, height: 5600, lean: -560, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
+      { x: 1224, y: -124, topWidth: 18, bottomWidth: 132, height: 5600, lean: -420, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "dim" },
+      { x: 1998, y: -108, topWidth: 16, bottomWidth: 118, height: 5600, lean: -170, alpha: 0.22, thickness: 2, opacityMode: "steady" },
+      { x: 3260, y: -130, topWidth: 17, bottomWidth: 138, height: 5600, lean: 150, alpha: 0.24, thickness: 3, foreground: true, frontAlpha: 0.16, opacityMode: "dim" },
+      { x: 4320, y: -112, topWidth: 14, bottomWidth: 112, height: 5600, lean: 390, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
+      { x: 5220, y: -126, topWidth: 18, bottomWidth: 136, height: 5600, lean: 610, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady" }
     ],
     introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator to the final door."
   }
@@ -1408,6 +1414,7 @@ class PlayScene extends Phaser.Scene {
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
     this.birdFlocks = [];
+    this.birdFlockGroups = [];
     this.nextBirdFlockAt = 0;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
@@ -1572,7 +1579,11 @@ class PlayScene extends Phaser.Scene {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
-      if (level.finalElevator) image("elevator-sign", "./public/assets/environment/elevator_sign.png");
+      if (level.finalElevator) {
+        image("elevator-sign", "./public/assets/environment/elevator_sign.png");
+        image("gazebo-back", "./public/assets/environment/gazebo_back.png");
+        image("gazebo-front", "./public/assets/environment/gazebo_front.png");
+      }
       (level.startingRuins || []).forEach((ruins) => image(ruins.key, ruins.src));
       if (level.wallTiles) this.queueWallTileAssets(level, image, sheet);
       image("coin", "./public/assets/environment/golden-coin.png");
@@ -2509,7 +2520,7 @@ class PlayScene extends Phaser.Scene {
       this.anims.create({
         key: "white-bird-fly",
         frames: this.anims.generateFrameNumbers("white-bird", { frames: [0, 1, 2, 3] }),
-        frameRate: 9,
+        frameRate: 14,
         repeat: -1
       });
     }
@@ -2897,6 +2908,26 @@ class PlayScene extends Phaser.Scene {
     const segments = Math.ceil(worldWidth / PLATFORM_SEGMENT_WIDTH);
     const platformTexture = this.level.platformTexture || "platform-strip";
     const fenceTexture = this.level.fenceTexture || "platform-fence";
+    const gazeboX = centerX + 38;
+    const gazeboBottomY = baseTopY + 7;
+    const gazeboWidth = 585 * GAZEBO_SCALE;
+    const gazeboHeight = 636 * GAZEBO_SCALE;
+    const roofTopY = gazeboBottomY - gazeboHeight + 20;
+    const roofBody = this.movingPlatforms.create(gazeboX, roofTopY + 8, "tile-ground");
+    roofBody.setVisible(false);
+    roofBody.body.allowGravity = false;
+    roofBody.body.immovable = true;
+    roofBody.body.setSize(gazeboWidth * 0.62, 16);
+    roofBody.body.setOffset((TILE - gazeboWidth * 0.62) / 2, 0);
+    roofBody.setVelocity(0, 0);
+    roofBody.setData("finalElevatorRoof", true);
+
+    const gazeboBack = this.add.image(gazeboX, gazeboBottomY, "gazebo-back");
+    gazeboBack.setOrigin(0.5, 1);
+    gazeboBack.setScale(GAZEBO_SCALE);
+    gazeboBack.setDepth(GAZEBO_BACK_DEPTH);
+    visuals.push({ sprite: gazeboBack, offsetX: gazeboX - centerX, offsetY: 7 - TILE / 2 });
+
     for (let index = 0; index < segments; index += 1) {
       const segmentWidth = Math.min(PLATFORM_SEGMENT_WIDTH, worldWidth - index * PLATFORM_SEGMENT_WIDTH);
       const offsetX = -worldWidth / 2 + index * PLATFORM_SEGMENT_WIDTH + segmentWidth / 2;
@@ -2911,21 +2942,30 @@ class PlayScene extends Phaser.Scene {
       visuals.push({ sprite: fence, offsetX, offsetY: FENCE_Y_OFFSET - TILE / 2 });
     }
 
-    const sign = this.add.image(centerX - worldWidth / 2 + 20, baseTopY + 6, "elevator-sign");
+    const gazeboFront = this.add.image(gazeboX, gazeboBottomY, "gazebo-front");
+    gazeboFront.setOrigin(0.5, 1);
+    gazeboFront.setScale(GAZEBO_SCALE);
+    gazeboFront.setDepth(GAZEBO_FRONT_DEPTH);
+    visuals.push({ sprite: gazeboFront, offsetX: gazeboX - centerX, offsetY: 7 - TILE / 2 });
+
+    const sign = this.add.image(centerX - worldWidth / 2 + 28, baseTopY + 6, "elevator-sign");
     sign.setOrigin(0.5, 1);
     sign.setScale(0.38);
     sign.setDepth(STARTING_BILLBOARD_DEPTH);
-    visuals.push({ sprite: sign, offsetX: -worldWidth / 2 + 20, offsetY: 6 - TILE / 2 });
+    visuals.push({ sprite: sign, offsetX: -worldWidth / 2 + 28, offsetY: 6 - TILE / 2 });
 
     this.finalElevator = {
       body,
+      roofBody,
       visuals,
       sign,
       width: worldWidth,
+      cabinLeft: gazeboX - gazeboWidth * 0.36,
+      cabinRight: gazeboX + gazeboWidth * 0.36,
       baseY: baseTopY + TILE / 2,
       topY: topTopY + TILE / 2,
       speed: config.speed || 82,
-      catOffsetX: 28,
+      catOffsetX: 64,
       lastY: baseTopY + TILE / 2,
       deltaY: 0
     };
@@ -3750,7 +3790,7 @@ class PlayScene extends Phaser.Scene {
     if (!elevator || this.finalElevatorCompleted) return;
 
     if (!this.finalElevatorActive) {
-      if (!state.running || !state.hasKey || !this.isPlayerOnFinalElevator()) return;
+      if (!state.running || !state.hasKey || !this.isPlayerInsideFinalElevatorCabin()) return;
       this.startFinalElevator(time);
     }
 
@@ -3788,6 +3828,13 @@ class PlayScene extends Phaser.Scene {
     return overlapsHorizontally && restsOnTop;
   }
 
+  isPlayerInsideFinalElevatorCabin() {
+    const elevator = this.finalElevator;
+    if (!this.isPlayerOnFinalElevator() || !elevator?.cabinLeft || !elevator?.cabinRight || !this.player?.body) return false;
+    const centerX = this.player.body.x + this.player.body.width / 2;
+    return centerX > elevator.cabinLeft && centerX < elevator.cabinRight;
+  }
+
   startFinalElevator(time = 0) {
     const elevator = this.finalElevator;
     if (!elevator) return;
@@ -3818,6 +3865,7 @@ class PlayScene extends Phaser.Scene {
     elevator.body.setVelocity(0, 0);
     elevator.body.setPosition(elevator.body.x, elevator.topY);
     elevator.body.body.updateFromGameObject();
+    this.positionFinalElevatorRoof();
     this.positionFinalElevatorVisuals();
     this.positionFinalElevatorCat();
     this.cameras.main.shakeEffect?.reset();
@@ -3837,6 +3885,7 @@ class PlayScene extends Phaser.Scene {
     elevator.body.body.updateFromGameObject();
     elevator.lastY = elevator.baseY;
     elevator.deltaY = 0;
+    this.positionFinalElevatorRoof();
     this.positionFinalElevatorVisuals();
     this.cameras.main.shakeEffect?.reset();
   }
@@ -3844,9 +3893,17 @@ class PlayScene extends Phaser.Scene {
   positionFinalElevatorVisuals() {
     const elevator = this.finalElevator;
     if (!elevator) return;
+    this.positionFinalElevatorRoof();
     elevator.visuals.forEach(({ sprite, offsetX, offsetY }) => {
       sprite.setPosition(elevator.body.x + offsetX, elevator.body.y + offsetY);
     });
+  }
+
+  positionFinalElevatorRoof() {
+    const elevator = this.finalElevator;
+    if (!elevator?.roofBody?.body) return;
+    elevator.roofBody.setPosition(elevator.body.x + 38, elevator.body.y - 185);
+    elevator.roofBody.body.updateFromGameObject();
   }
 
   carryFinalElevatorPlayer(deltaY) {
@@ -3893,10 +3950,10 @@ class PlayScene extends Phaser.Scene {
     const elevator = this.finalElevator;
     if (!this.finalElevatorActive || !elevator?.body?.body || !this.player?.body) return false;
     if (this.isPlayerOnFinalElevator()) return false;
+    if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
     const playerBottom = this.player.body.y + this.player.body.height;
-    const returnedToBase = playerBottom > elevator.baseY - TILE * 0.45;
-    const belowElevator = playerBottom > elevator.body.body.y + TILE * 1.5;
-    return returnedToBase && belowElevator;
+    const elevatorFloor = elevator.body.body.y;
+    return playerBottom > elevatorFloor + TILE * 1.15;
   }
 
   updateElevatorSignBubble() {
@@ -3957,21 +4014,31 @@ class PlayScene extends Phaser.Scene {
     }
 
     const seconds = delta / 1000;
-    this.birdFlocks = this.birdFlocks.filter((bird) => {
-      if (!bird?.active) return false;
-      bird.x += bird.vx * seconds;
-      bird.y += bird.vy * seconds;
-      bird.rotation = Phaser.Math.Linear(bird.rotation, bird.targetRotation, 0.04);
+    this.birdFlockGroups = (this.birdFlockGroups || []).filter((flock) => {
+      flock.x += flock.vx * seconds;
+      flock.y += flock.vy * seconds;
+      const age = Math.max(0, time - flock.startedAt);
+      flock.birds = flock.birds.filter((bird) => {
+        if (!bird?.active) return false;
+        const wobbleX = Math.sin(age * 0.0022 + bird.phase) * bird.wobble;
+        const wobbleY = Math.cos(age * 0.0028 + bird.phase * 0.7) * bird.wobble * 0.38;
+        bird.x = flock.x + bird.formationX + wobbleX;
+        bird.y = flock.y + bird.formationY + wobbleY;
+        bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        return true;
+      });
+
       const camera = this.cameras.main;
       const outside =
-        bird.x < camera.scrollX - 220 ||
-        bird.x > camera.scrollX + VIEW_WIDTH + 220 ||
-        bird.y < camera.scrollY - 180 ||
-        bird.y > camera.scrollY + PLAY_HEIGHT + 180;
-      if (!outside) return true;
-      bird.destroy();
+        flock.x < camera.scrollX - 260 ||
+        flock.x > camera.scrollX + VIEW_WIDTH + 260 ||
+        flock.y < camera.scrollY - 160 ||
+        flock.y > camera.scrollY + PLAY_HEIGHT - BIRD_FLOCK_BASE_MARGIN;
+      if (!outside && flock.birds.length) return true;
+      flock.birds.forEach((bird) => bird.destroy());
       return false;
     });
+    this.birdFlocks = this.birdFlockGroups.flatMap((flock) => flock.birds);
   }
 
   scheduleNextBirdFlock(time = 0) {
@@ -3984,35 +4051,46 @@ class PlayScene extends Phaser.Scene {
     const camera = this.cameras.main;
     const count = Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
     const fromLeft = Phaser.Math.Between(0, 1) === 0;
-    const fromTop = Phaser.Math.Between(0, 100) < 22;
     const directionX = fromLeft ? 1 : -1;
-    const baseX = fromTop
-      ? camera.scrollX + Phaser.Math.Between(-90, VIEW_WIDTH + 90)
-      : camera.scrollX + (fromLeft ? -120 : VIEW_WIDTH + 120);
-    const baseY = fromTop
-      ? camera.scrollY - 90
-      : camera.scrollY + Phaser.Math.Between(36, Math.max(72, PLAY_HEIGHT - 120));
+    const baseX = camera.scrollX + (fromLeft ? -120 : VIEW_WIDTH + 120);
+    const minY = camera.scrollY + BIRD_FLOCK_MIN_Y;
+    const maxY = camera.scrollY + Math.max(BIRD_FLOCK_MIN_Y + 36, PLAY_HEIGHT - BIRD_FLOCK_BASE_MARGIN);
+    const baseY = Phaser.Math.Between(minY, maxY);
     const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
-    const baseVy = fromTop ? Phaser.Math.Between(34, 88) : Phaser.Math.Between(-42, 42);
+    const baseVy = Phaser.Math.Between(-42, -8);
+    const flock = {
+      x: baseX,
+      y: baseY,
+      vx: baseSpeed,
+      vy: baseVy,
+      startedAt: time,
+      rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
+      birds: []
+    };
 
     for (let index = 0; index < count; index += 1) {
       const bird = this.add.sprite(
-        baseX + Phaser.Math.Between(-60, 60),
-        baseY + Phaser.Math.Between(-34, 34),
+        baseX,
+        baseY,
         "white-bird",
         Phaser.Math.Between(0, 3)
       );
       bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
-      bird.setDepth(Phaser.Math.Between(0, 100) < 35 ? LIGHT_RAY_FRONT_DEPTH + 0.2 : WATER_DEPTH + 0.45);
+      bird.setDepth(BIRD_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
       bird.play("white-bird-fly", true);
-      bird.vx = baseSpeed + Phaser.Math.Between(-26, 30);
-      bird.vy = baseVy + Phaser.Math.Between(-18, 18);
-      bird.targetRotation = Phaser.Math.Clamp(Math.atan2(bird.vy, Math.abs(bird.vx)) * 0.18, -0.16, 0.16) * directionX;
-      bird.rotation = bird.targetRotation;
-      this.birdFlocks.push(bird);
+      bird.formationX = Phaser.Math.Between(-74, 74);
+      bird.formationY = Phaser.Math.Between(-24, 24);
+      bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
+      bird.phase = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      bird.rotation = flock.rotation;
+      bird.x = flock.x + bird.formationX;
+      bird.y = flock.y + bird.formationY;
+      flock.birds.push(bird);
     }
+    this.birdFlockGroups.push(flock);
+    this.birdFlocks = this.birdFlockGroups.flatMap((entry) => entry.birds);
     this.nextBirdFlockAt = Math.max(this.nextBirdFlockAt || 0, time + 200);
   }
 
@@ -5389,6 +5467,7 @@ class PlayScene extends Phaser.Scene {
     this.elevatorSignBubble = null;
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
+    this.birdFlockGroups = [];
     this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
