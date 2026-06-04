@@ -15,7 +15,7 @@ const BIRD_ELEVATOR_DELAY = [850, 1800];
 const BIRD_FLOCK_MIN_Y = 60;
 const BIRD_FLOCK_BASE_MARGIN = 210;
 const BIRD_DEPTH = -9.6;
-const GAZEBO_SCALE = 0.33;
+const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
 const GLIDE_DELAY_MS = 1000;
@@ -361,8 +361,8 @@ const LEVELS = [
     ],
     catNpc: true,
     finalElevator: {
-      startColumn: 168,
-      widthTiles: 8,
+      startColumn: 172,
+      widthTiles: 4,
       baseRow: 160,
       topRow: 5,
       speed: 112,
@@ -385,12 +385,26 @@ const LEVELS = [
     },
     lightRayAlpha: 0.94,
     lightRays: [
-      { x: 560, y: -118, topWidth: 14, bottomWidth: 104, height: 5600, lean: -560, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
-      { x: 1224, y: -124, topWidth: 18, bottomWidth: 132, height: 5600, lean: -420, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "dim" },
-      { x: 1998, y: -108, topWidth: 16, bottomWidth: 118, height: 5600, lean: -170, alpha: 0.22, thickness: 2, opacityMode: "steady" },
-      { x: 3260, y: -130, topWidth: 17, bottomWidth: 138, height: 5600, lean: 150, alpha: 0.24, thickness: 3, foreground: true, frontAlpha: 0.16, opacityMode: "dim" },
-      { x: 4320, y: -112, topWidth: 14, bottomWidth: 112, height: 5600, lean: 390, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
-      { x: 5220, y: -126, topWidth: 18, bottomWidth: 136, height: 5600, lean: 610, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady" }
+      { x: 520, y: -128, topWidth: 42, bottomWidth: 220, height: 2300, lean: -210, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, opacityMode: "pulse" },
+      { x: 610, y: -96, topWidth: 30, bottomWidth: 150, height: 2100, lean: -170, alpha: 0.16, thickness: 2, opacityMode: "steady", skipCrackGlow: true },
+      { x: 1180, y: -132, topWidth: 55, bottomWidth: 300, height: 2500, lean: -110, alpha: 0.27, thickness: 2, foreground: true, frontAlpha: 0.18, blinding: true, opacityMode: "dim" },
+      { x: 1288, y: -112, topWidth: 36, bottomWidth: 190, height: 2280, lean: -60, alpha: 0.16, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 1990, y: -110, topWidth: 44, bottomWidth: 245, height: 2360, lean: -22, alpha: 0.24, thickness: 2, opacityMode: "steady" },
+      { x: 3180, y: -136, topWidth: 58, bottomWidth: 320, height: 2520, lean: 62, alpha: 0.26, thickness: 2, foreground: true, frontAlpha: 0.17, opacityMode: "dim" },
+      { x: 3288, y: -118, topWidth: 32, bottomWidth: 176, height: 2240, lean: 110, alpha: 0.15, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 4300, y: -112, topWidth: 46, bottomWidth: 260, height: 2400, lean: 180, alpha: 0.23, thickness: 2, opacityMode: "pulse" },
+      { x: 5140, y: -126, topWidth: 62, bottomWidth: 340, height: 2600, lean: 240, alpha: 0.28, thickness: 2, foreground: true, frontAlpha: 0.18, blinding: true, opacityMode: "steady" },
+      { x: 5260, y: -110, topWidth: 34, bottomWidth: 188, height: 2320, lean: 280, alpha: 0.16, thickness: 2, opacityMode: "dim", skipCrackGlow: true },
+      { x: 780, y: 1480, topWidth: 46, bottomWidth: 260, height: 2300, lean: -160, alpha: 0.2, thickness: 2, foreground: true, frontAlpha: 0.1, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 1470, y: 1540, topWidth: 70, bottomWidth: 380, height: 2480, lean: -80, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.13, opacityMode: "dim", skipCrackGlow: true },
+      { x: 2380, y: 1450, topWidth: 50, bottomWidth: 285, height: 2400, lean: 18, alpha: 0.21, thickness: 2, opacityMode: "steady", skipCrackGlow: true },
+      { x: 3540, y: 1500, topWidth: 74, bottomWidth: 420, height: 2600, lean: 112, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, blinding: true, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 4480, y: 1420, topWidth: 48, bottomWidth: 270, height: 2400, lean: 190, alpha: 0.2, thickness: 2, opacityMode: "dim", skipCrackGlow: true },
+      { x: 1010, y: 3040, topWidth: 58, bottomWidth: 330, height: 2100, lean: -120, alpha: 0.22, thickness: 2, foreground: true, frontAlpha: 0.12, opacityMode: "steady", skipCrackGlow: true },
+      { x: 1920, y: 2980, topWidth: 44, bottomWidth: 250, height: 2200, lean: -20, alpha: 0.2, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 3020, y: 3040, topWidth: 68, bottomWidth: 390, height: 2180, lean: 70, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.13, opacityMode: "dim", skipCrackGlow: true },
+      { x: 4210, y: 2960, topWidth: 52, bottomWidth: 300, height: 2260, lean: 160, alpha: 0.21, thickness: 2, opacityMode: "pulse", skipCrackGlow: true },
+      { x: 5120, y: 3160, topWidth: 78, bottomWidth: 440, height: 2040, lean: 220, alpha: 0.24, thickness: 2, foreground: true, frontAlpha: 0.14, blinding: true, opacityMode: "steady", skipCrackGlow: true }
     ],
     introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator to the final door."
   }
@@ -2026,7 +2040,7 @@ class PlayScene extends Phaser.Scene {
     const context = canvas.getContext("2d");
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.globalCompositeOperation = "lighter";
-    this.paintCeilingCrackGlow(context, localRay);
+    if (!localRay.skipCrackGlow) this.paintCeilingCrackGlow(context, localRay);
     this.paintSoftLightRay(context, 0, localRay);
     this.paintLightDust(context, 0, [localRay]);
     if (options.maskObstructions) this.maskLightObstructions(context, ray);
@@ -2948,11 +2962,10 @@ class PlayScene extends Phaser.Scene {
     gazeboFront.setDepth(GAZEBO_FRONT_DEPTH);
     visuals.push({ sprite: gazeboFront, offsetX: gazeboX - centerX, offsetY: 7 - TILE / 2 });
 
-    const sign = this.add.image(centerX - worldWidth / 2 + 28, baseTopY + 6, "elevator-sign");
+    const sign = this.add.image(centerX - worldWidth / 2 - 26, baseTopY + 6, "elevator-sign");
     sign.setOrigin(0.5, 1);
     sign.setScale(0.38);
     sign.setDepth(STARTING_BILLBOARD_DEPTH);
-    visuals.push({ sprite: sign, offsetX: -worldWidth / 2 + 28, offsetY: 6 - TILE / 2 });
 
     this.finalElevator = {
       body,
@@ -2962,6 +2975,8 @@ class PlayScene extends Phaser.Scene {
       width: worldWidth,
       cabinLeft: gazeboX - gazeboWidth * 0.36,
       cabinRight: gazeboX + gazeboWidth * 0.36,
+      roofOffsetX: gazeboX - centerX,
+      roofOffsetY: roofTopY + 8 - (baseTopY + TILE / 2),
       baseY: baseTopY + TILE / 2,
       topY: topTopY + TILE / 2,
       speed: config.speed || 82,
@@ -3902,7 +3917,7 @@ class PlayScene extends Phaser.Scene {
   positionFinalElevatorRoof() {
     const elevator = this.finalElevator;
     if (!elevator?.roofBody?.body) return;
-    elevator.roofBody.setPosition(elevator.body.x + 38, elevator.body.y - 185);
+    elevator.roofBody.setPosition(elevator.body.x + elevator.roofOffsetX, elevator.body.y + elevator.roofOffsetY);
     elevator.roofBody.body.updateFromGameObject();
   }
 
