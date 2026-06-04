@@ -7,8 +7,8 @@ const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
 const GLIDE_DELAY_MS = 1000;
-const GLIDE_SPEED = 225;
-const GLIDE_ANGLE_RADIANS = (40 * Math.PI) / 180;
+const GLIDE_SPEED = 620;
+const GLIDE_ANGLE_RADIANS = (20 * Math.PI) / 180;
 const GLIDE_HORIZONTAL_SPEED = Math.cos(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
 const GLIDE_FALL_SPEED = Math.sin(GLIDE_ANGLE_RADIANS) * GLIDE_SPEED;
 const PLATFORM_FRAME_WIDTH = 238;
@@ -3370,6 +3370,7 @@ class PlayScene extends Phaser.Scene {
     this.glideDescendingSince = 0;
     this.isGliding = false;
     this.glideDirection = this.player?.flipX ? -1 : 1;
+    this.player?.setMaxVelocity(260, 620);
   }
 
   updateGlideState(time = 0, left = false, right = false, onFloor = false) {
@@ -3390,6 +3391,7 @@ class PlayScene extends Phaser.Scene {
     if (left !== right) this.glideDirection = left ? -1 : 1;
     this.isGliding = true;
     this.player.setAccelerationX(0);
+    this.player.setMaxVelocity(GLIDE_HORIZONTAL_SPEED, 620);
     this.player.setVelocity(this.glideDirection * GLIDE_HORIZONTAL_SPEED, GLIDE_FALL_SPEED);
     this.setGabiFlip(this.glideDirection < 0);
   }
