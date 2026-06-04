@@ -333,7 +333,7 @@ const LEVELS = [
   {
     name: "Level 4",
     rows: createLevelFour(),
-    timeLimit: 300,
+    timeLimit: 420,
     storyFrames: [
       { key: "story-level-4-frame-1", src: "./public/assets/story/level-4/frame_1.png" },
       { key: "story-level-4-frame-2", src: "./public/assets/story/level-4/frame_2.png" }
@@ -344,21 +344,32 @@ const LEVELS = [
     startSpeech: "",
     showStartingHouse: false,
     startingRuins: [
-      { key: "ruins-1", src: "./public/assets/environment/ruins_1.png", x: 18, floorRow: 20, scale: 0.228 },
-      { key: "ruins-2", src: "./public/assets/environment/ruins_2.png", x: 2800, floorRow: 20, scale: 0.252 }
+      { key: "ruins-1", src: "./public/assets/environment/ruins_1.png", x: 18, floorRow: 160, scale: 0.228 },
+      { key: "ruins-2", src: "./public/assets/environment/ruins_2.png", x: 2800, floorRow: 160, scale: 0.252 }
     ],
     catNpc: true,
     finalElevator: {
       startColumn: 172,
       widthTiles: 4,
-      baseRow: 20,
+      baseRow: 160,
       topRow: 5,
-      speed: 82
+      speed: 112
     },
     doorYOffset: -30,
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
+    wallTiles: {
+      backdropSheet: "level4-wall-backdrop",
+      backdropFrames: 30,
+      foreground: [
+        "underground-wall-1",
+        "underground-wall-2",
+        "underground-wall-3",
+        "underground-wall-4",
+        "underground-wall-5"
+      ]
+    },
     lightRayAlpha: 0.94,
     lightRays: [
       { x: 560, y: -118, topWidth: 14, bottomWidth: 62, height: 680, lean: -150, alpha: 0.2, thickness: 1, opacityMode: "pulse" },
@@ -667,47 +678,50 @@ function createLevelThree() {
 }
 
 function createLevelFour() {
-  const { rows, put, run } = createLevelRows(22, LEVEL_FOUR_WIDTH_TILES);
+  const routeOffset = 140;
+  const { rows, put, run } = createLevelRows(162, LEVEL_FOUR_WIDTH_TILES);
+  const routeRun = (row, start, length, value = "#") => run(row + routeOffset, start, length, value);
+  const routePut = (row, column, value) => put(row + routeOffset, column, value);
 
-  run(20, 0, 30);
-  run(20, 36, 24);
-  run(20, 68, 36);
-  run(20, 112, 28);
-  run(20, 148, 36);
+  routeRun(20, 0, 30);
+  routeRun(20, 36, 24);
+  routeRun(20, 68, 36);
+  routeRun(20, 112, 28);
+  routeRun(20, 148, 36);
 
-  run(17, 24, 9);
-  run(17, 44, 8);
-  run(17, 75, 11);
-  run(17, 99, 4, "=");
-  run(17, 116, 10);
-  run(17, 137, 4, "=");
-  run(17, 155, 11);
+  routeRun(17, 24, 9);
+  routeRun(17, 44, 8);
+  routeRun(17, 75, 11);
+  routeRun(17, 99, 4, "=");
+  routeRun(17, 116, 10);
+  routeRun(17, 137, 4, "=");
+  routeRun(17, 155, 11);
 
-  run(14, 38, 10);
-  run(14, 62, 5, "=");
-  run(14, 82, 12);
-  run(14, 107, 9);
-  run(14, 129, 10);
-  run(14, 151, 4, "=");
+  routeRun(14, 38, 10);
+  routeRun(14, 62, 5, "=");
+  routeRun(14, 82, 12);
+  routeRun(14, 107, 9);
+  routeRun(14, 129, 10);
+  routeRun(14, 151, 4, "=");
 
-  run(11, 54, 9);
-  run(11, 78, 10);
-  run(11, 101, 4, "=");
-  run(11, 120, 11);
-  run(11, 144, 9);
+  routeRun(11, 54, 9);
+  routeRun(11, 78, 10);
+  routeRun(11, 101, 4, "=");
+  routeRun(11, 120, 11);
+  routeRun(11, 144, 9);
 
-  run(8, 70, 11);
-  run(8, 94, 8);
-  run(8, 118, 4, "=");
-  run(8, 139, 11);
-  run(8, 162, 8);
+  routeRun(8, 70, 11);
+  routeRun(8, 94, 8);
+  routeRun(8, 118, 4, "=");
+  routeRun(8, 139, 11);
+  routeRun(8, 162, 8);
 
-  run(5, 86, 8);
-  run(5, 111, 11);
-  run(5, 139, 4, "=");
-  run(5, 160, 10);
+  routeRun(5, 86, 8);
+  routeRun(5, 111, 11);
+  routeRun(5, 139, 4, "=");
+  routeRun(5, 160, 10);
   run(5, 176, 8);
-  for (let row = 6; row < 20; row += 1) run(row, 176, 8, "w");
+  for (let row = 6; row < 160; row += 1) run(row, 176, 8, "w");
 
   [
     [18, 4, "p"],
@@ -741,10 +755,10 @@ function createLevelFour() {
     [7, 166, "g"],
     [4, 90, "g"],
     [4, 116, "g"],
-    [4, 164, "k"],
-    [19, 173, "e"],
-    [4, 181, "d"]
-  ].forEach(([row, column, value]) => put(row, column, value));
+    [4, 164, "k"]
+  ].forEach(([row, column, value]) => routePut(row, column, value));
+  put(159, 173, "e");
+  put(4, 181, "d");
 
   return rows.map((row) => row.join(""));
 }
@@ -3766,6 +3780,8 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setAllowGravity(true);
     this.player.setVelocity(0, 0);
     this.catGuideTravel = null;
+    const doorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "d") ?? -1;
+    if (doorStopIndex >= 0) this.catGuideIndex = doorStopIndex;
   }
 
   resetFinalElevator() {
