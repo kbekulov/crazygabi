@@ -15,6 +15,13 @@ const BIRD_ELEVATOR_DELAY = [850, 1800];
 const BIRD_FLOCK_MIN_Y = 60;
 const BIRD_FLOCK_BASE_MARGIN = 210;
 const BIRD_DEPTH = -9.6;
+const BIRD_ATTACK_DEPTH = 9.4;
+const BIRD_ATTACK_COOLDOWN = 1600;
+const BIRD_ATTACK_SIZE = 10;
+const BIRD_ATTACK_DURATION = 760;
+const GABI_POINT_FRAME_WIDTH = 238;
+const GABI_POINT_FRAME_HEIGHT = 238;
+const GABI_POINT_DURATION = 520;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -352,7 +359,7 @@ const LEVELS = [
     ],
     soundtrack: "bgm-lv1",
     enemySprite: "robot-lv1",
-    actionAbility: null,
+    actionAbility: "command-birds",
     startSpeech: "",
     showStartingHouse: false,
     startingRuins: [
@@ -1430,7 +1437,10 @@ class PlayScene extends Phaser.Scene {
     this.quakeDropUntil = 0;
     this.birdFlocks = [];
     this.birdFlockGroups = [];
+    this.birdAttackFlocks = [];
     this.nextBirdFlockAt = 0;
+    this.gabiActionUntil = 0;
+    this.gabiActionRestoreTimer = null;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
 
@@ -1571,6 +1581,9 @@ class PlayScene extends Phaser.Scene {
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      if (level.actionAbility === "command-birds") {
+        sheet("gabi-point-sheet", "./public/assets/character/main_char_sprite_point.png", GABI_POINT_FRAME_WIDTH, GABI_POINT_FRAME_HEIGHT);
+      }
       if (level.lanternPlayerSheet) {
         sheet("gabi-lantern-sheet", "./public/assets/character/main_char_lantern_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       }
@@ -1583,7 +1596,7 @@ class PlayScene extends Phaser.Scene {
       sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
-      if (level.finalElevator) sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
+      if (level.finalElevator || level.actionAbility === "command-birds") sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -2461,6 +2474,14 @@ class PlayScene extends Phaser.Scene {
         frames: this.anims.generateFrameNumbers("gabi-glide-sheet", { frames: [2, 3] }),
         frameRate: 6,
         repeat: -1
+      });
+    }
+    if (this.textures.exists("gabi-point-sheet") && !this.anims.exists("gabi-point")) {
+      this.anims.create({
+        key: "gabi-point",
+        frames: this.anims.generateFrameNumbers("gabi-point-sheet", { frames: [0, 1, 2] }),
+        frameRate: 9,
+        repeat: 0
       });
     }
     if (this.textures.exists("gabi-sheet") && !this.anims.exists("gabi-hurt")) {
@@ -3449,6 +3470,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   performAction(time = 0) {
+    if (this.level.actionAbility === "command-birds") {
+      this.commandBirdAttack(time);
+      return;
+    }
+
     if (this.level.actionAbility !== "throw-acorn" || !state.hasAcornBasket) return;
     if (this.throwAcorn(time) && this.basketPromptActive) {
       this.basketPromptActive = false;
@@ -3493,6 +3519,90 @@ class PlayScene extends Phaser.Scene {
     acorn.setData("bouncesLeft", THROWN_ACORN_MAX_BOUNCES);
     acorn.setData("lastBounceAt", -Infinity);
     return true;
+  }
+
+  commandBirdAttack(time = 0) {
+    if (time - this.lastActionAt < BIRD_ATTACK_COOLDOWN) return false;
+    const target = this.findNearestLivingEnemy();
+    if (!target) return false;
+
+    this.lastActionAt = time;
+    this.playGabiPointAnimation(time);
+    this.spawnAttackBirdFlock(target, time);
+    return true;
+  }
+
+  findNearestLivingEnemy() {
+    let closest = null;
+    let closestDistance = Infinity;
+    this.enemies?.children.iterate((enemy) => {
+      if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+      if (distance < closestDistance) {
+        closest = enemy;
+        closestDistance = distance;
+      }
+    });
+    return closest;
+  }
+
+  playGabiPointAnimation(time = 0) {
+    if (!this.textures.exists("gabi-point-sheet") || !this.anims.exists("gabi-point")) return;
+    this.gabiActionUntil = time + GABI_POINT_DURATION;
+    this.gabiActionRestoreTimer?.remove?.(false);
+    this.player.setTexture("gabi-point-sheet", 0);
+    this.currentGabiAnimation = "point";
+    this.player.play("gabi-point", true);
+    this.gabiActionRestoreTimer = this.time.delayedCall(GABI_POINT_DURATION, () => {
+      this.gabiActionUntil = 0;
+      this.gabiActionRestoreTimer = null;
+      this.currentGabiAnimation = null;
+      this.updateGabiAnimation(Math.abs(this.player.body?.velocity?.x || 0) > 20, this.player.body?.blocked?.down);
+    });
+  }
+
+  spawnAttackBirdFlock(target, time = 0) {
+    if (!target?.active || !this.textures.exists("white-bird")) return;
+    const direction = this.player.flipX ? -1 : 1;
+    const camera = this.cameras.main;
+    const baseX = direction > 0 ? camera.scrollX - 132 : camera.scrollX + VIEW_WIDTH + 132;
+    const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
+    const targetPoint = { x: target.x, y: target.y - 16 };
+    const birds = [];
+
+    for (let index = 0; index < BIRD_ATTACK_SIZE; index += 1) {
+      const bird = this.add.sprite(
+        baseX + Phaser.Math.Between(-40, 40),
+        baseY + Phaser.Math.Between(-28, 28),
+        "white-bird",
+        Phaser.Math.Between(0, 3)
+      );
+      bird.setScale(Phaser.Math.FloatBetween(0.09, 0.13));
+      bird.setDepth(BIRD_ATTACK_DEPTH);
+      bird.setAlpha(Phaser.Math.FloatBetween(0.82, 1));
+      bird.setFlipX(direction < 0);
+      bird.play("white-bird-fly", true);
+      birds.push(bird);
+
+      this.tweens.add({
+        targets: bird,
+        x: targetPoint.x + Phaser.Math.Between(-18, 18),
+        y: targetPoint.y + Phaser.Math.Between(-20, 20),
+        duration: BIRD_ATTACK_DURATION + Phaser.Math.Between(-90, 120),
+        ease: "Sine.in",
+        onComplete: () => {
+          bird.destroy();
+        }
+      });
+    }
+
+    this.birdAttackFlocks.push({ birds, startedAt: time });
+    this.time.delayedCall(Math.max(220, BIRD_ATTACK_DURATION - 70), () => {
+      if (!target.active || target.getData("dying")) return;
+      this.defeatEnemy(target);
+      awardScore(300);
+      updateHud();
+    });
   }
 
   lockPlayerForBasketPrompt() {
@@ -3545,6 +3655,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateGabiAnimation(isMoving, onFloor) {
+    if (this.gabiActionUntil && this.time.now < this.gabiActionUntil) return;
     if (!onFloor) {
       this.setGabiAnimation(this.isGliding ? "glide" : this.usingWingJump ? "wing-jump" : "jump");
     } else if (isMoving) {
@@ -3597,6 +3708,9 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.resetPlayerMotion();
     this.resetGlideState();
+    this.gabiActionRestoreTimer?.remove?.(false);
+    this.gabiActionRestoreTimer = null;
+    this.gabiActionUntil = 0;
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
@@ -3779,6 +3893,7 @@ class PlayScene extends Phaser.Scene {
   moveEnemies() {
     this.enemies.children.iterate((enemy) => {
       if (!enemy || !enemy.active) return;
+      if (enemy.getData("dying")) return;
       let direction = this.enemyDirection.get(enemy) || 1;
       if (enemy.body.blocked.left) direction = 1;
       if (enemy.body.blocked.right) direction = -1;
@@ -5113,7 +5228,7 @@ class PlayScene extends Phaser.Scene {
 
   updateEnemyLabels() {
     this.enemyLabels.forEach((label, enemy) => {
-      if (!enemy.active) {
+      if (!enemy.active || enemy.getData("dying")) {
         label.setVisible(false);
         return;
       }
@@ -5498,6 +5613,11 @@ class PlayScene extends Phaser.Scene {
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
     this.birdFlockGroups = [];
+    this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
+    this.birdAttackFlocks = [];
+    this.gabiActionRestoreTimer?.remove?.(false);
+    this.gabiActionRestoreTimer = null;
+    this.gabiActionUntil = 0;
     this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -5606,10 +5726,52 @@ class PlayScene extends Phaser.Scene {
   }
 
   defeatEnemy(enemy) {
+    if (!enemy?.active || enemy.getData("dying")) return;
     this.tryDropHeart(enemy.x, enemy.y);
-    enemy.disableBody(true, true);
+    enemy.setData("dying", true);
+    enemy.setVelocity(0, 0);
+    enemy.setAcceleration(0, 0);
+    enemy.body.enable = false;
+    enemy.anims?.stop();
     const label = this.enemyLabels.get(enemy);
     if (label) label.setVisible(false);
+
+    const originX = enemy.x;
+    const flashTimer = this.time.addEvent({
+      delay: 80,
+      repeat: 11,
+      callback: () => {
+        if (!enemy.active) return;
+        if (enemy.getData("deathTinted")) {
+          enemy.clearTint();
+          enemy.setData("deathTinted", false);
+        } else {
+          enemy.setTint(0xff2f2f);
+          enemy.setData("deathTinted", true);
+        }
+      }
+    });
+
+    this.tweens.add({
+      targets: enemy,
+      x: { from: originX - 6, to: originX + 6 },
+      duration: 58,
+      yoyo: true,
+      repeat: 8,
+      ease: "Sine.inOut"
+    });
+
+    this.tweens.add({
+      targets: enemy,
+      alpha: 0,
+      duration: 1000,
+      ease: "Quad.in",
+      onComplete: () => {
+        flashTimer.remove(false);
+        enemy.clearTint();
+        enemy.disableBody(true, true);
+      }
+    });
   }
 
   tryDropHeart(x, y) {
@@ -5657,7 +5819,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   hitEnemy(player, enemy) {
-    if (!state.running) return;
+    if (!state.running || enemy.getData("dying")) return;
     if (player.body.velocity.y > 120 && player.y < enemy.y - 5) {
       this.defeatEnemy(enemy);
       player.setVelocityY(-330);
@@ -5669,7 +5831,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   hitEnemyWithThrownItem(item, enemy) {
-    if (!state.running || !item.active || !enemy.active) return;
+    if (!state.running || !item.active || !enemy.active || enemy.getData("dying")) return;
     this.ricochetThrownItemFromEnemy(item, enemy);
     this.defeatEnemy(enemy);
     awardScore(350);
