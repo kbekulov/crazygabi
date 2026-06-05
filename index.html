@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260606-bird-cooldown-compact" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260606-bird-cooldown-assets" />
   </head>
   <body>
     <main id="shell">
@@ -16,8 +16,8 @@
             <div class="hud-timer"><span class="label">TIME</span><strong id="time">150</strong></div>
             <div id="bird-cooldown" class="bird-cooldown" hidden aria-label="Bird attack cooldown">
               <span class="bird-cooldown-icon" aria-hidden="true">
-                <span class="bird-cooldown-icon-outline"></span>
-                <span id="bird-cooldown-icon-fill" class="bird-cooldown-icon-fill"></span>
+                <span class="bird-cooldown-icon-empty"></span>
+                <span id="bird-cooldown-icon-full" class="bird-cooldown-icon-full"></span>
               </span>
               <span class="bird-cooldown-key">SHIFT</span>
             </div>
@@ -128,6 +128,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260606-bird-cooldown-compact"></script>
+    <script type="module" src="./src/main.js?v=20260606-bird-cooldown-assets"></script>
   </body>
 </html>

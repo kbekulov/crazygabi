@@ -182,7 +182,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260606-bird-cooldown-compact";
+const ASSET_VERSION = "20260606-bird-cooldown-assets";
 const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -953,6 +953,7 @@ function updateBirdCooldownHud(progress = 0) {
   if (!hud.birdCooldown) return;
   const value = Phaser.Math.Clamp(progress || 0, 0, 1);
   hud.birdCooldown.style.setProperty("--bird-cooldown-progress", value.toFixed(3));
+  hud.birdCooldown.style.setProperty("--bird-cooldown-hidden", `${((1 - value) * 100).toFixed(1)}%`);
 }
 
 function getCookieValue(name) {

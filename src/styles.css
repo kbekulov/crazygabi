@@ -122,6 +122,7 @@ button:active {
 
 .bird-cooldown {
   --bird-cooldown-progress: 0;
+  --bird-cooldown-hidden: 100%;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -140,27 +141,26 @@ button:active {
   flex: 0 0 auto;
 }
 
-.bird-cooldown-icon-outline,
-.bird-cooldown-icon-fill {
+.bird-cooldown-icon-empty,
+.bird-cooldown-icon-full {
   position: absolute;
   inset: 0;
   display: block;
-  background-image: url("../public/assets/character/white_bird.png?v=20260606-bird-cooldown-compact");
   background-repeat: no-repeat;
   background-position: 0 0;
-  background-size: 400% 100%;
+  background-size: contain;
   image-rendering: pixelated;
 }
 
-.bird-cooldown-icon-outline {
-  opacity: 0.14;
-  filter: brightness(0) invert(1) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(2px 2px 0 #000);
+.bird-cooldown-icon-empty {
+  background-image: url("../public/assets/environment/bird_cooldown_empty.png?v=20260606-bird-cooldown-assets");
+  filter: drop-shadow(2px 2px 0 #000);
 }
 
-.bird-cooldown-icon-fill {
-  filter: brightness(0) invert(1) drop-shadow(2px 2px 0 #000);
-  transform: scaleY(var(--bird-cooldown-progress));
-  transform-origin: 50% 100%;
+.bird-cooldown-icon-full {
+  background-image: url("../public/assets/environment/bird_cooldown_full.png?v=20260606-bird-cooldown-assets");
+  clip-path: inset(var(--bird-cooldown-hidden) 0 0 0);
+  filter: drop-shadow(2px 2px 0 #000);
 }
 
 .bird-cooldown-key {
