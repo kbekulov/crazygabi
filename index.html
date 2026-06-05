@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260603-ruins-1" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260605-bird-cooldown" />
   </head>
   <body>
     <main id="shell">
@@ -36,6 +36,11 @@
           <div class="hud-score">
             <span class="label">SCORE</span>
             <strong id="score">000000</strong>
+          </div>
+          <div id="bird-cooldown" class="bird-cooldown" hidden aria-label="Bird attack cooldown">
+            <span id="bird-cooldown-left" class="bird-cooldown-fill left"></span>
+            <span id="bird-cooldown-right" class="bird-cooldown-fill right"></span>
+            <span id="bird-cooldown-icon" class="bird-cooldown-icon"></span>
           </div>
         </div>
         <div id="game"></div>
@@ -121,6 +126,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260603-ruins-1"></script>
+    <script type="module" src="./src/main.js?v=20260605-bird-cooldown"></script>
   </body>
 </html>

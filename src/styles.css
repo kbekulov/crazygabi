@@ -120,6 +120,54 @@ button:active {
   justify-items: end;
 }
 
+.bird-cooldown {
+  --bird-cooldown-progress: 0;
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: clamp(180px, 23vw, 280px);
+  height: 38px;
+  transform: translateX(-50%);
+}
+
+.bird-cooldown[hidden] {
+  display: none;
+}
+
+.bird-cooldown-fill {
+  position: absolute;
+  top: 50%;
+  height: 4px;
+  background: #ffffff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.86), 2px 2px 0 #000;
+  transform: translateY(-50%);
+}
+
+.bird-cooldown-fill.left {
+  right: 50%;
+  width: calc(50% * var(--bird-cooldown-progress));
+}
+
+.bird-cooldown-fill.right {
+  left: 50%;
+  width: calc(50% * var(--bird-cooldown-progress));
+}
+
+.bird-cooldown-icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  background-image: url("../public/assets/character/white_bird.png?v=20260605-bird-cooldown");
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 400% 100%;
+  filter: brightness(0) invert(1) drop-shadow(2px 2px 0 #000);
+  image-rendering: pixelated;
+  transform: translate(-50%, -50%);
+}
+
 .label {
   display: block;
   color: #d5ad73;

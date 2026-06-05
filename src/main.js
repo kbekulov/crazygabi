@@ -16,7 +16,8 @@ const BIRD_FLOCK_MIN_Y = 60;
 const BIRD_FLOCK_BASE_MARGIN = 210;
 const BIRD_DEPTH = -9.6;
 const BIRD_ATTACK_DEPTH = 9.4;
-const BIRD_ATTACK_COOLDOWN = 1600;
+const BIRD_ATTACK_COOLDOWN = 10000;
+const BIRD_ATTACK_SPEED_MULTIPLIER = 1.5;
 const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
@@ -170,7 +171,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260603-ruins-1";
+const ASSET_VERSION = "20260605-bird-cooldown";
 const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -847,6 +848,7 @@ const hud = {
   keyIcon: document.querySelector("#key-icon"),
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
+  birdCooldown: document.querySelector("#bird-cooldown"),
   mainMenu: document.querySelector("#main-menu"),
   bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
@@ -929,6 +931,17 @@ function updateEquippedHud() {
   hud.equippedIcon.src = itemImage;
   hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
   hud.equippedIcon.hidden = !itemImage;
+}
+
+function setBirdCooldownVisible(visible) {
+  if (!hud.birdCooldown) return;
+  hud.birdCooldown.hidden = !visible;
+}
+
+function updateBirdCooldownHud(progress = 0) {
+  if (!hud.birdCooldown) return;
+  const value = Phaser.Math.Clamp(progress || 0, 0, 1);
+  hud.birdCooldown.style.setProperty("--bird-cooldown-progress", value.toFixed(3));
 }
 
 function getCookieValue(name) {
@@ -1427,6 +1440,7 @@ class PlayScene extends Phaser.Scene {
     this.enemyNames = [...ENEMY_NAMES];
     this.enemyNameIndex = 0;
     this.lastActionAt = -Infinity;
+    this.lastBirdAttackAt = -Infinity;
     this.lastPickupSpeechAt = -Infinity;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
@@ -1476,6 +1490,8 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     state.won = false;
     updateHud();
+    setBirdCooldownVisible(false);
+    updateBirdCooldownHud(0);
     this.pixelatedBasketImage = this.textures.exists("acorn-basket")
       ? pixelateStoryFrame(this.textures.get("acorn-basket").getSourceImage())
       : "";
@@ -1501,6 +1517,7 @@ class PlayScene extends Phaser.Scene {
     this.levelReady = false;
     hud.root.hidden = true;
     hud.message.hidden = true;
+    setBirdCooldownVisible(false);
     setGameOverVisible(false);
     setStoryIntroVisible(false);
     setCheatMenuVisible(false);
@@ -3326,6 +3343,7 @@ class PlayScene extends Phaser.Scene {
     this.resetMobileGestureInput();
     this.resetFinalElevator();
     this.resetPlayerToSpawn();
+    this.lastBirdAttackAt = -Infinity;
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.resetGlideState();
@@ -3403,6 +3421,7 @@ class PlayScene extends Phaser.Scene {
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
+    this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
     this.updateElevatorSignBubble();
@@ -3520,29 +3539,35 @@ class PlayScene extends Phaser.Scene {
 
   commandBirdAttack(time = 0) {
     if (this.level.actionAbility !== "command-birds") return false;
-    if (time - this.lastActionAt < BIRD_ATTACK_COOLDOWN) return false;
+    if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
     const target = this.findNearestVisibleLivingEnemy();
     if (!target) return false;
 
-    this.lastActionAt = time;
+    this.lastBirdAttackAt = time;
+    updateBirdCooldownHud(1);
     this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
     return true;
   }
 
+  updateBirdAttackCooldown(time = 0) {
+    if (this.level.actionAbility !== "command-birds") {
+      setBirdCooldownVisible(false);
+      return;
+    }
+    setBirdCooldownVisible(state.running && !state.won);
+    const remaining = Math.max(0, BIRD_ATTACK_COOLDOWN - (time - this.lastBirdAttackAt));
+    updateBirdCooldownHud(remaining / BIRD_ATTACK_COOLDOWN);
+  }
+
   findNearestVisibleLivingEnemy() {
     let closest = null;
     let closestDistance = Infinity;
-    const camera = this.cameras.main;
-    const minX = camera.scrollX + 12;
-    const maxX = camera.scrollX + VIEW_WIDTH - 12;
-    const minY = camera.scrollY + 12;
-    const maxY = camera.scrollY + PLAY_HEIGHT - 12;
     this.enemies?.children.iterate((enemy) => {
       if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
-      if (enemy.x < minX || enemy.x > maxX || enemy.y < minY || enemy.y > maxY) return;
+      if (!this.isEnemyVisibleOnScreen(enemy)) return;
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
       if (distance < closestDistance) {
         closest = enemy;
@@ -3550,6 +3575,16 @@ class PlayScene extends Phaser.Scene {
       }
     });
     return closest;
+  }
+
+  isEnemyVisibleOnScreen(enemy) {
+    if (!enemy) return false;
+    const camera = this.cameras.main;
+    const minX = camera.scrollX + 12;
+    const maxX = camera.scrollX + VIEW_WIDTH - 12;
+    const minY = camera.scrollY + 12;
+    const maxY = camera.scrollY + PLAY_HEIGHT - 12;
+    return enemy.x >= minX && enemy.x <= maxX && enemy.y >= minY && enemy.y <= maxY;
   }
 
   playGabiPointAnimation(time = 0) {
@@ -3573,9 +3608,9 @@ class PlayScene extends Phaser.Scene {
     const directionX = target.x >= this.player.x ? 1 : -1;
     const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
     const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
-    const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
+    const baseSpeed = Phaser.Math.Between(96, 168) * BIRD_ATTACK_SPEED_MULTIPLIER * directionX;
     const travelSeconds = Math.max(0.1, Math.abs(target.x - baseX) / Math.abs(baseSpeed));
-    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42, 42);
+    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42 * BIRD_ATTACK_SPEED_MULTIPLIER, 42 * BIRD_ATTACK_SPEED_MULTIPLIER);
     const flock = {
       x: baseX,
       y: baseY,
@@ -4202,7 +4237,7 @@ class PlayScene extends Phaser.Scene {
       });
 
       const target = flock.target;
-      if (!flock.hitTriggered && target?.active && !target.getData("dying")) {
+      if (!flock.hitTriggered && target?.active && !target.getData("dying") && this.isEnemyVisibleOnScreen(target)) {
         const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
         if (distance < BIRD_ATTACK_HIT_RADIUS) {
           flock.hitTriggered = true;
