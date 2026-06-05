@@ -182,7 +182,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260605-bird-cooldown";
+const ASSET_VERSION = "20260606-bird-cooldown-compact";
 const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";

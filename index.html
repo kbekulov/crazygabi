@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260605-bird-cooldown" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260606-bird-cooldown-compact" />
   </head>
   <body>
     <main id="shell">
@@ -14,6 +14,13 @@
             <div id="lives" class="hud-lives" aria-label="Lives"></div>
             <span class="hud-divider"></span>
             <div class="hud-timer"><span class="label">TIME</span><strong id="time">150</strong></div>
+            <div id="bird-cooldown" class="bird-cooldown" hidden aria-label="Bird attack cooldown">
+              <span class="bird-cooldown-icon" aria-hidden="true">
+                <span class="bird-cooldown-icon-outline"></span>
+                <span id="bird-cooldown-icon-fill" class="bird-cooldown-icon-fill"></span>
+              </span>
+              <span class="bird-cooldown-key">SHIFT</span>
+            </div>
           </div>
           <div class="hud-cluster hud-top-right">
             <div class="hud-counter">
@@ -36,11 +43,6 @@
           <div class="hud-score">
             <span class="label">SCORE</span>
             <strong id="score">000000</strong>
-          </div>
-          <div id="bird-cooldown" class="bird-cooldown" hidden aria-label="Bird attack cooldown">
-            <span id="bird-cooldown-left" class="bird-cooldown-fill left"></span>
-            <span id="bird-cooldown-right" class="bird-cooldown-fill right"></span>
-            <span id="bird-cooldown-icon" class="bird-cooldown-icon"></span>
           </div>
         </div>
         <div id="game"></div>
@@ -126,6 +128,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260605-bird-cooldown"></script>
+    <script type="module" src="./src/main.js?v=20260606-bird-cooldown-compact"></script>
   </body>
 </html>

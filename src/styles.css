@@ -122,50 +122,62 @@ button:active {
 
 .bird-cooldown {
   --bird-cooldown-progress: 0;
-  position: absolute;
-  left: 50%;
-  bottom: 24px;
-  width: clamp(180px, 23vw, 280px);
-  height: 38px;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .bird-cooldown[hidden] {
   display: none;
 }
 
-.bird-cooldown-fill {
-  position: absolute;
-  top: 50%;
-  height: 4px;
-  background: #ffffff;
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.86), 2px 2px 0 #000;
-  transform: translateY(-50%);
-}
-
-.bird-cooldown-fill.left {
-  right: 50%;
-  width: calc(50% * var(--bird-cooldown-progress));
-}
-
-.bird-cooldown-fill.right {
-  left: 50%;
-  width: calc(50% * var(--bird-cooldown-progress));
-}
-
 .bird-cooldown-icon {
+  position: relative;
+  width: clamp(24px, 2.55vw, 34px);
+  height: clamp(24px, 2.55vw, 34px);
+  display: block;
+  flex: 0 0 auto;
+}
+
+.bird-cooldown-icon-outline,
+.bird-cooldown-icon-fill {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 38px;
-  height: 38px;
-  background-image: url("../public/assets/character/white_bird.png?v=20260605-bird-cooldown");
+  inset: 0;
+  display: block;
+  background-image: url("../public/assets/character/white_bird.png?v=20260606-bird-cooldown-compact");
   background-repeat: no-repeat;
   background-position: 0 0;
   background-size: 400% 100%;
-  filter: brightness(0) invert(1) drop-shadow(2px 2px 0 #000);
   image-rendering: pixelated;
-  transform: translate(-50%, -50%);
+}
+
+.bird-cooldown-icon-outline {
+  opacity: 0.14;
+  filter: brightness(0) invert(1) drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(2px 2px 0 #000);
+}
+
+.bird-cooldown-icon-fill {
+  filter: brightness(0) invert(1) drop-shadow(2px 2px 0 #000);
+  transform: scaleY(var(--bird-cooldown-progress));
+  transform-origin: 50% 100%;
+}
+
+.bird-cooldown-key {
+  display: inline-grid;
+  min-width: clamp(42px, 4vw, 54px);
+  height: clamp(20px, 1.9vw, 26px);
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 4px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.8);
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.24), 2px 2px 0 #000;
+  font-size: clamp(0.48rem, 0.92vw, 0.66rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow: 1px 1px 0 #000;
 }
 
 .label {
