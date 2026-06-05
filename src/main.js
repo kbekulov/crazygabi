@@ -17,8 +17,7 @@ const BIRD_FLOCK_BASE_MARGIN = 210;
 const BIRD_DEPTH = -9.6;
 const BIRD_ATTACK_DEPTH = 9.4;
 const BIRD_ATTACK_COOLDOWN = 1600;
-const BIRD_ATTACK_SIZE = 10;
-const BIRD_ATTACK_DURATION = 760;
+const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
@@ -3144,6 +3143,7 @@ class PlayScene extends Phaser.Scene {
       jump: Phaser.Input.Keyboard.KeyCodes.SPACE,
       jumpW: Phaser.Input.Keyboard.KeyCodes.W,
       action: Phaser.Input.Keyboard.KeyCodes.ENTER,
+      birdAttack: Phaser.Input.Keyboard.KeyCodes.SHIFT,
       restart: Phaser.Input.Keyboard.KeyCodes.R
     });
     this.createMobileGestureInput();
@@ -3418,6 +3418,7 @@ class PlayScene extends Phaser.Scene {
       Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW) ||
       this.consumeMobileJump();
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
+    const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack);
     const onFloor = this.player.body.blocked.down;
 
     if (this.lanternPromptActive) {
@@ -3462,6 +3463,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     this.updateGlideState(time, left, right, onFloor);
+    if (birdAttack) this.commandBirdAttack(time);
     if (action) this.performAction(time);
     this.constrainPlayerToActiveFinalElevator();
 
@@ -3470,11 +3472,6 @@ class PlayScene extends Phaser.Scene {
   }
 
   performAction(time = 0) {
-    if (this.level.actionAbility === "command-birds") {
-      this.commandBirdAttack(time);
-      return;
-    }
-
     if (this.level.actionAbility !== "throw-acorn" || !state.hasAcornBasket) return;
     if (this.throwAcorn(time) && this.basketPromptActive) {
       this.basketPromptActive = false;
@@ -3522,21 +3519,30 @@ class PlayScene extends Phaser.Scene {
   }
 
   commandBirdAttack(time = 0) {
+    if (this.level.actionAbility !== "command-birds") return false;
     if (time - this.lastActionAt < BIRD_ATTACK_COOLDOWN) return false;
-    const target = this.findNearestLivingEnemy();
+    if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
+    const target = this.findNearestVisibleLivingEnemy();
     if (!target) return false;
 
     this.lastActionAt = time;
+    this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
     return true;
   }
 
-  findNearestLivingEnemy() {
+  findNearestVisibleLivingEnemy() {
     let closest = null;
     let closestDistance = Infinity;
+    const camera = this.cameras.main;
+    const minX = camera.scrollX + 12;
+    const maxX = camera.scrollX + VIEW_WIDTH - 12;
+    const minY = camera.scrollY + 12;
+    const maxY = camera.scrollY + PLAY_HEIGHT - 12;
     this.enemies?.children.iterate((enemy) => {
       if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
+      if (enemy.x < minX || enemy.x > maxX || enemy.y < minY || enemy.y > maxY) return;
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
       if (distance < closestDistance) {
         closest = enemy;
@@ -3563,46 +3569,49 @@ class PlayScene extends Phaser.Scene {
 
   spawnAttackBirdFlock(target, time = 0) {
     if (!target?.active || !this.textures.exists("white-bird")) return;
-    const direction = this.player.flipX ? -1 : 1;
     const camera = this.cameras.main;
-    const baseX = direction > 0 ? camera.scrollX - 132 : camera.scrollX + VIEW_WIDTH + 132;
+    const directionX = target.x >= this.player.x ? 1 : -1;
+    const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
     const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
-    const targetPoint = { x: target.x, y: target.y - 16 };
-    const birds = [];
+    const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
+    const travelSeconds = Math.max(0.1, Math.abs(target.x - baseX) / Math.abs(baseSpeed));
+    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42, 42);
+    const flock = {
+      x: baseX,
+      y: baseY,
+      vx: baseSpeed,
+      vy: baseVy,
+      target,
+      hitTriggered: false,
+      startedAt: time,
+      rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
+      birds: []
+    };
+    const count = Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
 
-    for (let index = 0; index < BIRD_ATTACK_SIZE; index += 1) {
+    for (let index = 0; index < count; index += 1) {
       const bird = this.add.sprite(
-        baseX + Phaser.Math.Between(-40, 40),
-        baseY + Phaser.Math.Between(-28, 28),
+        baseX,
+        baseY,
         "white-bird",
         Phaser.Math.Between(0, 3)
       );
-      bird.setScale(Phaser.Math.FloatBetween(0.09, 0.13));
+      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
       bird.setDepth(BIRD_ATTACK_DEPTH);
-      bird.setAlpha(Phaser.Math.FloatBetween(0.82, 1));
-      bird.setFlipX(direction < 0);
+      bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
+      bird.setFlipX(directionX < 0);
       bird.play("white-bird-fly", true);
-      birds.push(bird);
-
-      this.tweens.add({
-        targets: bird,
-        x: targetPoint.x + Phaser.Math.Between(-18, 18),
-        y: targetPoint.y + Phaser.Math.Between(-20, 20),
-        duration: BIRD_ATTACK_DURATION + Phaser.Math.Between(-90, 120),
-        ease: "Sine.in",
-        onComplete: () => {
-          bird.destroy();
-        }
-      });
+      bird.formationX = Phaser.Math.Between(-74, 74);
+      bird.formationY = Phaser.Math.Between(-24, 24);
+      bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
+      bird.phase = Phaser.Math.FloatBetween(0, Math.PI * 2);
+      bird.rotation = flock.rotation;
+      bird.x = flock.x + bird.formationX;
+      bird.y = flock.y + bird.formationY;
+      flock.birds.push(bird);
     }
 
-    this.birdAttackFlocks.push({ birds, startedAt: time });
-    this.time.delayedCall(Math.max(220, BIRD_ATTACK_DURATION - 70), () => {
-      if (!target.active || target.getData("dying")) return;
-      this.defeatEnemy(target);
-      awardScore(300);
-      updateHud();
-    });
+    this.birdAttackFlocks.push(flock);
   }
 
   lockPlayerForBasketPrompt() {
@@ -4146,9 +4155,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateBirdFlocks(time = 0, delta = 0) {
-    if (!this.level.finalElevator || !state.running || state.won) return;
-    if (!this.nextBirdFlockAt) this.scheduleNextBirdFlock(time);
-    if (time >= this.nextBirdFlockAt) {
+    if ((!this.level.finalElevator && !this.birdAttackFlocks?.length) || !state.running || state.won) return;
+    if (this.level.finalElevator && !this.nextBirdFlockAt) this.scheduleNextBirdFlock(time);
+    if (this.level.finalElevator && time >= this.nextBirdFlockAt) {
       this.spawnBirdFlock(time);
       this.scheduleNextBirdFlock(time);
     }
@@ -4174,6 +4183,41 @@ class PlayScene extends Phaser.Scene {
         flock.x > camera.scrollX + VIEW_WIDTH + 260 ||
         flock.y < camera.scrollY - 160 ||
         flock.y > camera.scrollY + PLAY_HEIGHT - BIRD_FLOCK_BASE_MARGIN;
+      if (!outside && flock.birds.length) return true;
+      flock.birds.forEach((bird) => bird.destroy());
+      return false;
+    });
+    this.birdAttackFlocks = (this.birdAttackFlocks || []).filter((flock) => {
+      flock.x += flock.vx * seconds;
+      flock.y += flock.vy * seconds;
+      const age = Math.max(0, time - flock.startedAt);
+      flock.birds = flock.birds.filter((bird) => {
+        if (!bird?.active) return false;
+        const wobbleX = Math.sin(age * 0.0022 + bird.phase) * bird.wobble;
+        const wobbleY = Math.cos(age * 0.0028 + bird.phase * 0.7) * bird.wobble * 0.38;
+        bird.x = flock.x + bird.formationX + wobbleX;
+        bird.y = flock.y + bird.formationY + wobbleY;
+        bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        return true;
+      });
+
+      const target = flock.target;
+      if (!flock.hitTriggered && target?.active && !target.getData("dying")) {
+        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
+        if (distance < BIRD_ATTACK_HIT_RADIUS) {
+          flock.hitTriggered = true;
+          this.defeatEnemy(target);
+          awardScore(300);
+          updateHud();
+        }
+      }
+
+      const camera = this.cameras.main;
+      const outside =
+        flock.x < camera.scrollX - 260 ||
+        flock.x > camera.scrollX + VIEW_WIDTH + 260 ||
+        flock.y < camera.scrollY - 160 ||
+        flock.y > camera.scrollY + PLAY_HEIGHT + 160;
       if (!outside && flock.birds.length) return true;
       flock.birds.forEach((bird) => bird.destroy());
       return false;
