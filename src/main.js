@@ -149,6 +149,17 @@ const PICKUP_SPEECH_LINES = {
     "Back by unpopular demand."
   ]
 };
+const BIRD_ATTACK_SPEECH_LINES = [
+  "Tiny dinosaurs, attack.",
+  "Peck first. Discuss never.",
+  "Flock him up.",
+  "Peck responsibly. Or don't.",
+  "Attack formation: Rude.",
+  "Hostile chirping authorized.",
+  "Tiny beaks, big feelings.",
+  "I summon customer complaints.",
+  "Weather forecast: Birds."
+];
 const ENEMY_NAMES = [
   "KYC WUDB Comment and Management Tool",
   "GSI Document Upload from Email to Pharos",
@@ -3549,6 +3560,7 @@ class PlayScene extends Phaser.Scene {
     this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
+    this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
   }
 
