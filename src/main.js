@@ -182,7 +182,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260606-bird-cooldown-assets";
+const ASSET_VERSION = "20260606-item-enter-key";
 const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -859,6 +859,7 @@ const hud = {
   keyIcon: document.querySelector("#key-icon"),
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
+  itemActionKey: document.querySelector("#item-action-key"),
   birdCooldown: document.querySelector("#bird-cooldown"),
   birdCooldownDivider: document.querySelector("#bird-cooldown-divider"),
   mainMenu: document.querySelector("#main-menu"),
@@ -943,6 +944,7 @@ function updateEquippedHud() {
   hud.equippedIcon.src = itemImage;
   hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
   hud.equippedIcon.hidden = !itemImage;
+  if (hud.itemActionKey) hud.itemActionKey.hidden = !itemImage;
 }
 
 function setBirdCooldownVisible(visible) {

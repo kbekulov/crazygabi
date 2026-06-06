@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Crazy Gabi</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260606-bird-cooldown-assets" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260606-item-enter-key" />
   </head>
   <body>
     <main id="shell">
@@ -20,7 +20,7 @@
                 <span class="bird-cooldown-icon-empty"></span>
                 <span id="bird-cooldown-icon-full" class="bird-cooldown-icon-full"></span>
               </span>
-              <span class="bird-cooldown-key">SHIFT</span>
+              <span class="hud-keycap bird-cooldown-key">SHIFT</span>
             </div>
           </div>
           <div class="hud-cluster hud-top-right">
@@ -40,6 +40,7 @@
               <span class="label">ITEM</span>
               <strong id="equipped-name">NONE</strong>
             </div>
+            <span id="item-action-key" class="hud-keycap item-action-key" hidden>ENTER</span>
           </div>
           <div class="hud-score">
             <span class="label">SCORE</span>
@@ -129,6 +130,6 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script type="module" src="./src/main.js?v=20260606-bird-cooldown-assets"></script>
+    <script type="module" src="./src/main.js?v=20260606-item-enter-key"></script>
   </body>
 </html>

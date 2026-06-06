@@ -163,9 +163,9 @@ button:active {
   filter: drop-shadow(2px 2px 0 #000);
 }
 
-.bird-cooldown-key {
+.hud-keycap {
   display: inline-grid;
-  min-width: clamp(42px, 4vw, 54px);
+  min-width: clamp(50px, 4.8vw, 66px);
   height: clamp(20px, 1.9vw, 26px);
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.64);
@@ -178,6 +178,19 @@ button:active {
   line-height: 1;
   letter-spacing: 0;
   text-shadow: 1px 1px 0 #000;
+}
+
+.hud-keycap[hidden] {
+  display: none;
+}
+
+.bird-cooldown-key {
+  min-width: clamp(42px, 4vw, 54px);
+}
+
+.item-action-key {
+  align-self: center;
+  margin-left: 2px;
 }
 
 .label {
