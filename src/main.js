@@ -17,7 +17,7 @@ const BIRD_FLOCK_BASE_MARGIN = 210;
 const BIRD_DEPTH = -9.6;
 const BIRD_ATTACK_DEPTH = 9.4;
 const BIRD_ATTACK_COOLDOWN = 10000;
-const BIRD_ATTACK_SPEED_MULTIPLIER = 1.5;
+const BIRD_ATTACK_SPEED_MULTIPLIER = 2;
 const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
@@ -231,7 +231,7 @@ const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
-const LEVEL_FOUR_WIDTH_TILES = 184;
+const LEVEL_FOUR_WIDTH_TILES = 204;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -785,7 +785,7 @@ function createLevelFour() {
   routeRun(5, 111, 11);
   routeRun(5, 139, 4, "=");
   routeRun(5, 160, 10);
-  run(5, 178, 8);
+  run(5, 178, 26);
   for (let row = 6; row < rows.length; row += 1) run(row, 178, 8, "w");
 
   [
