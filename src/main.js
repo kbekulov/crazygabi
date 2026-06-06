@@ -767,7 +767,7 @@ function createLevelFour() {
   routeRun(5, 139, 4, "=");
   routeRun(5, 160, 10);
   run(5, 178, 8);
-  for (let row = 6; row < 160; row += 1) run(row, 178, 8, "w");
+  for (let row = 6; row < rows.length; row += 1) run(row, 178, 8, "w");
 
   [
     [18, 4, "p"],
@@ -861,7 +861,6 @@ const hud = {
   equippedName: document.querySelector("#equipped-name"),
   itemActionKey: document.querySelector("#item-action-key"),
   birdCooldown: document.querySelector("#bird-cooldown"),
-  birdCooldownDivider: document.querySelector("#bird-cooldown-divider"),
   mainMenu: document.querySelector("#main-menu"),
   bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
@@ -950,7 +949,6 @@ function updateEquippedHud() {
 function setBirdCooldownVisible(visible) {
   if (!hud.birdCooldown) return;
   hud.birdCooldown.hidden = !visible;
-  if (hud.birdCooldownDivider) hud.birdCooldownDivider.hidden = !visible;
 }
 
 function updateBirdCooldownHud(progress = 0) {
