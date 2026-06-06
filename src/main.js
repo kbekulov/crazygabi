@@ -22,6 +22,10 @@ const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
+const MYSTERIOUS_MAN_FRAME_WIDTH = 238;
+const MYSTERIOUS_MAN_FRAME_HEIGHT = 238;
+const MYSTERIOUS_MAN_SCALE = 0.34;
+const MYSTERIOUS_MAN_SPEED = 78;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -386,7 +390,14 @@ const LEVELS = [
       speed: 112,
       wallFaceColumn: 178
     },
-    doorYOffset: -30,
+    mysteriousMan: {
+      sprite: "mysterious-man",
+      xOffset: 0,
+      yOffset: 13,
+      triggerDistance: 150,
+      exitPadding: 140,
+      speed: MYSTERIOUS_MAN_SPEED
+    },
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
@@ -425,7 +436,7 @@ const LEVELS = [
       { x: 4210, y: 2960, topWidth: 74, bottomWidth: 430, height: 2360, lean: 160, alpha: 0.35, thickness: 2, layerAlpha: 1.95, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 2.4 },
       { x: 5120, y: 3160, topWidth: 106, bottomWidth: 620, height: 2140, lean: 220, alpha: 0.4, thickness: 2, layerAlpha: 2.15, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "steady", skipCrackGlow: true, beamBoost: 2.75 }
     ],
-    introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator to the final door."
+    introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator toward the stranger above."
   }
 ];
 
@@ -1470,6 +1481,11 @@ class PlayScene extends Phaser.Scene {
     this.gabiActionRestoreTimer = null;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
+    this.mysteriousMan = null;
+    this.mysteriousManState = "idle";
+    this.mysteriousManSpeechBubble = null;
+    this.mysteriousManFinishX = 0;
+    this.mysteriousManExitX = 0;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -1626,6 +1642,7 @@ class PlayScene extends Phaser.Scene {
       sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
+      if (level.mysteriousMan) sheet("mysterious-man", "./public/assets/character/mysterious_man.png", MYSTERIOUS_MAN_FRAME_WIDTH, MYSTERIOUS_MAN_FRAME_HEIGHT);
       if (level.finalElevator || level.actionAbility === "command-birds") sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
@@ -2599,6 +2616,20 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (this.textures.exists("mysterious-man") && !this.anims.exists("mysterious-man-idle")) {
+      this.anims.create({
+        key: "mysterious-man-idle",
+        frames: this.anims.generateFrameNumbers("mysterious-man", { frames: [0, 1] }),
+        frameRate: 3,
+        repeat: -1
+      });
+      this.anims.create({
+        key: "mysterious-man-walk",
+        frames: this.anims.generateFrameNumbers("mysterious-man", { frames: [2, 3] }),
+        frameRate: 6,
+        repeat: -1
+      });
+    }
   }
 
   buildLevel() {
@@ -2691,11 +2722,15 @@ class PlayScene extends Phaser.Scene {
           this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "d") {
-          const door = this.doors.create(x, y + (this.level.doorYOffset ?? -16), "exit-door");
-          door.setScale(DOOR_SCALE);
-          door.setDepth(DOOR_DEPTH);
-          door.refreshBody();
-          this.doorPoint = { x: door.x, y: door.y };
+          if (this.level.mysteriousMan) {
+            this.createMysteriousMan(x, y);
+          } else {
+            const door = this.doors.create(x, y + (this.level.doorYOffset ?? -16), "exit-door");
+            door.setScale(DOOR_SCALE);
+            door.setDepth(DOOR_DEPTH);
+            door.refreshBody();
+            this.doorPoint = { x: door.x, y: door.y };
+          }
         }
         if (cell === "p") this.spawnPoint = { x, y };
       });
@@ -3166,6 +3201,119 @@ class PlayScene extends Phaser.Scene {
     this.oldLadySpeechText = "";
   }
 
+  createMysteriousMan(x, y) {
+    const config = this.level.mysteriousMan;
+    if (!config || !this.textures.exists("mysterious-man")) return;
+    const man = this.add.sprite(
+      x + (config.xOffset || 0),
+      y + (config.yOffset || 0),
+      "mysterious-man",
+      0
+    );
+    man.setOrigin(0.5, 1);
+    man.setScale(config.scale || MYSTERIOUS_MAN_SCALE);
+    man.setDepth(5);
+    man.setFlipX(false);
+    man.play("mysterious-man-idle", true);
+    this.mysteriousMan = man;
+    this.mysteriousManState = "waiting";
+    this.mysteriousManStart = { x: man.x, y: man.y };
+    this.mysteriousManExitX = this.levelWidth + (config.exitPadding || 140);
+    this.mysteriousManFinishX = Math.min(this.levelWidth - 26, man.x + 230);
+    this.doorPoint = { x: man.x, y: man.y };
+  }
+
+  resetMysteriousMan() {
+    if (!this.mysteriousMan || !this.mysteriousManStart) return;
+    this.mysteriousManSpeechBubble?.destroy(true);
+    this.mysteriousManSpeechBubble = null;
+    this.mysteriousManState = "waiting";
+    this.mysteriousMan.setVisible(true);
+    this.mysteriousMan.setActive(true);
+    this.mysteriousMan.setPosition(this.mysteriousManStart.x, this.mysteriousManStart.y);
+    this.mysteriousMan.setAlpha(1);
+    this.mysteriousMan.setFlipX(false);
+    this.mysteriousMan.play("mysterious-man-idle", true);
+  }
+
+  updateMysteriousMan(time = 0, delta = 0) {
+    const man = this.mysteriousMan;
+    const config = this.level.mysteriousMan;
+    if (!man || !config) return;
+    this.updateMysteriousManSpeechPosition();
+    if (!state.running || state.won || !state.hasKey || !this.finalElevatorCompleted) return;
+
+    if (this.mysteriousManState === "waiting") {
+      man.play("mysterious-man-idle", true);
+      const closeEnough =
+        Phaser.Math.Distance.Between(this.player.x, this.player.y, man.x, man.y) < (config.triggerDistance || 150) ||
+        this.player.x > man.x - 90;
+      if (!closeEnough) return;
+      this.mysteriousManState = "leaving";
+      this.mysteriousManExitX = this.cameras.main.scrollX + VIEW_WIDTH + (config.exitPadding || 140);
+      this.mysteriousManFinishX = Math.min(this.levelWidth - 26, this.mysteriousManExitX - 110);
+      this.showMysteriousManSpeech("follow me");
+      man.play("mysterious-man-walk", true);
+    }
+
+    if (this.mysteriousManState === "leaving") {
+      const seconds = delta / 1000;
+      man.x += (config.speed || MYSTERIOUS_MAN_SPEED) * seconds;
+      man.play("mysterious-man-walk", true);
+      if (man.x >= this.mysteriousManExitX) {
+        man.setVisible(false);
+        this.mysteriousManState = "gone";
+      }
+    }
+    this.updateMysteriousManSpeechPosition();
+
+    if (
+      (this.mysteriousManState === "leaving" || this.mysteriousManState === "gone") &&
+      this.player.x >= this.mysteriousManFinishX
+    ) {
+      this.completeLevel();
+    }
+  }
+
+  showMysteriousManSpeech(text) {
+    if (!this.mysteriousMan || !text) return;
+    this.mysteriousManSpeechBubble?.destroy(true);
+    const bubbleWidth = 84;
+    const bubbleHeight = 28;
+    const container = this.add.container(this.mysteriousMan.x, this.mysteriousMan.y - 96);
+    const bubble = this.add.graphics();
+    bubble.fillStyle(0x050505, 0.9);
+    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
+    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
+    const label = this.add.text(0, -bubbleHeight / 2, text, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "10px",
+      color: "#f4f0dc",
+      align: "center"
+    });
+    label.setOrigin(0.5, 0.5);
+    container.add([bubble, label]);
+    container.setDepth(DARKNESS_DEPTH + 2);
+    this.mysteriousManSpeechBubble = container;
+    this.time.delayedCall(1800, () => {
+      if (!this.mysteriousManSpeechBubble) return;
+      this.tweens.add({
+        targets: this.mysteriousManSpeechBubble,
+        alpha: 0,
+        duration: 220,
+        onComplete: () => {
+          this.mysteriousManSpeechBubble?.destroy(true);
+          this.mysteriousManSpeechBubble = null;
+        }
+      });
+    });
+  }
+
+  updateMysteriousManSpeechPosition() {
+    if (!this.mysteriousManSpeechBubble || !this.mysteriousMan) return;
+    this.mysteriousManSpeechBubble.setPosition(this.mysteriousMan.x, this.mysteriousMan.y - 96);
+  }
+
   createInput() {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keysInput = this.input.keyboard.addKeys({
@@ -3345,6 +3493,8 @@ class PlayScene extends Phaser.Scene {
     this.speechBubble = null;
     this.catSpeechBubble?.destroy(true);
     this.catSpeechBubble = null;
+    this.mysteriousManSpeechBubble?.destroy(true);
+    this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
     this.basketPromptActive = false;
@@ -3356,6 +3506,7 @@ class PlayScene extends Phaser.Scene {
     this.releaseBasketPromptControlLock();
     this.resetMobileGestureInput();
     this.resetFinalElevator();
+    this.resetMysteriousMan();
     this.resetPlayerToSpawn();
     this.lastBirdAttackAt = -Infinity;
     this.airJumpsUsed = 0;
@@ -3438,6 +3589,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
+    this.updateMysteriousMan(time, delta);
     this.updateElevatorSignBubble();
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
@@ -3623,17 +3775,21 @@ class PlayScene extends Phaser.Scene {
     const directionX = target.x >= this.player.x ? 1 : -1;
     const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
     const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
-    const baseSpeed = Phaser.Math.Between(96, 168) * BIRD_ATTACK_SPEED_MULTIPLIER * directionX;
+    const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
     const travelSeconds = Math.max(0.1, Math.abs(target.x - baseX) / Math.abs(baseSpeed));
-    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42 * BIRD_ATTACK_SPEED_MULTIPLIER, 42 * BIRD_ATTACK_SPEED_MULTIPLIER);
+    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42, 42);
+    const startDistance = Math.max(1, Phaser.Math.Distance.Between(baseX, baseY, target.x, target.y - 16));
     const flock = {
       x: baseX,
       y: baseY,
       vx: baseSpeed,
       vy: baseVy,
+      baseVx: baseSpeed,
+      baseVy,
       target,
       hitTriggered: false,
       startedAt: time,
+      startDistance,
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
@@ -3989,7 +4145,9 @@ class PlayScene extends Phaser.Scene {
     if (!elevator) return;
 
     if (this.finalElevatorCompleted) {
-      if (this.shouldResetFinalElevatorAfterFall({ allowCompleted: true })) this.resetFinalElevator();
+      if (this.shouldResetFinalElevatorAfterFall({ allowCompleted: true })) {
+        this.resetFinalElevator({ resetGuide: true });
+      }
       return;
     }
 
@@ -4079,11 +4237,12 @@ class PlayScene extends Phaser.Scene {
     if (doorStopIndex >= 0) this.catGuideIndex = doorStopIndex;
   }
 
-  resetFinalElevator() {
+  resetFinalElevator({ resetGuide = false } = {}) {
     const elevator = this.finalElevator;
     if (!elevator) return;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
+    this.finalElevatorStartedAt = 0;
     elevator.body.setVelocity(0, 0);
     elevator.body.setPosition(elevator.body.x, elevator.baseY);
     elevator.body.body.updateFromGameObject();
@@ -4092,6 +4251,16 @@ class PlayScene extends Phaser.Scene {
     this.positionFinalElevatorRoof();
     this.positionFinalElevatorVisuals();
     this.cameras.main.shakeEffect?.reset();
+    if (resetGuide) this.resetCatGuideToFinalElevator();
+  }
+
+  resetCatGuideToFinalElevator() {
+    const elevatorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "e") ?? -1;
+    if (elevatorStopIndex < 0) return;
+    this.catGuideTravel = null;
+    this.catTransition = null;
+    this.catGuideIndex = elevatorStopIndex;
+    this.positionFinalElevatorCat();
   }
 
   positionFinalElevatorVisuals() {
@@ -4244,6 +4413,15 @@ class PlayScene extends Phaser.Scene {
       return false;
     });
     this.birdAttackFlocks = (this.birdAttackFlocks || []).filter((flock) => {
+      const target = flock.target;
+      let speedFactor = 1;
+      if (!flock.hitTriggered && target?.active && !target.getData("dying")) {
+        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
+        const progress = 1 - Phaser.Math.Clamp(distance / (flock.startDistance || 1), 0, 1);
+        speedFactor = Phaser.Math.Linear(1, BIRD_ATTACK_SPEED_MULTIPLIER, progress);
+      }
+      flock.vx = (flock.baseVx ?? flock.vx) * speedFactor;
+      flock.vy = (flock.baseVy ?? flock.vy) * speedFactor;
       flock.x += flock.vx * seconds;
       flock.y += flock.vy * seconds;
       const age = Math.max(0, time - flock.startedAt);
@@ -4257,11 +4435,12 @@ class PlayScene extends Phaser.Scene {
         return true;
       });
 
-      const target = flock.target;
       if (!flock.hitTriggered && target?.active && !target.getData("dying") && this.isEnemyVisibleOnScreen(target)) {
         const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
         if (distance < BIRD_ATTACK_HIT_RADIUS) {
           flock.hitTriggered = true;
+          flock.vx = flock.baseVx ?? flock.vx;
+          flock.vy = flock.baseVy ?? flock.vy;
           this.defeatEnemy(target);
           awardScore(300);
           updateHud();
@@ -5708,6 +5887,8 @@ class PlayScene extends Phaser.Scene {
     this.speechBubble = null;
     this.catSpeechBubble?.destroy(true);
     this.catSpeechBubble = null;
+    this.mysteriousManSpeechBubble?.destroy(true);
+    this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
@@ -5971,6 +6152,7 @@ class PlayScene extends Phaser.Scene {
     }
     state.timeLeft = Math.max(45, state.timeLeft);
     this.resetFinalElevator();
+    this.resetMysteriousMan();
     this.resetPlayerToSpawn();
     this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
     this.airJumpsUsed = 0;
@@ -5988,6 +6170,11 @@ class PlayScene extends Phaser.Scene {
   enterDoor() {
     if (!state.running || !state.hasKey) return;
     if (this.level.finalElevator && !this.finalElevatorCompleted) return;
+    this.completeLevel();
+  }
+
+  completeLevel() {
+    if (!state.running || state.won) return;
     state.running = false;
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");

@@ -189,8 +189,8 @@ button:active {
 }
 
 .item-action-key {
-  align-self: center;
-  margin-left: 2px;
+  justify-self: start;
+  margin-top: 5px;
 }
 
 .label {
