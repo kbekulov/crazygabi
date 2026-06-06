@@ -786,7 +786,7 @@ function createLevelFour() {
   routeRun(5, 139, 4, "=");
   routeRun(5, 160, 10);
   run(5, 178, 26);
-  for (let row = 6; row < rows.length; row += 1) run(row, 178, 8, "w");
+  for (let row = 6; row < rows.length; row += 1) run(row, 178, 26, "w");
 
   [
     [18, 4, "p"],
