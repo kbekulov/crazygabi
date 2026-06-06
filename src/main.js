@@ -216,6 +216,14 @@ const LOADING_RUNNERS = [
     frameCount: 4
   }
 ];
+const CREDITS_SECTIONS = [
+  ["Development & Art Direction", ["Kiril"]],
+  ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad", "Jarek", "Kim Loong"]],
+  ["Critics of AI", ["Tomas"]],
+  ["AI Tools", ["Codex", "ChatGPT", "Gemini", "Suno AI"]],
+  ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue", "Yuki Kajiura"]],
+  ["Non-AI Tools", ["Adobe Photoshop", "Audacity", "Github", "Visual Studio Code"]]
+];
 let storyIntroRunId = 0;
 let gameAssetsReady = false;
 const pixelatedEquippedImages = {};
@@ -1446,6 +1454,7 @@ class PlayScene extends Phaser.Scene {
     this.finalElevator = null;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
+    this.finalElevatorCredits = [];
     this.platformShadows = [];
     this.platformVisuals = this.add.group();
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -3080,6 +3089,56 @@ class PlayScene extends Phaser.Scene {
       lastY: baseTopY + TILE / 2,
       deltaY: 0
     };
+    this.createFinalElevatorCredits();
+  }
+
+  createFinalElevatorCredits() {
+    const elevator = this.finalElevator;
+    if (!elevator || !CREDITS_SECTIONS.length) return;
+    this.clearFinalElevatorCredits();
+
+    const x = elevator.body.x - Math.min(520, VIEW_WIDTH * 0.42);
+    const startY = elevator.baseY - 250;
+    const endY = elevator.topY + 310;
+    const availableHeight = Math.max(1, startY - endY);
+    const step = availableHeight / Math.max(1, CREDITS_SECTIONS.length - 1);
+
+    this.finalElevatorCredits = CREDITS_SECTIONS.map(([category, names], index) => {
+      const y = startY - step * index;
+      const container = this.add.container(x, y);
+      const title = this.add.text(0, 0, category.toUpperCase(), {
+        fontFamily: "\"Courier New\", monospace",
+        fontSize: "15px",
+        fontStyle: "bold",
+        color: "#f4dcb0",
+        align: "left"
+      });
+      title.setOrigin(0, 0);
+      title.setShadow(2, 2, "#000000", 0, false, true);
+      container.add(title);
+
+      names.forEach((name, nameIndex) => {
+        const line = this.add.text(18, 25 + nameIndex * 22, name, {
+          fontFamily: "\"Courier New\", monospace",
+          fontSize: "14px",
+          color: "#f4f0dc",
+          align: "left"
+        });
+        line.setOrigin(0, 0);
+        line.setShadow(2, 2, "#000000", 0, false, true);
+        container.add(line);
+      });
+
+      container.setDepth(PLATFORM_DEPTH + 0.4);
+      container.setAlpha(0);
+      container.setVisible(false);
+      return container;
+    });
+  }
+
+  clearFinalElevatorCredits() {
+    this.finalElevatorCredits?.forEach((entry) => entry?.destroy?.(true));
+    this.finalElevatorCredits = [];
   }
 
   createPlatformShadows() {
@@ -4171,6 +4230,7 @@ class PlayScene extends Phaser.Scene {
     if (carryPlayer) this.carryFinalElevatorPlayer(elevator.deltaY);
     this.positionFinalElevatorVisuals();
     this.positionFinalElevatorCat();
+    this.updateFinalElevatorCredits();
 
     if (nextY > elevator.topY) return;
     this.finishFinalElevator();
@@ -4216,6 +4276,7 @@ class PlayScene extends Phaser.Scene {
     this.playLevelSfx(EARTHQUAKE_SFX_KEY, 0.38);
     this.finalElevatorStartedAt = time;
     this.positionFinalElevatorCat();
+    this.showFinalElevatorCredits();
     this.nextBirdFlockAt = Math.min(this.nextBirdFlockAt || Infinity, time + 250);
   }
 
@@ -4230,6 +4291,7 @@ class PlayScene extends Phaser.Scene {
     this.positionFinalElevatorRoof();
     this.positionFinalElevatorVisuals();
     this.positionFinalElevatorCat();
+    this.fadeOutFinalElevatorCredits();
     this.cameras.main.shakeEffect?.reset();
 
     this.catGuideTravel = null;
@@ -4251,7 +4313,50 @@ class PlayScene extends Phaser.Scene {
     this.positionFinalElevatorRoof();
     this.positionFinalElevatorVisuals();
     this.cameras.main.shakeEffect?.reset();
+    this.hideFinalElevatorCredits();
     if (resetGuide) this.resetCatGuideToFinalElevator();
+  }
+
+  showFinalElevatorCredits() {
+    if (!this.finalElevatorCredits?.length) return;
+    this.finalElevatorCredits.forEach((entry) => {
+      entry.setVisible(true);
+      this.tweens.killTweensOf(entry);
+      entry.setAlpha(1);
+    });
+  }
+
+  updateFinalElevatorCredits() {
+    if (!this.finalElevatorCredits?.length || !this.finalElevator) return;
+    const elevator = this.finalElevator;
+    const progress = Phaser.Math.Clamp((elevator.baseY - elevator.body.y) / Math.max(1, elevator.baseY - elevator.topY), 0, 1);
+    const fade = progress < 0.88 ? 1 : Phaser.Math.Clamp(1 - (progress - 0.88) / 0.12, 0, 1);
+    this.finalElevatorCredits.forEach((entry) => {
+      entry.setVisible(this.finalElevatorActive && fade > 0.02);
+      entry.setAlpha(fade);
+    });
+  }
+
+  fadeOutFinalElevatorCredits() {
+    if (!this.finalElevatorCredits?.length) return;
+    this.finalElevatorCredits.forEach((entry) => {
+      this.tweens.killTweensOf(entry);
+      this.tweens.add({
+        targets: entry,
+        alpha: 0,
+        duration: 420,
+        ease: "Sine.out",
+        onComplete: () => entry.setVisible(false)
+      });
+    });
+  }
+
+  hideFinalElevatorCredits() {
+    this.finalElevatorCredits?.forEach((entry) => {
+      this.tweens.killTweensOf(entry);
+      entry.setAlpha(0);
+      entry.setVisible(false);
+    });
   }
 
   resetCatGuideToFinalElevator() {
@@ -5891,6 +5996,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
+    this.clearFinalElevatorCredits();
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
     this.birdFlockGroups = [];
@@ -6405,18 +6511,9 @@ function showMusicBoxPanel() {
 function showCreditsPanel() {
   showMenuPanel("Credits", "");
   hud.menuPanel.classList.add("credits-panel");
-  const credits = [
-    ["Development & Art Direction", ["Kiril"]],
-    ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad", "Jarek", "Kim Loong"]],
-    ["Critics of AI", ["Tomas"]],
-    ["AI Tools", ["Codex", "ChatGPT", "Gemini", "Suno AI"]],
-    ["Inspirations", ["Vilnius", "Klaipeda", "Crazy Sue", "Yuki Kajiura"]],
-    ["Non-AI Tools", ["Adobe Photoshop", "Audacity", "Github", "Visual Studio Code"]]
-  ];
-
   const list = document.createElement("div");
   list.className = "credits-list";
-  credits.forEach(([category, names]) => {
+  CREDITS_SECTIONS.forEach(([category, names]) => {
     const section = document.createElement("section");
     section.className = "credits-section";
     const heading = document.createElement("h3");
