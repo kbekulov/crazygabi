@@ -216,6 +216,10 @@ const LOADING_RUNNERS = [
     frameCount: 4
   }
 ];
+LOADING_RUNNERS.forEach((runner) => {
+  const image = new Image();
+  image.src = `${runner.src}?v=${ASSET_VERSION}`;
+});
 const CREDITS_SECTIONS = [
   ["Development & Art Direction", ["Kiril"]],
   ["Gameplay Testers", ["Gabriele", "Stefano", "Rene", "Vlad", "Jarek", "Kim Loong"]],
@@ -1367,6 +1371,14 @@ class PlayScene extends Phaser.Scene {
     });
 
     this.load.image("parallax-city", `./public/assets/environment/paralax_city.png?v=${ASSET_VERSION}`);
+    this.load.spritesheet("gabi-sheet", `./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}`, {
+      frameWidth: GABI_FRAME_WIDTH,
+      frameHeight: GABI_FRAME_HEIGHT
+    });
+    this.load.spritesheet("grey-cat", `./public/assets/character/grey_cat.png?v=${ASSET_VERSION}`, {
+      frameWidth: CAT_FRAME_WIDTH,
+      frameHeight: CAT_FRAME_HEIGHT
+    });
     this.load.audio("bgm-menu", `./public/assets/sound/bgm_menu.mp3?v=${ASSET_VERSION}`);
   }
 
