@@ -860,6 +860,7 @@ const hud = {
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
   birdCooldown: document.querySelector("#bird-cooldown"),
+  birdCooldownDivider: document.querySelector("#bird-cooldown-divider"),
   mainMenu: document.querySelector("#main-menu"),
   bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
@@ -947,6 +948,7 @@ function updateEquippedHud() {
 function setBirdCooldownVisible(visible) {
   if (!hud.birdCooldown) return;
   hud.birdCooldown.hidden = !visible;
+  if (hud.birdCooldownDivider) hud.birdCooldownDivider.hidden = !visible;
 }
 
 function updateBirdCooldownHud(progress = 0) {
