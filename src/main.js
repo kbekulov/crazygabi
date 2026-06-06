@@ -235,7 +235,7 @@ const storySeenLevels = new Set();
 const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
-const LEVEL_FOUR_WIDTH_TILES = 204;
+const LEVEL_FOUR_WIDTH_TILES = 224;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -790,8 +790,8 @@ function createLevelFour() {
   routeRun(5, 111, 11);
   routeRun(5, 139, 4, "=");
   routeRun(5, 160, 10);
-  run(5, 178, 26);
-  for (let row = 6; row < rows.length; row += 1) run(row, 178, 26, "w");
+  run(5, 178, 46);
+  for (let row = 6; row < rows.length; row += 1) run(row, 178, 46, "w");
 
   [
     [18, 4, "p"],
@@ -3322,8 +3322,8 @@ class PlayScene extends Phaser.Scene {
         this.player.x > man.x - 90;
       if (!closeEnough) return;
       this.mysteriousManState = "leaving";
-      this.mysteriousManExitX = this.cameras.main.scrollX + VIEW_WIDTH + (config.exitPadding || 140);
-      this.mysteriousManFinishX = Math.min(this.levelWidth - 26, this.mysteriousManExitX - 110);
+      this.mysteriousManExitX = this.levelWidth + (config.exitPadding || 140);
+      this.mysteriousManFinishX = this.levelWidth - (config.finishPadding || 48);
       this.showMysteriousManSpeech("follow me");
       man.play("mr-magpie-walk", true);
     }
