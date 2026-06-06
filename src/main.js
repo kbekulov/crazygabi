@@ -405,7 +405,7 @@ const LEVELS = [
     mysteriousMan: {
       sprite: "mr-magpie",
       xOffset: 0,
-      yOffset: 12,
+      yOffset: 20,
       scale: 0.37,
       triggerDistance: 150,
       exitPadding: 140,
