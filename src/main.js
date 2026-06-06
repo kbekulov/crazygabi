@@ -22,10 +22,10 @@ const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
-const MYSTERIOUS_MAN_FRAME_WIDTH = 238;
-const MYSTERIOUS_MAN_FRAME_HEIGHT = 238;
-const MYSTERIOUS_MAN_SCALE = 0.34;
-const MYSTERIOUS_MAN_SPEED = 78;
+const MR_MAGPIE_FRAME_WIDTH = 238;
+const MR_MAGPIE_FRAME_HEIGHT = 238;
+const MR_MAGPIE_SCALE = 0.34;
+const MR_MAGPIE_SPEED = 78;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -399,12 +399,12 @@ const LEVELS = [
       wallFaceColumn: 178
     },
     mysteriousMan: {
-      sprite: "mysterious-man",
+      sprite: "mr-magpie",
       xOffset: 0,
       yOffset: 13,
       triggerDistance: 150,
       exitPadding: 140,
-      speed: MYSTERIOUS_MAN_SPEED
+      speed: MR_MAGPIE_SPEED
     },
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
@@ -974,7 +974,7 @@ function updateBirdCooldownHud(progress = 0) {
   if (!hud.birdCooldown) return;
   const value = Phaser.Math.Clamp(progress || 0, 0, 1);
   hud.birdCooldown.style.setProperty("--bird-cooldown-progress", value.toFixed(3));
-  hud.birdCooldown.style.setProperty("--bird-cooldown-hidden", `${((1 - value) * 100).toFixed(1)}%`);
+  hud.birdCooldown.style.setProperty("--bird-cooldown-hidden", `${(value * 100).toFixed(1)}%`);
 }
 
 function getCookieValue(name) {
@@ -1651,7 +1651,7 @@ class PlayScene extends Phaser.Scene {
       sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
-      if (level.mysteriousMan) sheet("mysterious-man", "./public/assets/character/mysterious_man.png", MYSTERIOUS_MAN_FRAME_WIDTH, MYSTERIOUS_MAN_FRAME_HEIGHT);
+      if (level.mysteriousMan) sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
       if (level.finalElevator || level.actionAbility === "command-birds") sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
@@ -2625,16 +2625,16 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
-    if (this.textures.exists("mysterious-man") && !this.anims.exists("mysterious-man-idle")) {
+    if (this.textures.exists("mr-magpie") && !this.anims.exists("mr-magpie-idle")) {
       this.anims.create({
-        key: "mysterious-man-idle",
-        frames: this.anims.generateFrameNumbers("mysterious-man", { frames: [0, 1] }),
+        key: "mr-magpie-idle",
+        frames: this.anims.generateFrameNumbers("mr-magpie", { frames: [0, 1] }),
         frameRate: 3,
         repeat: -1
       });
       this.anims.create({
-        key: "mysterious-man-walk",
-        frames: this.anims.generateFrameNumbers("mysterious-man", { frames: [2, 3] }),
+        key: "mr-magpie-walk",
+        frames: this.anims.generateFrameNumbers("mr-magpie", { frames: [2, 3] }),
         frameRate: 6,
         repeat: -1
       });
@@ -3262,18 +3262,18 @@ class PlayScene extends Phaser.Scene {
 
   createMysteriousMan(x, y) {
     const config = this.level.mysteriousMan;
-    if (!config || !this.textures.exists("mysterious-man")) return;
+    if (!config || !this.textures.exists("mr-magpie")) return;
     const man = this.add.sprite(
       x + (config.xOffset || 0),
       y + (config.yOffset || 0),
-      "mysterious-man",
+      "mr-magpie",
       0
     );
     man.setOrigin(0.5, 1);
-    man.setScale(config.scale || MYSTERIOUS_MAN_SCALE);
+    man.setScale(config.scale || MR_MAGPIE_SCALE);
     man.setDepth(5);
     man.setFlipX(false);
-    man.play("mysterious-man-idle", true);
+    man.play("mr-magpie-idle", true);
     this.mysteriousMan = man;
     this.mysteriousManState = "waiting";
     this.mysteriousManStart = { x: man.x, y: man.y };
@@ -3292,7 +3292,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousMan.setPosition(this.mysteriousManStart.x, this.mysteriousManStart.y);
     this.mysteriousMan.setAlpha(1);
     this.mysteriousMan.setFlipX(false);
-    this.mysteriousMan.play("mysterious-man-idle", true);
+    this.mysteriousMan.play("mr-magpie-idle", true);
   }
 
   updateMysteriousMan(time = 0, delta = 0) {
@@ -3303,7 +3303,7 @@ class PlayScene extends Phaser.Scene {
     if (!state.running || state.won || !state.hasKey || !this.finalElevatorCompleted) return;
 
     if (this.mysteriousManState === "waiting") {
-      man.play("mysterious-man-idle", true);
+      man.play("mr-magpie-idle", true);
       const closeEnough =
         Phaser.Math.Distance.Between(this.player.x, this.player.y, man.x, man.y) < (config.triggerDistance || 150) ||
         this.player.x > man.x - 90;
@@ -3312,13 +3312,13 @@ class PlayScene extends Phaser.Scene {
       this.mysteriousManExitX = this.cameras.main.scrollX + VIEW_WIDTH + (config.exitPadding || 140);
       this.mysteriousManFinishX = Math.min(this.levelWidth - 26, this.mysteriousManExitX - 110);
       this.showMysteriousManSpeech("follow me");
-      man.play("mysterious-man-walk", true);
+      man.play("mr-magpie-walk", true);
     }
 
     if (this.mysteriousManState === "leaving") {
       const seconds = delta / 1000;
-      man.x += (config.speed || MYSTERIOUS_MAN_SPEED) * seconds;
-      man.play("mysterious-man-walk", true);
+      man.x += (config.speed || MR_MAGPIE_SPEED) * seconds;
+      man.play("mr-magpie-walk", true);
       if (man.x >= this.mysteriousManExitX) {
         man.setVisible(false);
         this.mysteriousManState = "gone";
@@ -3767,11 +3767,10 @@ class PlayScene extends Phaser.Scene {
     if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
     const target = this.findNearestVisibleLivingEnemy();
-    if (!target) return false;
 
     this.lastBirdAttackAt = time;
     updateBirdCooldownHud(1);
-    this.setGabiFlip(target.x < this.player.x);
+    if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
@@ -3829,15 +3828,17 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnAttackBirdFlock(target, time = 0) {
-    if (!target?.active || !this.textures.exists("white-bird")) return;
+    if (!this.textures.exists("white-bird")) return;
     const camera = this.cameras.main;
-    const directionX = target.x >= this.player.x ? 1 : -1;
+    const directionX = target?.active ? (target.x >= this.player.x ? 1 : -1) : (this.player.flipX ? -1 : 1);
     const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
     const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
+    const targetX = target?.active ? target.x : camera.scrollX + (directionX > 0 ? VIEW_WIDTH + 240 : -240);
+    const targetY = target?.active ? target.y - 16 : Phaser.Math.Clamp(this.player.y - 32, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
     const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
-    const travelSeconds = Math.max(0.1, Math.abs(target.x - baseX) / Math.abs(baseSpeed));
-    const baseVy = Phaser.Math.Clamp((target.y - 16 - baseY) / travelSeconds, -42, 42);
-    const startDistance = Math.max(1, Phaser.Math.Distance.Between(baseX, baseY, target.x, target.y - 16));
+    const travelSeconds = Math.max(0.1, Math.abs(targetX - baseX) / Math.abs(baseSpeed));
+    const baseVy = Phaser.Math.Clamp((targetY - baseY) / travelSeconds, -42, 42);
+    const startDistance = Math.max(1, Phaser.Math.Distance.Between(baseX, baseY, targetX, targetY));
     const flock = {
       x: baseX,
       y: baseY,
@@ -3846,6 +3847,7 @@ class PlayScene extends Phaser.Scene {
       baseVx: baseSpeed,
       baseVy,
       target,
+      targetPoint: { x: targetX, y: targetY },
       hitTriggered: false,
       startedAt: time,
       startDistance,
@@ -4271,8 +4273,7 @@ class PlayScene extends Phaser.Scene {
       this.cat.play("cat-idle", true);
     }
 
-    const duration = Math.ceil(((elevator.baseY - elevator.topY) / elevator.speed) * 1000) + 250;
-    this.cameras.main.shake(duration, 0.006);
+    this.cameras.main.shake(360, 0.006);
     this.playLevelSfx(EARTHQUAKE_SFX_KEY, 0.38);
     this.finalElevatorStartedAt = time;
     this.positionFinalElevatorCat();
@@ -4293,6 +4294,7 @@ class PlayScene extends Phaser.Scene {
     this.positionFinalElevatorCat();
     this.fadeOutFinalElevatorCredits();
     this.cameras.main.shakeEffect?.reset();
+    this.cameras.main.shake(300, 0.008);
 
     this.catGuideTravel = null;
     const doorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "d") ?? -1;
@@ -4520,8 +4522,11 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackFlocks = (this.birdAttackFlocks || []).filter((flock) => {
       const target = flock.target;
       let speedFactor = 1;
-      if (!flock.hitTriggered && target?.active && !target.getData("dying")) {
-        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
+      const targetPoint = target?.active && !target.getData("dying")
+        ? { x: target.x, y: target.y - 16 }
+        : flock.targetPoint;
+      if (!flock.hitTriggered && targetPoint) {
+        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, targetPoint.x, targetPoint.y);
         const progress = 1 - Phaser.Math.Clamp(distance / (flock.startDistance || 1), 0, 1);
         speedFactor = Phaser.Math.Linear(1, BIRD_ATTACK_SPEED_MULTIPLIER, progress);
       }
