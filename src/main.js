@@ -3986,7 +3986,12 @@ class PlayScene extends Phaser.Scene {
 
   updateFinalElevator(time = 0, delta = 0) {
     const elevator = this.finalElevator;
-    if (!elevator || this.finalElevatorCompleted) return;
+    if (!elevator) return;
+
+    if (this.finalElevatorCompleted) {
+      if (this.shouldResetFinalElevatorAfterFall({ allowCompleted: true })) this.resetFinalElevator();
+      return;
+    }
 
     if (!this.finalElevatorActive) {
       if (!state.running || !state.hasKey || !this.isPlayerInsideFinalElevatorCabin()) return;
@@ -4145,9 +4150,10 @@ class PlayScene extends Phaser.Scene {
     this.player.body.updateFromGameObject();
   }
 
-  shouldResetFinalElevatorAfterFall() {
+  shouldResetFinalElevatorAfterFall({ allowCompleted = false } = {}) {
     const elevator = this.finalElevator;
-    if (!this.finalElevatorActive || !elevator?.body?.body || !this.player?.body) return false;
+    const canReset = this.finalElevatorActive || (allowCompleted && this.finalElevatorCompleted);
+    if (!canReset || !elevator?.body?.body || !this.player?.body || !state.running || state.won) return false;
     if (this.isPlayerOnFinalElevator()) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
     const playerBottom = this.player.body.y + this.player.body.height;
