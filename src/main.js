@@ -4829,19 +4829,14 @@ class PlayScene extends Phaser.Scene {
       if (!leaf?.active) return false;
       const ageMs = time - entry.startedAt;
       const ageSeconds = Math.max(0, ageMs / 1000);
-      const fadeIn = Phaser.Math.Clamp(ageMs / 420, 0, 1);
-      const fadeOut = Phaser.Math.Clamp((entry.duration - ageMs) / 900, 0, 1);
       const gust = Math.sin(ageSeconds * entry.gustFrequency + entry.phase) * entry.gustStrength;
       const curl = Math.sin(ageSeconds * entry.curlFrequency + entry.phase * 0.7) * entry.curlStrength;
 
       leaf.x += (entry.vx + gust) * seconds;
       leaf.y += (entry.vy + curl) * seconds;
       leaf.rotation += entry.spin * seconds;
-      leaf.setScale(entry.scaleX + Math.sin(ageSeconds * entry.flipFrequency + entry.phase) * entry.scaleWobble, entry.scaleY);
-      leaf.setAlpha(entry.alpha * Math.min(fadeIn, fadeOut));
 
       const outside =
-        ageMs > entry.duration ||
         leaf.x < camera.scrollX - 220 ||
         leaf.x > camera.scrollX + VIEW_WIDTH + 260 ||
         leaf.y > camera.scrollY + PLAY_HEIGHT + 180 ||
@@ -4865,12 +4860,11 @@ class PlayScene extends Phaser.Scene {
     leaf.setFlipX(Phaser.Math.Between(0, 1) === 1);
     leaf.setFlipY(Phaser.Math.Between(0, 1) === 1);
     leaf.setDepth(AUTUMN_LEAF_DEPTH + Phaser.Math.FloatBetween(-0.04, 0.12));
-    leaf.setAlpha(0);
+    leaf.setAlpha(Phaser.Math.FloatBetween(0.45, 0.82));
     leaf.setAngle(Phaser.Math.Between(0, 359));
     this.ambientLeaves.push({
       leaf,
       startedAt,
-      duration: Phaser.Math.Between(5200, 9200),
       vx: Phaser.Math.FloatBetween(78, 148),
       vy: Phaser.Math.FloatBetween(28, 72),
       spin: Phaser.Math.FloatBetween(-3.8, 3.8),
@@ -4878,12 +4872,7 @@ class PlayScene extends Phaser.Scene {
       gustFrequency: Phaser.Math.FloatBetween(2.1, 4.6),
       gustStrength: Phaser.Math.FloatBetween(16, 58),
       curlFrequency: Phaser.Math.FloatBetween(3.5, 7.2),
-      curlStrength: Phaser.Math.FloatBetween(16, 46),
-      flipFrequency: Phaser.Math.FloatBetween(4.2, 8.2),
-      scaleX: scale * mirrored,
-      scaleY: scale,
-      scaleWobble: scale * Phaser.Math.FloatBetween(0.12, 0.36),
-      alpha: Phaser.Math.FloatBetween(0.45, 0.82)
+      curlStrength: Phaser.Math.FloatBetween(16, 46)
     });
   }
 

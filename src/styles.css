@@ -820,8 +820,9 @@ button:active {
 }
 
 .story-panels.wide .story-frame {
-  width: 86%;
+  width: auto;
   height: auto;
+  max-width: 86%;
   max-height: min(34vh, 100%);
 }
 
@@ -1292,7 +1293,8 @@ button:active {
   }
 
   .story-panels.wide .story-frame {
-    width: 90%;
+    width: auto;
+    max-width: 90%;
     max-height: min(30vh, 100%);
   }
 
