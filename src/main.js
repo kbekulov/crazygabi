@@ -1509,6 +1509,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     this.mysteriousManFinishX = 0;
     this.mysteriousManExitX = 0;
+    this.catFollowPlayerAfterElevator = false;
 
     state.totalGems = 0;
     this.createAnimations();
@@ -3325,7 +3326,7 @@ class PlayScene extends Phaser.Scene {
       this.mysteriousManState = "leaving";
       this.mysteriousManExitX = this.levelWidth + (config.exitPadding || 140);
       this.mysteriousManFinishX = this.levelWidth - (config.finishPadding || 48);
-      this.showMysteriousManSpeech("follow me");
+      this.showMysteriousManSpeech("Follow me...");
       man.play("mr-magpie-walk", true);
     }
 
@@ -4311,8 +4312,8 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(300, 0.008);
 
     this.catGuideTravel = null;
-    const doorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "d") ?? -1;
-    if (doorStopIndex >= 0) this.catGuideIndex = doorStopIndex;
+    this.catFollowPlayerAfterElevator = true;
+    this.playCatGuideIdle();
   }
 
   resetFinalElevator({ resetGuide = false } = {}) {
@@ -4330,6 +4331,7 @@ class PlayScene extends Phaser.Scene {
     this.positionFinalElevatorVisuals();
     this.cameras.main.shakeEffect?.reset();
     this.hideFinalElevatorCredits();
+    this.catFollowPlayerAfterElevator = false;
     if (resetGuide) this.resetCatGuideToFinalElevator();
   }
 
@@ -4798,6 +4800,7 @@ class PlayScene extends Phaser.Scene {
     this.catGuidePath = this.buildCatGuidePath();
     this.catGuideIndex = -1;
     this.catGuideTravel = null;
+    this.catFollowPlayerAfterElevator = false;
     this.nextCatMeowAt = this.time.now + Phaser.Math.Between(CAT_MEOW_MIN_DELAY / 2, CAT_MEOW_MAX_DELAY);
     const spawnRun = this.findGuidePlatformRun(this.spawnPoint.x, this.spawnPoint.y);
     if (spawnRun) {
@@ -4807,7 +4810,7 @@ class PlayScene extends Phaser.Scene {
     this.cat.play("cat-idle", true);
   }
 
-  updateCatNpc(time = 0) {
+  updateCatNpc(time = 0, delta = 0) {
     if (!this.cat || !this.cat.active || !this.cat.visible) return;
     if (this.finalElevatorActive) {
       this.cat.setVelocity(0, 0);
@@ -4836,7 +4839,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     if (this.level.catNpc) {
-      this.updateCatGuideNpc(time);
+      this.updateCatGuideNpc(time, delta);
       return;
     }
 
@@ -4953,7 +4956,12 @@ class PlayScene extends Phaser.Scene {
     return Phaser.Math.Clamp(preferredX, minX, maxX);
   }
 
-  updateCatGuideNpc(time = 0) {
+  updateCatGuideNpc(time = 0, delta = 0) {
+    if (this.catFollowPlayerAfterElevator) {
+      this.updateCatFollowPlayerAfterElevator(time, delta);
+      return;
+    }
+
     if (this.basketPromptActive) {
       this.finishCatGuideTravel();
       this.playCatGuideIdle();
@@ -5175,6 +5183,37 @@ class PlayScene extends Phaser.Scene {
     this.cat.setFlipX(this.player.x < this.cat.x);
     this.cat.play("cat-idle", true);
     this.maybeShowCatMeow();
+  }
+
+  updateCatFollowPlayerAfterElevator(time = 0, delta = 0) {
+    if (!this.cat || !this.player) return;
+    this.finishCatGuideTravel();
+    const playerRun = this.findGuidePlatformRun(this.player.x, this.player.y) || this.getCatGuideRunAt(this.cat.x, this.cat.y);
+    if (!playerRun) {
+      this.playCatGuideIdle();
+      return;
+    }
+
+    const followOffset = this.player.flipX ? 70 : -70;
+    const targetX = this.getCatGuideXInRun(this.player.x + followOffset, playerRun);
+    const targetY = this.getCatGuideY(playerRun);
+    const distanceX = targetX - this.cat.x;
+    const distanceY = targetY - this.cat.y;
+    const step = CAT_RUN_SPEED * Math.max(0, delta / 1000);
+
+    if (Math.abs(distanceX) < 14 && Math.abs(distanceY) < 18) {
+      this.setCatGuidePosition(targetX, targetY);
+      this.cat.setFlipX(this.player.x < this.cat.x);
+      this.cat.play("cat-idle", true);
+      this.maybeShowCatMeow();
+      return;
+    }
+
+    const nextX = Math.abs(distanceX) <= step ? targetX : this.cat.x + Math.sign(distanceX) * step;
+    const nextY = Math.abs(distanceY) <= step ? targetY : this.cat.y + Math.sign(distanceY) * Math.min(step, Math.abs(distanceY));
+    this.setCatGuidePosition(nextX, nextY);
+    this.cat.setFlipX(distanceX < 0);
+    this.cat.play("cat-run", true);
   }
 
   followCatRoute(goal, time = 0, onFloor = false, floorRun = null) {
@@ -6314,7 +6353,7 @@ class PlayScene extends Phaser.Scene {
 
     state.won = true;
     this.showGameOverScreen({
-      copy: "Gabi cleared every route. Somehow, that counts as a plan."
+      copy: "Gabi cleared every route. Somehow, that counts as an achievement."
     });
   }
 
