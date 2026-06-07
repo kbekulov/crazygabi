@@ -27,6 +27,10 @@ const MR_MAGPIE_FRAME_WIDTH = 238;
 const MR_MAGPIE_FRAME_HEIGHT = 238;
 const MR_MAGPIE_SCALE = 0.34;
 const MR_MAGPIE_SPEED = 78;
+const AUTUMN_LEAF_FRAME_WIDTH = 326;
+const AUTUMN_LEAF_FRAME_HEIGHT = 326;
+const AUTUMN_LEAF_MAX_COUNT = 42;
+const AUTUMN_LEAF_DEPTH = -0.85;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -238,6 +242,7 @@ const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
+const LEVEL_FIVE_WIDTH_TILES = 96;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -452,6 +457,49 @@ const LEVELS = [
       { x: 5120, y: 3160, topWidth: 106, bottomWidth: 620, height: 2140, lean: 220, alpha: 0.4, thickness: 2, layerAlpha: 2.15, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "steady", skipCrackGlow: true, beamBoost: 2.75 }
     ],
     introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator toward the stranger above."
+  },
+  {
+    name: "Level 5",
+    rows: createLevelFive(),
+    timeLimit: 180,
+    soundtrack: "wind-1",
+    enemySprite: "robot-lv1",
+    actionAbility: null,
+    storyFrames: [
+      { key: "story-level-5-frame-1", src: "./public/assets/story/level-5/frame_1.png" },
+      { key: "story-level-5-frame-2", src: "./public/assets/story/level-5/frame_2.png" }
+    ],
+    storyLayout: "wide-opposed",
+    startSpeech: "",
+    showStartingHouse: false,
+    showWater: true,
+    doorYOffset: -30,
+    parallax: "parallax-city",
+    platformTexture: "platform-strip",
+    fenceTexture: "platform-fence",
+    ambientLeaves: {
+      sprite: "autumn-leaf-1",
+      minDelay: 120,
+      maxDelay: 360,
+      burstChance: 0.42
+    },
+    mysteriousMan: {
+      sprite: "mr-magpie",
+      behavior: "leap",
+      xOffset: 0,
+      yOffset: 20,
+      scale: 0.37,
+      faceLeft: true,
+      leapDelay: 1900,
+      leapDuration: 1250,
+      exitPadding: 360
+    },
+    finishZone: {
+      x: 86 * TILE,
+      y: 20 * TILE
+    },
+    introTitle: "Level 5",
+    introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below."
   }
 ];
 
@@ -831,6 +879,25 @@ function createLevelFour() {
   ].forEach(([row, column, value]) => routePut(row, column, value));
   put(159, 173, "e");
   put(4, 181, "d");
+
+  return rows.map((row) => row.join(""));
+}
+
+function createLevelFive() {
+  const { rows, put, run } = createLevelRows(28, LEVEL_FIVE_WIDTH_TILES);
+
+  run(8, 0, 30);
+  run(24, 42, 50);
+
+  [
+    [6, 4, "p"],
+    [7, 12, "j"],
+    [7, 25, "d"],
+    [23, 48, "g"],
+    [23, 58, "g"],
+    [23, 72, "g"],
+    [23, 84, "g"]
+  ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
 }
@@ -1503,6 +1570,8 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks = [];
     this.nextBirdFlockAt = 0;
+    this.ambientLeaves = [];
+    this.nextAmbientLeafAt = 0;
     this.gabiActionUntil = 0;
     this.gabiActionRestoreTimer = null;
     this.elevatorSignBubble = null;
@@ -1512,6 +1581,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     this.mysteriousManFinishX = 0;
     this.mysteriousManExitX = 0;
+    this.mysteriousManScriptAt = 0;
     this.catFollowPlayerAfterElevator = false;
 
     state.totalGems = 0;
@@ -1671,6 +1741,9 @@ class PlayScene extends Phaser.Scene {
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
       if (level.mysteriousMan) sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
       if (level.finalElevator || level.actionAbility === "command-birds") sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
+      if (level.ambientLeaves) {
+        sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
+      }
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -1704,7 +1777,7 @@ class PlayScene extends Phaser.Scene {
       (level.storyFrames || []).forEach((frame) => {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
       });
-      audio(level.soundtrack || "bgm-lv1", this.getSoundtrackPath(level.soundtrack));
+      if (level.soundtrack) audio(level.soundtrack, this.getSoundtrackPath(level.soundtrack));
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
       if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
 
@@ -1778,6 +1851,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   getSoundtrackPath(key = "bgm-lv1") {
+    if (key === "wind-1") return "./public/assets/sound/sfx/wind_1.mp3";
     return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
   }
 
@@ -1877,13 +1951,14 @@ class PlayScene extends Phaser.Scene {
     const introRunId = storyIntroRunId + 1;
     const skipAllowed = hasStoryPlayedOnce(this.level);
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
-    hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}`;
+    const opposedWideFrames = this.level.storyLayout === "wide-opposed" && !tallFrames;
+    hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}${opposedWideFrames ? " opposed" : ""}`;
     hud.storyPanels.replaceChildren();
     frames.forEach((frame, index) => {
       const image = document.createElement("img");
       image.className = tallFrames
         ? `story-frame frame-${index + 1} ${index === 0 ? "from-top" : "from-bottom delay"}`
-        : `story-frame frame-${index + 1} from-left ${index === 1 ? "delay" : ""}`;
+        : `story-frame frame-${index + 1} ${opposedWideFrames && index === 1 ? "from-right" : "from-left"} ${index === 1 ? "delay" : ""}`;
       image.src = pixelateStoryFrame(frame);
       image.alt = `${this.level.name} manga frame ${index + 1}`;
       hud.storyPanels.appendChild(image);
@@ -3302,6 +3377,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManStart = { x: man.x, y: man.y };
     this.mysteriousManExitX = this.levelWidth + (config.exitPadding || 140);
     this.mysteriousManFinishX = Math.min(this.levelWidth - 26, man.x + 230);
+    man.setFlipX(Boolean(config.faceLeft));
     this.doorPoint = { x: man.x, y: man.y };
   }
 
@@ -3314,8 +3390,11 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousMan.setActive(true);
     this.mysteriousMan.setPosition(this.mysteriousManStart.x, this.mysteriousManStart.y);
     this.mysteriousMan.setAlpha(1);
-    this.mysteriousMan.setFlipX(false);
+    this.mysteriousMan.setAngle(0);
+    this.tweens.killTweensOf(this.mysteriousMan);
+    this.mysteriousMan.setFlipX(Boolean(this.level.mysteriousMan?.faceLeft));
     this.mysteriousMan.play("mr-magpie-idle", true);
+    this.mysteriousManScriptAt = 0;
   }
 
   updateMysteriousMan(time = 0, delta = 0) {
@@ -3323,6 +3402,10 @@ class PlayScene extends Phaser.Scene {
     const config = this.level.mysteriousMan;
     if (!man || !config) return;
     this.updateMysteriousManSpeechPosition();
+    if (config.behavior === "leap") {
+      this.updateMysteriousManLeap(time);
+      return;
+    }
     if (!state.running || state.won || !state.hasKey || !this.finalElevatorCompleted) return;
 
     if (this.mysteriousManState === "waiting") {
@@ -3355,6 +3438,52 @@ class PlayScene extends Phaser.Scene {
     ) {
       this.completeLevel();
     }
+  }
+
+  updateMysteriousManLeap(time = 0) {
+    const man = this.mysteriousMan;
+    const config = this.level.mysteriousMan;
+    if (!man || !config || !state.running || state.won) return;
+
+    if (this.mysteriousManState === "waiting") {
+      this.mysteriousManState = "leap-line-1";
+      this.mysteriousManScriptAt = time;
+      man.setFlipX(Boolean(config.faceLeft));
+      man.play("mr-magpie-idle", true);
+      this.showMysteriousManSpeech("You must take the leap.");
+      return;
+    }
+
+    if (this.mysteriousManState === "leap-line-1" && time - this.mysteriousManScriptAt > 2200) {
+      this.mysteriousManState = "leap-line-2";
+      this.mysteriousManScriptAt = time;
+      this.showMysteriousManSpeech("Then the birds will follow.");
+      return;
+    }
+
+    if (this.mysteriousManState !== "leap-line-2" || time - this.mysteriousManScriptAt <= (config.leapDelay || 1900)) {
+      return;
+    }
+
+    this.mysteriousManState = "leaping";
+    this.mysteriousManSpeechBubble?.destroy(true);
+    this.mysteriousManSpeechBubble = null;
+    man.setFlipX(false);
+    man.play("mr-magpie-walk", true);
+    this.tweens.add({
+      targets: man,
+      x: man.x + (config.exitPadding || 360),
+      y: man.y + 380,
+      angle: 16,
+      alpha: 0,
+      duration: config.leapDuration || 1250,
+      ease: "Sine.in",
+      onComplete: () => {
+        man.setVisible(false);
+        man.setActive(false);
+        this.mysteriousManState = "gone";
+      }
+    });
   }
 
   showMysteriousManSpeech(text) {
@@ -3668,6 +3797,7 @@ class PlayScene extends Phaser.Scene {
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
+    this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
@@ -3675,6 +3805,7 @@ class PlayScene extends Phaser.Scene {
     this.updateElevatorSignBubble();
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
+    this.updateFinishZone();
 
     const mobileDirection = this.getMobileMoveDirection();
     const left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
@@ -4679,6 +4810,89 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups.push(flock);
     this.birdFlocks = this.birdFlockGroups.flatMap((entry) => entry.birds);
     this.nextBirdFlockAt = Math.max(this.nextBirdFlockAt || 0, time + 200);
+  }
+
+  updateAmbientLeaves(time = 0, delta = 0) {
+    const config = this.level.ambientLeaves;
+    if (!config || !state.running || state.won || !this.textures.exists(config.sprite)) return;
+    if (!this.nextAmbientLeafAt) this.nextAmbientLeafAt = time + Phaser.Math.Between(120, 280);
+    if (time >= this.nextAmbientLeafAt && (this.ambientLeaves?.length || 0) < AUTUMN_LEAF_MAX_COUNT) {
+      const burst = Phaser.Math.FloatBetween(0, 1) < (config.burstChance ?? 0.35) ? Phaser.Math.Between(2, 4) : 1;
+      for (let index = 0; index < burst; index += 1) this.spawnAmbientLeaf(time + index * 18);
+      this.nextAmbientLeafAt = time + Phaser.Math.Between(config.minDelay || 160, config.maxDelay || 420);
+    }
+
+    const seconds = delta / 1000;
+    const camera = this.cameras.main;
+    this.ambientLeaves = (this.ambientLeaves || []).filter((entry) => {
+      const leaf = entry.leaf;
+      if (!leaf?.active) return false;
+      const ageMs = time - entry.startedAt;
+      const ageSeconds = Math.max(0, ageMs / 1000);
+      const fadeIn = Phaser.Math.Clamp(ageMs / 420, 0, 1);
+      const fadeOut = Phaser.Math.Clamp((entry.duration - ageMs) / 900, 0, 1);
+      const gust = Math.sin(ageSeconds * entry.gustFrequency + entry.phase) * entry.gustStrength;
+      const curl = Math.sin(ageSeconds * entry.curlFrequency + entry.phase * 0.7) * entry.curlStrength;
+
+      leaf.x += (entry.vx + gust) * seconds;
+      leaf.y += (entry.vy + curl) * seconds;
+      leaf.rotation += entry.spin * seconds;
+      leaf.setScale(entry.scaleX + Math.sin(ageSeconds * entry.flipFrequency + entry.phase) * entry.scaleWobble, entry.scaleY);
+      leaf.setAlpha(entry.alpha * Math.min(fadeIn, fadeOut));
+
+      const outside =
+        ageMs > entry.duration ||
+        leaf.x < camera.scrollX - 220 ||
+        leaf.x > camera.scrollX + VIEW_WIDTH + 260 ||
+        leaf.y > camera.scrollY + PLAY_HEIGHT + 180 ||
+        leaf.y < camera.scrollY - 260;
+      if (!outside) return true;
+      leaf.destroy();
+      return false;
+    });
+  }
+
+  spawnAmbientLeaf(startedAt = 0) {
+    const config = this.level.ambientLeaves;
+    const camera = this.cameras.main;
+    const fromLeft = Phaser.Math.FloatBetween(0, 1) > 0.18;
+    const x = camera.scrollX + (fromLeft ? Phaser.Math.Between(-170, -34) : Phaser.Math.Between(20, VIEW_WIDTH - 40));
+    const y = camera.scrollY + Phaser.Math.Between(-130, Math.max(-120, Math.floor(PLAY_HEIGHT * 0.42)));
+    const leaf = this.add.sprite(x, y, config.sprite, Phaser.Math.Between(0, 2));
+    const scale = Phaser.Math.FloatBetween(0.048, 0.09);
+    const mirrored = Phaser.Math.Between(0, 1) === 1 ? -1 : 1;
+    leaf.setScale(scale * mirrored, scale * (Phaser.Math.Between(0, 1) === 1 ? -1 : 1));
+    leaf.setFlipX(Phaser.Math.Between(0, 1) === 1);
+    leaf.setFlipY(Phaser.Math.Between(0, 1) === 1);
+    leaf.setDepth(AUTUMN_LEAF_DEPTH + Phaser.Math.FloatBetween(-0.04, 0.12));
+    leaf.setAlpha(0);
+    leaf.setAngle(Phaser.Math.Between(0, 359));
+    this.ambientLeaves.push({
+      leaf,
+      startedAt,
+      duration: Phaser.Math.Between(5200, 9200),
+      vx: Phaser.Math.FloatBetween(78, 148),
+      vy: Phaser.Math.FloatBetween(28, 72),
+      spin: Phaser.Math.FloatBetween(-3.8, 3.8),
+      phase: Phaser.Math.FloatBetween(0, Math.PI * 2),
+      gustFrequency: Phaser.Math.FloatBetween(2.1, 4.6),
+      gustStrength: Phaser.Math.FloatBetween(16, 58),
+      curlFrequency: Phaser.Math.FloatBetween(3.5, 7.2),
+      curlStrength: Phaser.Math.FloatBetween(16, 46),
+      flipFrequency: Phaser.Math.FloatBetween(4.2, 8.2),
+      scaleX: scale * mirrored,
+      scaleY: scale,
+      scaleWobble: scale * Phaser.Math.FloatBetween(0.12, 0.36),
+      alpha: Phaser.Math.FloatBetween(0.45, 0.82)
+    });
+  }
+
+  updateFinishZone() {
+    const zone = this.level.finishZone;
+    if (!zone || !this.player || !state.running || state.won) return;
+    if (this.player.x >= zone.x && this.player.y >= zone.y) {
+      this.completeLevel();
+    }
   }
 
   carryMovingPlatformRiders() {
@@ -6141,6 +6355,9 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
+    this.ambientLeaves = [];
+    this.nextAmbientLeafAt = 0;
     this.gabiActionRestoreTimer?.remove?.(false);
     this.gabiActionRestoreTimer = null;
     this.gabiActionUntil = 0;
