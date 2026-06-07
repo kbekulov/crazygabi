@@ -202,7 +202,7 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" },
-  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3" }
+  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.1 }
 ];
 const LOADING_RUNNERS = [
   {
@@ -1779,6 +1779,11 @@ class PlayScene extends Phaser.Scene {
 
   getSoundtrackPath(key = "bgm-lv1") {
     return MUSIC_TRACKS.find((track) => track.key === key)?.src || "./public/assets/sound/bgm_lv1.mp3";
+  }
+
+  getSoundtrackVolume(key = "bgm-lv1", baseVolume = 0.35) {
+    const scale = MUSIC_TRACKS.find((track) => track.key === key)?.volumeScale || 1;
+    return baseVolume * scale;
   }
 
   queueWallTileAssets(level, image, sheet) {
@@ -5976,16 +5981,21 @@ class PlayScene extends Phaser.Scene {
 
   startMusic() {
     const soundtrack = this.level.soundtrack || "bgm";
+    const volume = this.getSoundtrackVolume(soundtrack, 0.35);
     try {
       this.resumeAudioContext();
-      if (this.bgm?.isPlaying && this.bgm.key === soundtrack) return;
+      if (this.bgm?.isPlaying && this.bgm.key === soundtrack) {
+        this.bgm.setVolume(volume);
+        return;
+      }
       this.sound.stopAll();
       if (this.bgm && this.bgm.key === soundtrack) {
+        this.bgm.setVolume(volume);
         this.bgm.play();
         return;
       }
       if (this.bgm) this.bgm.destroy();
-      this.bgm = this.sound.add(soundtrack, { loop: true, volume: 0.35 });
+      this.bgm = this.sound.add(soundtrack, { loop: true, volume });
       this.bgm.play();
     } catch (_error) {
       this.bgm = null;
@@ -6020,6 +6030,7 @@ class PlayScene extends Phaser.Scene {
 
   playMusicBoxTrack(track) {
     if (!track) return;
+    const volume = this.getSoundtrackVolume(track.key, 0.32);
     const play = () => {
       this.resumeAudioContext();
       this.sound.stopAll();
@@ -6027,7 +6038,8 @@ class PlayScene extends Phaser.Scene {
         this.bgm.destroy();
         this.bgm = null;
       }
-      this.bgm = this.bgm || this.sound.add(track.key, { loop: true, volume: 0.32 });
+      this.bgm = this.bgm || this.sound.add(track.key, { loop: true, volume });
+      this.bgm.setVolume(volume);
       this.bgm.play();
     };
     if (this.cache.audio.exists(track.key)) {
