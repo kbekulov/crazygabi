@@ -261,7 +261,7 @@ const LEVELS = [
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     introTitle: "Level 1",
-    introCopy: "Collect the coins, grab the brass key, and reach the door before the city gets too wild."
+    introCopy: "Collect the coins, grab the brass key, and reach the door before time runs out."
   },
   {
     name: "Level 2",
@@ -6380,7 +6380,7 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(180, 0.012);
     if (state.lives <= 0) {
       this.showGameOverScreen({
-        copy: "Gabi ran out of chances. The city keeps the receipts."
+        copy: "Gabi ran out of chances. The city was too demanding."
       });
       return;
     }
