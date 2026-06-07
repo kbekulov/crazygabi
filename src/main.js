@@ -5200,12 +5200,19 @@ class PlayScene extends Phaser.Scene {
     const distanceX = targetX - this.cat.x;
     const distanceY = targetY - this.cat.y;
     const step = CAT_RUN_SPEED * Math.max(0, delta / 1000);
+    const playerVelocityX = this.player.body?.velocity.x ?? 0;
+    const playerMoving = Math.abs(playerVelocityX) > 12;
 
     if (Math.abs(distanceX) < 14 && Math.abs(distanceY) < 18) {
       this.setCatGuidePosition(targetX, targetY);
-      this.cat.setFlipX(this.player.x < this.cat.x);
-      this.cat.play("cat-idle", true);
-      this.maybeShowCatMeow();
+      if (playerMoving) {
+        this.cat.setFlipX(playerVelocityX < 0);
+        this.cat.play("cat-run", true);
+      } else {
+        this.cat.setFlipX(this.player.x < this.cat.x);
+        this.cat.play("cat-idle", true);
+        this.maybeShowCatMeow();
+      }
       return;
     }
 
