@@ -4325,8 +4325,8 @@ class PlayScene extends Phaser.Scene {
     this.finalElevatorCompleted = false;
     this.finalElevatorStartedAt = 0;
     elevator.body.setVelocity(0, 0);
-    elevator.body.setPosition(elevator.body.x, elevator.baseY);
-    elevator.body.body.updateFromGameObject();
+    elevator.body.body.reset(elevator.body.x, elevator.baseY);
+    elevator.body.body.enable = true;
     elevator.lastY = elevator.baseY;
     elevator.deltaY = 0;
     this.positionFinalElevatorRoof();
@@ -4400,8 +4400,8 @@ class PlayScene extends Phaser.Scene {
   positionFinalElevatorRoof() {
     const elevator = this.finalElevator;
     if (!elevator?.roofBody?.body) return;
-    elevator.roofBody.setPosition(elevator.body.x + elevator.roofOffsetX, elevator.body.y + elevator.roofOffsetY);
-    elevator.roofBody.body.updateFromGameObject();
+    elevator.roofBody.body.reset(elevator.body.x + elevator.roofOffsetX, elevator.body.y + elevator.roofOffsetY);
+    elevator.roofBody.body.enable = true;
   }
 
   carryFinalElevatorPlayer(deltaY) {
