@@ -3730,6 +3730,14 @@ class PlayScene extends Phaser.Scene {
 
     if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
+    this.enforceFinalElevatorRidePose();
+  }
+
+  enforceFinalElevatorRidePose() {
+    if (!this.finalElevatorActive || !this.isPlayerInsideFinalElevatorCabin()) return;
+    this.usingWingJump = false;
+    this.resetGlideState();
+    this.setGabiAnimation("idle");
   }
 
   performAction(time = 0) {
