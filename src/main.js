@@ -3,6 +3,7 @@ const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
 const TIME_LIMIT = 220;
+const MAX_LIVES = 9;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
@@ -943,6 +944,7 @@ function updateHud() {
   hud.score.textContent = String(state.score).padStart(6, "0");
   hud.gems.textContent = String(state.gems).padStart(2, "0");
   hud.lives.replaceChildren();
+  state.lives = Math.min(MAX_LIVES, Math.max(0, state.lives));
   for (let index = 0; index < Math.max(0, state.lives); index += 1) {
     const heart = document.createElement("img");
     heart.src = `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`;
@@ -6126,8 +6128,9 @@ class PlayScene extends Phaser.Scene {
 
   collectHeart(_player, heart) {
     if (this.time.now < (heart.getData("armedAt") || 0)) return;
+    if (state.lives >= MAX_LIVES) return;
     heart.disableBody(true, true);
-    state.lives += 1;
+    state.lives = Math.min(MAX_LIVES, state.lives + 1);
     awardScore(150);
     updateHud();
     this.maybeShowPickupSpeech("heart");
