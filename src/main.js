@@ -5188,7 +5188,7 @@ class PlayScene extends Phaser.Scene {
   updateCatFollowPlayerAfterElevator(time = 0, delta = 0) {
     if (!this.cat || !this.player) return;
     this.finishCatGuideTravel();
-    const playerRun = this.findGuidePlatformRun(this.player.x, this.player.y) || this.getCatGuideRunAt(this.cat.x, this.cat.y);
+    const playerRun = this.getCatFollowSurfaceRun() || this.getCatGuideRunAt(this.cat.x, this.cat.y);
     if (!playerRun) {
       this.playCatGuideIdle();
       return;
@@ -5221,6 +5221,31 @@ class PlayScene extends Phaser.Scene {
     this.setCatGuidePosition(nextX, nextY);
     this.cat.setFlipX(distanceX < 0);
     this.cat.play("cat-run", true);
+  }
+
+  getCatFollowSurfaceRun() {
+    if (this.finalElevatorCompleted && this.isPlayerOnFinalElevator()) {
+      const body = this.finalElevator?.body?.body;
+      if (body) {
+        return {
+          startX: body.x,
+          endX: body.x + body.width,
+          topY: body.y,
+          rowIndex: Math.floor(body.y / TILE),
+          moving: false,
+          speed: 0
+        };
+      }
+    }
+
+    const footY = this.player.body?.bottom ?? this.player.y;
+    return this.platformRuns
+      .filter((run) => {
+        const withinRun = this.player.x >= run.startX - 24 && this.player.x <= run.endX + 24;
+        const nearFeet = run.topY >= footY - 28 && run.topY <= footY + 52;
+        return withinRun && nearFeet;
+      })
+      .sort((a, b) => Math.abs(a.topY - footY) - Math.abs(b.topY - footY))[0] || this.findGuidePlatformRun(this.player.x, this.player.y);
   }
 
   followCatRoute(goal, time = 0, onFloor = false, floorRun = null) {
