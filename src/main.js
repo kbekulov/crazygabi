@@ -1470,6 +1470,7 @@ class PlayScene extends Phaser.Scene {
     this.finalElevator = null;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
+    this.finalElevatorReadySince = 0;
     this.finalElevatorCredits = [];
     this.platformShadows = [];
     this.platformVisuals = this.add.group();
@@ -4238,7 +4239,7 @@ class PlayScene extends Phaser.Scene {
     }
 
     if (!this.finalElevatorActive) {
-      if (!state.running || !state.hasKey || !this.isPlayerInsideFinalElevatorCabin()) return;
+      if (!state.running || !state.hasKey || !this.preparePlayerForFinalElevatorStart(time)) return;
       this.startFinalElevator(time);
     }
 
@@ -4284,10 +4285,35 @@ class PlayScene extends Phaser.Scene {
     return centerX > elevator.cabinLeft && centerX < elevator.cabinRight;
   }
 
+  preparePlayerForFinalElevatorStart(time = 0) {
+    if (!this.isPlayerInsideFinalElevatorCabin() || !this.player?.body) {
+      this.finalElevatorReadySince = 0;
+      return false;
+    }
+
+    const settledVertically =
+      (this.player.body.blocked.down || this.player.body.touching.down) &&
+      Math.abs(this.player.body.velocity.y) < 24;
+    if (!settledVertically) {
+      this.finalElevatorReadySince = 0;
+      return false;
+    }
+
+    this.player.setAccelerationX(0);
+    this.player.setVelocity(0, 0);
+    this.usingWingJump = false;
+    this.airJumpsUsed = 0;
+    this.resetGlideState();
+    this.setGabiAnimation("idle");
+    if (!this.finalElevatorReadySince) this.finalElevatorReadySince = time;
+    return time - this.finalElevatorReadySince >= 180;
+  }
+
   startFinalElevator(time = 0) {
     const elevator = this.finalElevator;
     if (!elevator) return;
     this.finalElevatorActive = true;
+    this.finalElevatorReadySince = 0;
     this.finishCatGuideTravel();
     const elevatorStopIndex = this.catGuidePath?.findIndex((stop) => stop.kind === "e") ?? -1;
     if (elevatorStopIndex >= 0) this.catGuideIndex = elevatorStopIndex;
@@ -4332,6 +4358,7 @@ class PlayScene extends Phaser.Scene {
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
     this.finalElevatorStartedAt = 0;
+    this.finalElevatorReadySince = 0;
     elevator.body.setVelocity(0, 0);
     elevator.body.body.reset(elevator.body.x, elevator.baseY);
     elevator.body.body.enable = true;
