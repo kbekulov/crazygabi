@@ -193,7 +193,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260608-magpie-sfx";
+const ASSET_VERSION = "20260608-lv5-bgm";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -208,6 +208,7 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv1", label: "Level 1 Theme", src: "./public/assets/sound/bgm_lv1.mp3" },
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" },
+  { key: "bgm-lv5", label: "Level 5 Theme", src: "./public/assets/sound/bgm_lv5.mp3" },
   { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.1 }
 ];
 const LOADING_RUNNERS = [
@@ -464,7 +465,9 @@ const LEVELS = [
     name: "Level 5",
     rows: createLevelFive(),
     timeLimit: 180,
-    soundtrack: "wind-1",
+    soundtrack: "bgm-lv5",
+    ambientSoundtrack: "wind-1",
+    ambientVolume: 0.18,
     enemySprite: "robot-lv1",
     actionAbility: "command-birds",
     birdSprite: "magpie-bird",
@@ -1450,6 +1453,8 @@ function createPlatformCastShadowCanvas() {
 class PlayScene extends Phaser.Scene {
   constructor() {
     super("PlayScene");
+    this.bgm = null;
+    this.ambientBgm = null;
   }
 
   preload() {
@@ -1817,6 +1822,7 @@ class PlayScene extends Phaser.Scene {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
       });
       if (level.soundtrack) audio(level.soundtrack, this.getSoundtrackPath(level.soundtrack));
+      if (level.ambientSoundtrack) audio(level.ambientSoundtrack, this.getSoundtrackPath(level.ambientSoundtrack));
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
       if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
       if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
@@ -6322,19 +6328,55 @@ class PlayScene extends Phaser.Scene {
       this.resumeAudioContext();
       if (this.bgm?.isPlaying && this.bgm.key === soundtrack) {
         this.bgm.setVolume(volume);
+        this.startAmbientMusic();
         return;
       }
       this.sound.stopAll();
       if (this.bgm && this.bgm.key === soundtrack) {
         this.bgm.setVolume(volume);
         this.bgm.play();
+        this.startAmbientMusic();
         return;
       }
       if (this.bgm) this.bgm.destroy();
       this.bgm = this.sound.add(soundtrack, { loop: true, volume });
       this.bgm.play();
+      this.startAmbientMusic();
     } catch (_error) {
       this.bgm = null;
+      this.ambientBgm = null;
+    }
+  }
+
+  startAmbientMusic() {
+    const soundtrack = this.level?.ambientSoundtrack;
+    if (!soundtrack) {
+      this.stopAmbientMusic({ destroy: true });
+      return;
+    }
+    const volume = this.level.ambientVolume ?? this.getSoundtrackVolume(soundtrack, 0.18);
+    try {
+      if (this.ambientBgm?.isPlaying && this.ambientBgm.key === soundtrack) {
+        this.ambientBgm.setVolume(volume);
+        return;
+      }
+      if (this.ambientBgm && this.ambientBgm.key !== soundtrack) {
+        this.ambientBgm.destroy();
+        this.ambientBgm = null;
+      }
+      this.ambientBgm = this.ambientBgm || this.sound.add(soundtrack, { loop: true, volume });
+      this.ambientBgm.setVolume(volume);
+      this.ambientBgm.play();
+    } catch (_error) {
+      this.ambientBgm = null;
+    }
+  }
+
+  stopAmbientMusic({ destroy = false } = {}) {
+    if (this.ambientBgm?.isPlaying) this.ambientBgm.stop();
+    if (destroy && this.ambientBgm) {
+      this.ambientBgm.destroy();
+      this.ambientBgm = null;
     }
   }
 
@@ -6351,8 +6393,12 @@ class PlayScene extends Phaser.Scene {
   startMenuMusic() {
     try {
       this.resumeAudioContext();
-      if (this.bgm?.isPlaying && this.bgm.key === "bgm-menu") return;
+      if (this.bgm?.isPlaying && this.bgm.key === "bgm-menu") {
+        this.stopAmbientMusic({ destroy: true });
+        return;
+      }
       this.sound.stopAll();
+      this.stopAmbientMusic({ destroy: true });
       if (this.bgm && this.bgm.key !== "bgm-menu") {
         this.bgm.destroy();
         this.bgm = null;
@@ -6370,6 +6416,7 @@ class PlayScene extends Phaser.Scene {
     const play = () => {
       this.resumeAudioContext();
       this.sound.stopAll();
+      this.stopAmbientMusic({ destroy: true });
       if (this.bgm && this.bgm.key !== track.key) {
         this.bgm.destroy();
         this.bgm = null;
@@ -6399,7 +6446,8 @@ class PlayScene extends Phaser.Scene {
     this.unregisterAudioLifecycle();
 
     this.handlePageHidden = () => {
-      this.wasMusicPlayingBeforeHidden = this.wasMusicPlayingBeforeHidden || Boolean(this.bgm?.isPlaying);
+      this.wasMusicPlayingBeforeHidden =
+        this.wasMusicPlayingBeforeHidden || Boolean(this.bgm?.isPlaying || this.ambientBgm?.isPlaying);
       this.stopGameAudio();
     };
 
@@ -6497,6 +6545,7 @@ class PlayScene extends Phaser.Scene {
 
   stopGameAudio() {
     if (this.bgm?.isPlaying) this.bgm.stop();
+    if (this.ambientBgm?.isPlaying) this.ambientBgm.stop();
     if (this.sound?.context?.state === "running") this.sound.context.suspend();
   }
 
@@ -6805,6 +6854,7 @@ class PlayScene extends Phaser.Scene {
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
     this.sound.stopAll();
+    this.stopAmbientMusic({ destroy: true });
     setCheatMenuVisible(false);
     setStoryIntroVisible(false);
     setItemPickupVisible(false);
@@ -6847,6 +6897,7 @@ class PlayScene extends Phaser.Scene {
       this.timerEvent = null;
     }
     this.sound.stopAll();
+    this.stopAmbientMusic({ destroy: true });
     this.scene.restart();
   }
 }
@@ -6940,6 +6991,7 @@ function returnToMainMenu() {
   state.autoStartLevel = false;
   state.resetProgressOnCreate = false;
   scene.sound.stopAll();
+  scene.stopAmbientMusic?.({ destroy: true });
   scene.scene.restart();
 }
 
