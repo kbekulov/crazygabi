@@ -493,6 +493,7 @@ const LEVELS = [
       leapDelay: 1900,
       leapDuration: 1250,
       leapEdgeColumn: 29,
+      leapWalkSpeed: 210,
       exitPadding: 360
     },
     finishZone: {
@@ -3462,7 +3463,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.mysteriousManState !== "leap-line-2" || time - this.mysteriousManScriptAt <= (config.leapDelay || 1900)) {
+    if (this.mysteriousManState === "leap-line-2" && time - this.mysteriousManScriptAt <= (config.leapDelay || 1900)) {
       return;
     }
 
@@ -3474,7 +3475,7 @@ class PlayScene extends Phaser.Scene {
 
     if (this.mysteriousManState === "walking-to-leap-edge") {
       const edgeX = (config.leapEdgeColumn ?? 29) * TILE + TILE / 2;
-      man.x = Math.min(edgeX, man.x + (config.speed || MR_MAGPIE_SPEED) * (delta / 1000));
+      man.x = Math.min(edgeX, man.x + (config.leapWalkSpeed || config.speed || MR_MAGPIE_SPEED) * (delta / 1000));
       man.play("mr-magpie-walk", true);
       if (man.x < edgeX) return;
     }
