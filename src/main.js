@@ -2614,7 +2614,7 @@ class PlayScene extends Phaser.Scene {
     this.levelSelectBoard.setOrigin(0.5, 1);
     this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
     this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
-    this.createBillboardPrompt("Press 0 to interact");
+    this.createBillboardPrompt("Press [ 0 ] to interact");
   }
 
   createConstructionBillboard() {
@@ -2637,7 +2637,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  createBillboardPrompt(text = "Press 0 to interact", width = 132) {
+  createBillboardPrompt(text = "Press [ 0 ] to interact", width = 146) {
     const bubbleWidth = width;
     const prompt = this.add.container(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
     const label = this.add.text(0, 0, text, {
@@ -6503,7 +6503,7 @@ class PlayScene extends Phaser.Scene {
       this.lockPlayerForBasketPrompt();
       setItemPickupVisible(true, {
         name: "Wing",
-        instruction: "You can now command birds. Press Shift to send them after enemies.",
+        instruction: "You can now command birds. Press [ SHIFT ] to send them after enemies.",
         image: this.pixelatedWingImage || `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`
       });
     }
@@ -6521,7 +6521,7 @@ class PlayScene extends Phaser.Scene {
     this.updateLanternOverlay();
     setItemPickupVisible(true, {
       name: "Lantern",
-      instruction: "Its light cuts through the tunnel darkness. Press Enter to continue",
+      instruction: "Its light cuts through the tunnel darkness. Press [ ENTER ] to continue.",
       image: this.pixelatedLanternImage || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`
     });
     updateHud();
@@ -6539,7 +6539,7 @@ class PlayScene extends Phaser.Scene {
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
     setItemPickupVisible(true, {
       name: "Acorn Basket",
-      instruction: "Press Enter to throw acorns",
+      instruction: "Press [ ENTER ] to throw acorns.",
       image: this.pixelatedBasketImage || `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
     });
     updateHud();
