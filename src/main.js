@@ -1771,7 +1771,10 @@ class PlayScene extends Phaser.Scene {
       sheet(level.enemySprite || "robot-lv1", this.getEnemySpritePath(level.enemySprite), ROBOT_FRAME_WIDTH, ROBOT_FRAME_HEIGHT);
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
-      if (level.mysteriousMan) sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
+      if (level.mysteriousMan) {
+        sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
+        image("mr-magpie-jump", "./public/assets/character/mr_magpie_jump.png");
+      }
       if (level.finalElevator || level.actionAbility === "command-birds" || level.ambientBirds) {
         const birdSprite = this.getBirdSpriteKey(level);
         sheet(birdSprite, this.getBirdSpritePath(birdSprite), BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
@@ -3483,6 +3486,7 @@ class PlayScene extends Phaser.Scene {
       this.mysteriousMan.setAngularVelocity(0);
     }
     this.mysteriousMan.setFlipX(Boolean(this.level.mysteriousMan?.faceLeft));
+    this.mysteriousMan.setTexture("mr-magpie", 0);
     this.mysteriousMan.play("mr-magpie-idle", true);
     this.mysteriousManScriptAt = 0;
   }
@@ -3584,7 +3588,12 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble?.destroy(true);
     this.mysteriousManSpeechBubble = null;
     man.setFlipX(false);
-    man.play("mr-magpie-walk", true);
+    if (this.textures.exists("mr-magpie-jump")) {
+      man.anims.stop();
+      man.setTexture("mr-magpie-jump");
+    } else {
+      man.play("mr-magpie-walk", true);
+    }
     if (man.body) {
       man.body.enable = true;
       man.body.reset(man.x, man.y);
