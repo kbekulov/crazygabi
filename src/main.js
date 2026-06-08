@@ -494,6 +494,8 @@ const LEVELS = [
       leapDuration: 1250,
       leapEdgeColumn: 29,
       leapWalkSpeed: 210,
+      leapVelocityX: 260,
+      leapVelocityY: -510,
       exitPadding: 360
     },
     finishZone: {
@@ -3363,7 +3365,7 @@ class PlayScene extends Phaser.Scene {
   createMysteriousMan(x, y) {
     const config = this.level.mysteriousMan;
     if (!config || !this.textures.exists("mr-magpie")) return;
-    const man = this.add.sprite(
+    const man = this.physics.add.sprite(
       x + (config.xOffset || 0),
       y + (config.yOffset || 0),
       "mr-magpie",
@@ -3374,6 +3376,9 @@ class PlayScene extends Phaser.Scene {
     man.setDepth(5);
     man.setFlipX(false);
     man.play("mr-magpie-idle", true);
+    man.body.setAllowGravity(false);
+    man.body.moves = false;
+    man.setVelocity(0, 0);
     this.mysteriousMan = man;
     this.mysteriousManState = "waiting";
     this.mysteriousManStart = { x: man.x, y: man.y };
@@ -3394,6 +3399,12 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousMan.setAlpha(1);
     this.mysteriousMan.setAngle(0);
     this.tweens.killTweensOf(this.mysteriousMan);
+    if (this.mysteriousMan.body) {
+      this.mysteriousMan.body.moves = false;
+      this.mysteriousMan.body.setAllowGravity(false);
+      this.mysteriousMan.setVelocity(0, 0);
+      this.mysteriousMan.setAngularVelocity(0);
+    }
     this.mysteriousMan.setFlipX(Boolean(this.level.mysteriousMan?.faceLeft));
     this.mysteriousMan.play("mr-magpie-idle", true);
     this.mysteriousManScriptAt = 0;
@@ -3446,6 +3457,16 @@ class PlayScene extends Phaser.Scene {
     const man = this.mysteriousMan;
     const config = this.level.mysteriousMan;
     if (!man || !config || !state.running || state.won) return;
+    if (this.mysteriousManState === "leaping") {
+      man.angle += 30 * (delta / 1000);
+      if (man.y > this.levelHeight + 220 || man.x > this.levelWidth + (config.exitPadding || 360)) {
+        man.setVisible(false);
+        man.setActive(false);
+        if (man.body) man.body.enable = false;
+        this.mysteriousManState = "gone";
+      }
+      return;
+    }
 
     if (this.mysteriousManState === "waiting") {
       this.mysteriousManState = "leap-line-1";
@@ -3486,19 +3507,12 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     man.setFlipX(false);
     man.play("mr-magpie-walk", true);
-    this.tweens.add({
-      targets: man,
-      x: man.x + (config.exitPadding || 360),
-      y: man.y + 560,
-      angle: 16,
-      duration: config.leapDuration || 1250,
-      ease: "Sine.in",
-      onComplete: () => {
-        man.setVisible(false);
-        man.setActive(false);
-        this.mysteriousManState = "gone";
-      }
-    });
+    if (man.body) {
+      man.body.enable = true;
+      man.body.moves = true;
+      man.body.setAllowGravity(true);
+      man.setVelocity(config.leapVelocityX || 260, config.leapVelocityY || -510);
+    }
   }
 
   showMysteriousManSpeech(text) {
