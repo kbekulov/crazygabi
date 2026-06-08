@@ -847,11 +847,11 @@ button:active {
   display: grid;
   grid-template-columns: 37.8% minmax(0, 62.2%);
   grid-template-rows: 41.5% 23.5% minmax(0, 35%);
-  gap: 4px;
-  padding: 4px;
-  background: #050505;
+  gap: 18px;
+  padding: 0;
+  background: transparent;
   transform: translate(-50%, -53%);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .story-panels.manga-page-v2 .story-frame {
@@ -1216,8 +1216,8 @@ button:active {
   .story-panels.manga-page-v2 {
     width: min(94vw, calc(78vh * 1.53));
     max-height: 78vh;
-    gap: 3px;
-    padding: 3px;
+    gap: 14px;
+    padding: 0;
   }
 }
 
@@ -1380,8 +1380,8 @@ button:active {
   .story-panels.manga-page-v2 {
     width: min(96vw, calc(76vh * 1.53));
     max-height: 76vh;
-    gap: 2px;
-    padding: 2px;
+    gap: 8px;
+    padding: 0;
   }
 
   .story-panels.manga-page-v2 .story-frame {
