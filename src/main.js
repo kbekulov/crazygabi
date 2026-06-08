@@ -485,6 +485,12 @@ const LEVELS = [
       maxDelay: 720,
       burstChance: 0.28
     },
+    constructionBillboard: {
+      x: 9 * TILE,
+      floorRow: 8,
+      scale: STARTING_BILLBOARD_SCALE,
+      message: "This level is still under construction"
+    },
     mysteriousMan: {
       sprite: "mr-magpie",
       behavior: "leap",
@@ -494,7 +500,7 @@ const LEVELS = [
       faceLeft: true,
       leapDelay: 1900,
       leapDuration: 1250,
-      leapEdgeColumn: 29,
+      leapEdgeColumn: 28.45,
       leapWalkSpeed: 210,
       leapVelocityX: 260,
       leapVelocityY: -510,
@@ -890,19 +896,19 @@ function createLevelFour() {
 }
 
 function createLevelFive() {
-  const { rows, put, run } = createLevelRows(92, LEVEL_FIVE_WIDTH_TILES);
+  const { rows, put, run } = createLevelRows(162, LEVEL_FIVE_WIDTH_TILES);
 
   run(8, 0, 30);
-  run(88, 42, 50);
+  run(160, 42, 50);
 
   [
     [6, 4, "p"],
     [7, 12, "j"],
     [7, 25, "d"],
-    [87, 48, "g"],
-    [87, 58, "g"],
-    [87, 72, "g"],
-    [87, 84, "g"]
+    [159, 48, "g"],
+    [159, 58, "g"],
+    [159, 72, "g"],
+    [159, 84, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1536,6 +1542,7 @@ class PlayScene extends Phaser.Scene {
     this.createBackdrop();
     if (this.level.showWater !== false) this.createWaterBelow();
     if (this.level.showStartingHouse) this.createStartingHouse();
+    if (this.level.constructionBillboard) this.createConstructionBillboard();
     if (this.level.startingRuins?.length) this.createStartingRuins();
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -1756,7 +1763,7 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
-      if (level.showStartingHouse) {
+      if (level.showStartingHouse || level.constructionBillboard) {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
       }
@@ -2566,7 +2573,18 @@ class PlayScene extends Phaser.Scene {
     this.levelSelectBoard.setOrigin(0.5, 1);
     this.levelSelectBoard.setScale(STARTING_BILLBOARD_SCALE);
     this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
-    this.createBillboardPrompt();
+    this.createBillboardPrompt("Press 0 to interact");
+  }
+
+  createConstructionBillboard() {
+    const config = this.level.constructionBillboard;
+    if (!config) return;
+    this.levelSelectBoard = this.add.image(config.x, config.floorRow * TILE - 2, "starting-billboard");
+    this.levelSelectBoard.setOrigin(0.5, 1);
+    this.levelSelectBoard.setScale(config.scale ?? STARTING_BILLBOARD_SCALE);
+    this.levelSelectBoard.setDepth(STARTING_BILLBOARD_DEPTH);
+    this.levelSelectBoard.setData("messageOnly", true);
+    this.createBillboardPrompt(config.message || "This level is still under construction", 188);
   }
 
   createStartingRuins() {
@@ -2578,21 +2596,23 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  createBillboardPrompt() {
-    const bubbleWidth = 132;
-    const bubbleHeight = 30;
+  createBillboardPrompt(text = "Press 0 to interact", width = 132) {
+    const bubbleWidth = width;
     const prompt = this.add.container(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
+    const label = this.add.text(0, 0, text, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "9px",
+      color: "#f4f0dc",
+      align: "center",
+      wordWrap: { width: bubbleWidth - 18, useAdvancedWrap: true }
+    });
+    const bubbleHeight = Math.max(30, label.height + 14);
     const background = this.add.graphics();
     background.fillStyle(0x050505, 0.88);
     background.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     background.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, "Press 0 to interact", {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "9px",
-      color: "#f4f0dc",
-      align: "center"
-    });
     label.setOrigin(0.5, 0.5);
+    label.setPosition(0, -bubbleHeight / 2);
     prompt.add([background, label]);
     prompt.setDepth(12);
     prompt.setVisible(false);
