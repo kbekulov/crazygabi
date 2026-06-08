@@ -4915,7 +4915,7 @@ class PlayScene extends Phaser.Scene {
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
-    if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.5) {
+    if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.25) {
       this.playLevelSfx(this.level.birdSfx, 0.42);
     }
 
