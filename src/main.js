@@ -30,7 +30,8 @@ const MR_MAGPIE_SPEED = 78;
 const AUTUMN_LEAF_FRAME_WIDTH = 326;
 const AUTUMN_LEAF_FRAME_HEIGHT = 326;
 const AUTUMN_LEAF_MAX_COUNT = 21;
-const AUTUMN_LEAF_DEPTH = -0.85;
+const AUTUMN_LEAF_MIN_DEPTH = -10;
+const AUTUMN_LEAF_MAX_DEPTH = 31.5;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -476,7 +477,7 @@ const LEVELS = [
     catNpc: true,
     catFollowPlayer: true,
     doorYOffset: -30,
-    parallax: "parallax-city",
+    parallax: "parallax-park",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     ambientLeaves: {
@@ -1766,6 +1767,7 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
       if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
+      if (level.parallax === "parallax-park") image("parallax-park", "./public/assets/environment/paralax_park.png");
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
       if (level.showStartingHouse || level.constructionBillboard) {
         image("starting-house", "./public/assets/environment/starting_house.png");
@@ -4919,7 +4921,7 @@ class PlayScene extends Phaser.Scene {
     leaf.setScale(scale * mirrored, scale * (Phaser.Math.Between(0, 1) === 1 ? -1 : 1));
     leaf.setFlipX(Phaser.Math.Between(0, 1) === 1);
     leaf.setFlipY(Phaser.Math.Between(0, 1) === 1);
-    leaf.setDepth(AUTUMN_LEAF_DEPTH + Phaser.Math.FloatBetween(-0.04, 0.12));
+    leaf.setDepth(Phaser.Math.FloatBetween(AUTUMN_LEAF_MIN_DEPTH, AUTUMN_LEAF_MAX_DEPTH));
     leaf.setAlpha(Phaser.Math.FloatBetween(0.45, 0.82));
     leaf.setAngle(Phaser.Math.Between(0, 359));
     this.ambientLeaves.push({
