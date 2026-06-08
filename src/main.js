@@ -3456,7 +3456,8 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.mysteriousManState === "leap-line-1" && time - this.mysteriousManScriptAt > 2200) {
+    if (this.mysteriousManState === "leap-line-1") {
+      if (time - this.mysteriousManScriptAt <= 2200) return;
       this.mysteriousManState = "leap-line-2";
       this.mysteriousManScriptAt = time;
       this.showMysteriousManSpeech("Then the birds will follow.");
@@ -3488,9 +3489,8 @@ class PlayScene extends Phaser.Scene {
     this.tweens.add({
       targets: man,
       x: man.x + (config.exitPadding || 360),
-      y: man.y + 380,
+      y: man.y + 560,
       angle: 16,
-      alpha: 0,
       duration: config.leapDuration || 1250,
       ease: "Sine.in",
       onComplete: () => {
