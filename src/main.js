@@ -467,10 +467,12 @@ const LEVELS = [
     enemySprite: "robot-lv1",
     actionAbility: null,
     storyFrames: [
-      { key: "story-level-5-frame-1", src: "./public/assets/story/level-5/frame_1.png" },
-      { key: "story-level-5-frame-2", src: "./public/assets/story/level-5/frame_2.png" }
+      { key: "story-level-5-frame-1-v2", src: "./public/assets/story/level-5/frame_1_v2.png" },
+      { key: "story-level-5-frame-2-v2", src: "./public/assets/story/level-5/frame_2_v2.png" },
+      { key: "story-level-5-frame-3-v2", src: "./public/assets/story/level-5/frame_3_v2.png" },
+      { key: "story-level-5-frame-4-v2", src: "./public/assets/story/level-5/frame_4_v2.png" }
     ],
-    storyLayout: "wide-opposed",
+    storyLayout: "manga-page-v2",
     startSpeech: "",
     showStartingHouse: false,
     showWater: true,
@@ -1284,7 +1286,7 @@ function pixelateStoryFrame(frame) {
 
 async function loadStoryFrames(paths = []) {
   if (paths.length < 2) return [];
-  const frames = await Promise.all(paths.slice(0, 2).map(async (path) => {
+  const frames = await Promise.all(paths.map(async (path) => {
     const candidates = Array.isArray(path) ? path : [path];
     for (const candidate of candidates) {
       const frame = await loadStoryFrame(candidate);
@@ -1946,7 +1948,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   async loadStoryFrameTexturesFallback() {
-    const missingFrames = (this.level.storyFrames || []).slice(0, 2).filter((frame) => {
+    const missingFrames = (this.level.storyFrames || []).filter((frame) => {
       return frame?.key && frame?.src && !this.textures.exists(frame.key);
     });
     if (!missingFrames.length) return;
@@ -1959,25 +1961,34 @@ class PlayScene extends Phaser.Scene {
   }
 
   getPreloadedStoryFrames() {
-    const frames = (this.level.storyFrames || []).slice(0, 2).map((frame) => {
+    const storyFrames = this.level.storyFrames || [];
+    const frames = storyFrames.map((frame) => {
       if (!frame?.key || !this.textures.exists(frame.key)) return null;
       return this.textures.get(frame.key).getSourceImage();
     });
-    return frames.every(Boolean) ? frames : [];
+    return frames.length >= 2 && frames.every(Boolean) ? frames : [];
   }
 
   renderStoryIntro(frames, introToken) {
     const introRunId = storyIntroRunId + 1;
     const skipAllowed = hasStoryPlayedOnce(this.level);
+    const mangaPageFrames = this.level.storyLayout === "manga-page-v2";
     const tallFrames = frames.every((frame) => frame.naturalHeight > frame.naturalWidth);
     const opposedWideFrames = this.level.storyLayout === "wide-opposed" && !tallFrames;
-    hud.storyPanels.className = `story-panels ${tallFrames ? "tall" : "wide"}${opposedWideFrames ? " opposed" : ""}`;
+    hud.storyPanels.className = mangaPageFrames
+      ? "story-panels manga-page-v2"
+      : `story-panels ${tallFrames ? "tall" : "wide"}${opposedWideFrames ? " opposed" : ""}`;
     hud.storyPanels.replaceChildren();
     frames.forEach((frame, index) => {
       const image = document.createElement("img");
-      image.className = tallFrames
-        ? `story-frame frame-${index + 1} ${index === 0 ? "from-top" : "from-bottom delay"}`
-        : `story-frame frame-${index + 1} ${opposedWideFrames && index === 1 ? "from-right" : "from-left"} ${index === 1 ? "delay" : ""}`;
+      if (mangaPageFrames) {
+        const direction = index < 2 ? "from-left" : "from-right";
+        image.className = `story-frame frame-${index + 1} ${direction}${index > 0 ? ` delay-${index}` : ""}`;
+      } else {
+        image.className = tallFrames
+          ? `story-frame frame-${index + 1} ${index === 0 ? "from-top" : "from-bottom delay"}`
+          : `story-frame frame-${index + 1} ${opposedWideFrames && index === 1 ? "from-right" : "from-left"} ${index === 1 ? "delay" : ""}`;
+      }
       image.src = pixelateStoryFrame(frame);
       image.alt = `${this.level.name} manga frame ${index + 1}`;
       hud.storyPanels.appendChild(image);
