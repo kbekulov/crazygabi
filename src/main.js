@@ -29,7 +29,7 @@ const MR_MAGPIE_SCALE = 0.34;
 const MR_MAGPIE_SPEED = 78;
 const AUTUMN_LEAF_FRAME_WIDTH = 326;
 const AUTUMN_LEAF_FRAME_HEIGHT = 326;
-const AUTUMN_LEAF_MAX_COUNT = 42;
+const AUTUMN_LEAF_MAX_COUNT = 21;
 const AUTUMN_LEAF_DEPTH = -0.85;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
@@ -479,9 +479,9 @@ const LEVELS = [
     fenceTexture: "platform-fence",
     ambientLeaves: {
       sprite: "autumn-leaf-1",
-      minDelay: 120,
-      maxDelay: 360,
-      burstChance: 0.42
+      minDelay: 240,
+      maxDelay: 720,
+      burstChance: 0.28
     },
     mysteriousMan: {
       sprite: "mr-magpie",
