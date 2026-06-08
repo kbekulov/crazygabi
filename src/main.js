@@ -492,11 +492,12 @@ const LEVELS = [
       faceLeft: true,
       leapDelay: 1900,
       leapDuration: 1250,
+      leapEdgeColumn: 29,
       exitPadding: 360
     },
     finishZone: {
       x: 86 * TILE,
-      y: 20 * TILE
+      y: 82 * TILE
     },
     introTitle: "Level 5",
     introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below."
@@ -884,19 +885,19 @@ function createLevelFour() {
 }
 
 function createLevelFive() {
-  const { rows, put, run } = createLevelRows(28, LEVEL_FIVE_WIDTH_TILES);
+  const { rows, put, run } = createLevelRows(92, LEVEL_FIVE_WIDTH_TILES);
 
   run(8, 0, 30);
-  run(24, 42, 50);
+  run(88, 42, 50);
 
   [
     [6, 4, "p"],
     [7, 12, "j"],
     [7, 25, "d"],
-    [23, 48, "g"],
-    [23, 58, "g"],
-    [23, 72, "g"],
-    [23, 84, "g"]
+    [87, 48, "g"],
+    [87, 58, "g"],
+    [87, 72, "g"],
+    [87, 84, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -3403,7 +3404,7 @@ class PlayScene extends Phaser.Scene {
     if (!man || !config) return;
     this.updateMysteriousManSpeechPosition();
     if (config.behavior === "leap") {
-      this.updateMysteriousManLeap(time);
+      this.updateMysteriousManLeap(time, delta);
       return;
     }
     if (!state.running || state.won || !state.hasKey || !this.finalElevatorCompleted) return;
@@ -3440,7 +3441,7 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
-  updateMysteriousManLeap(time = 0) {
+  updateMysteriousManLeap(time = 0, delta = 0) {
     const man = this.mysteriousMan;
     const config = this.level.mysteriousMan;
     if (!man || !config || !state.running || state.won) return;
@@ -3463,6 +3464,19 @@ class PlayScene extends Phaser.Scene {
 
     if (this.mysteriousManState !== "leap-line-2" || time - this.mysteriousManScriptAt <= (config.leapDelay || 1900)) {
       return;
+    }
+
+    if (this.mysteriousManState === "leap-line-2") {
+      this.mysteriousManState = "walking-to-leap-edge";
+      man.setFlipX(false);
+      man.play("mr-magpie-walk", true);
+    }
+
+    if (this.mysteriousManState === "walking-to-leap-edge") {
+      const edgeX = (config.leapEdgeColumn ?? 29) * TILE + TILE / 2;
+      man.x = Math.min(edgeX, man.x + (config.speed || MR_MAGPIE_SPEED) * (delta / 1000));
+      man.play("mr-magpie-walk", true);
+      if (man.x < edgeX) return;
     }
 
     this.mysteriousManState = "leaping";
@@ -3489,20 +3503,22 @@ class PlayScene extends Phaser.Scene {
   showMysteriousManSpeech(text) {
     if (!this.mysteriousMan || !text) return;
     this.mysteriousManSpeechBubble?.destroy(true);
-    const bubbleWidth = 84;
-    const bubbleHeight = 28;
     const container = this.add.container(this.mysteriousMan.x, this.mysteriousMan.y - 96);
+    const label = this.add.text(0, 0, text, {
+      fontFamily: "\"Courier New\", monospace",
+      fontSize: "10px",
+      color: "#f4f0dc",
+      align: "center",
+      wordWrap: { width: 170, useAdvancedWrap: true }
+    });
+    const bubbleWidth = Phaser.Math.Clamp(label.width + 24, 92, 194);
+    const bubbleHeight = label.height + 16;
     const bubble = this.add.graphics();
     bubble.fillStyle(0x050505, 0.9);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, text, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "10px",
-      color: "#f4f0dc",
-      align: "center"
-    });
     label.setOrigin(0.5, 0.5);
+    label.setPosition(0, -bubbleHeight / 2);
     container.add([bubble, label]);
     container.setDepth(DARKNESS_DEPTH + 2);
     this.mysteriousManSpeechBubble = container;
