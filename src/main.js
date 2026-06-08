@@ -194,7 +194,7 @@ const ENEMY_NAMES = [
   "KYC WUDB Onboarding Assistant"
 ];
 const ASSET_VERSION = "20260608-magpie-sfx";
-const STORY_ASSET_VERSION = "20260603-ruins-1";
+const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
@@ -935,6 +935,7 @@ const state = {
   timeLeft: TIME_LIMIT,
   hasKey: false,
   hasDoubleJump: false,
+  hasBirdControl: false,
   hasAcornBasket: false,
   hasLantern: false,
   running: false,
@@ -1207,6 +1208,7 @@ function resetGameProgress() {
   state.timeLeft = TIME_LIMIT;
   state.hasKey = false;
   state.hasDoubleJump = false;
+  state.hasBirdControl = false;
   state.hasAcornBasket = false;
   state.hasLantern = false;
   state.running = false;
@@ -1638,6 +1640,7 @@ class PlayScene extends Phaser.Scene {
     state.timeLeft = this.level.timeLimit;
     state.hasKey = false;
     state.hasDoubleJump = false;
+    state.hasBirdControl = false;
     state.hasAcornBasket = false;
     state.hasLantern = false;
     state.running = false;
@@ -4001,6 +4004,9 @@ class PlayScene extends Phaser.Scene {
 
     if (this.wingPromptActive) {
       this.wingPromptActive = false;
+      state.hasBirdControl = true;
+      this.lastBirdAttackAt = -Infinity;
+      updateBirdCooldownHud(0);
       setItemPickupVisible(false);
       this.releaseBasketPromptControlLock();
       return;
@@ -4034,6 +4040,7 @@ class PlayScene extends Phaser.Scene {
 
   commandBirdAttack(time = 0) {
     if (this.level.actionAbility !== "command-birds") return false;
+    if (!state.hasBirdControl) return false;
     if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
     const target = this.findNearestVisibleLivingEnemy();
@@ -4049,7 +4056,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateBirdAttackCooldown(time = 0) {
-    if (this.level.actionAbility !== "command-birds") {
+    if (this.level.actionAbility !== "command-birds" || !state.hasBirdControl) {
       setBirdCooldownVisible(false);
       return;
     }
@@ -6471,6 +6478,7 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    state.hasBirdControl = false;
     this.releaseBasketPromptControlLock();
     if (this.timerEvent) {
       this.timerEvent.remove(false);
@@ -6512,6 +6520,7 @@ class PlayScene extends Phaser.Scene {
     state.hasDoubleJump = true;
     awardScore(300);
     if (this.level.actionAbility === "command-birds") {
+      state.hasBirdControl = false;
       this.wingPromptActive = true;
       this.lockPlayerForBasketPrompt();
       setItemPickupVisible(true, {
@@ -6740,6 +6749,7 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    state.hasBirdControl = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
     this.thrownItems.clear(true, true);
@@ -6811,6 +6821,7 @@ class PlayScene extends Phaser.Scene {
     }
     state.hasKey = false;
     state.hasDoubleJump = false;
+    state.hasBirdControl = false;
     state.hasAcornBasket = false;
     state.hasLantern = false;
     state.won = false;
