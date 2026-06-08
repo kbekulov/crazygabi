@@ -242,7 +242,7 @@ const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
-const LEVEL_FIVE_WIDTH_TILES = 96;
+const LEVEL_FIVE_WIDTH_TILES = 480;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -500,15 +500,15 @@ const LEVELS = [
       faceLeft: true,
       leapDelay: 1900,
       leapDuration: 1250,
-      leapEdgeColumn: 28.45,
+      leapEdgeColumn: 29.15,
       leapWalkSpeed: 210,
       leapVelocityX: 260,
       leapVelocityY: -510,
       exitPadding: 360
     },
     finishZone: {
-      x: 86 * TILE,
-      y: 82 * TILE
+      x: 452 * TILE,
+      y: 154 * TILE
     },
     introTitle: "Level 5",
     introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below."
@@ -899,16 +899,20 @@ function createLevelFive() {
   const { rows, put, run } = createLevelRows(162, LEVEL_FIVE_WIDTH_TILES);
 
   run(8, 0, 30);
-  run(160, 42, 50);
+  run(160, 42, 430);
 
   [
     [6, 4, "p"],
     [7, 12, "j"],
     [7, 25, "d"],
     [159, 48, "g"],
-    [159, 58, "g"],
-    [159, 72, "g"],
-    [159, 84, "g"]
+    [159, 78, "g"],
+    [159, 118, "g"],
+    [159, 168, "g"],
+    [159, 228, "g"],
+    [159, 292, "g"],
+    [159, 356, "g"],
+    [159, 424, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -3518,10 +3522,11 @@ class PlayScene extends Phaser.Scene {
     }
 
     if (this.mysteriousManState === "walking-to-leap-edge") {
-      const edgeX = (config.leapEdgeColumn ?? 29) * TILE + TILE / 2;
+      const edgeX = (config.leapEdgeColumn ?? 29) * TILE;
       man.x = Math.min(edgeX, man.x + (config.leapWalkSpeed || config.speed || MR_MAGPIE_SPEED) * (delta / 1000));
       man.play("mr-magpie-walk", true);
       if (man.x < edgeX) return;
+      man.setPosition(edgeX, man.y);
     }
 
     this.mysteriousManState = "leaping";
@@ -3531,6 +3536,8 @@ class PlayScene extends Phaser.Scene {
     man.play("mr-magpie-walk", true);
     if (man.body) {
       man.body.enable = true;
+      man.body.reset(man.x, man.y);
+      man.body.updateFromGameObject?.();
       man.body.moves = true;
       man.body.setAllowGravity(true);
       man.setVelocity(config.leapVelocityX || 260, config.leapVelocityY || -510);
