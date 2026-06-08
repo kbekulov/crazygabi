@@ -473,6 +473,8 @@ const LEVELS = [
     startSpeech: "",
     showStartingHouse: false,
     showWater: true,
+    catNpc: true,
+    catFollowPlayer: true,
     doorYOffset: -30,
     parallax: "parallax-city",
     platformTexture: "platform-strip",
@@ -5233,7 +5235,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateCatGuideNpc(time = 0, delta = 0) {
-    if (this.catFollowPlayerAfterElevator) {
+    if (this.catFollowPlayerAfterElevator || this.level.catFollowPlayer) {
       this.updateCatFollowPlayerAfterElevator(time, delta);
       return;
     }
