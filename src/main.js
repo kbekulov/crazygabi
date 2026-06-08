@@ -4059,7 +4059,7 @@ class PlayScene extends Phaser.Scene {
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
-    if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, 0.48);
+    if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, 0.38);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
   }
@@ -4916,7 +4916,7 @@ class PlayScene extends Phaser.Scene {
       birds: []
     };
     if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.25) {
-      this.playLevelSfx(this.level.birdSfx, 0.42);
+      this.playLevelSfx(this.level.birdSfx, 0.34);
     }
 
     for (let index = 0; index < count; index += 1) {
