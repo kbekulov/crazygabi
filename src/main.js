@@ -1583,6 +1583,7 @@ class PlayScene extends Phaser.Scene {
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.wingPromptActive = false;
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
@@ -1644,6 +1645,9 @@ class PlayScene extends Phaser.Scene {
       : "";
     this.pixelatedLanternImage = this.textures.exists("lantern")
       ? pixelateStoryFrame(this.textures.get("lantern").getSourceImage())
+      : "";
+    this.pixelatedWingImage = this.textures.exists("jump-item")
+      ? pixelateStoryFrame(this.textures.get("jump-item").getSourceImage())
       : "";
     if (this.textures.exists("falling-acorn")) {
       pixelatedEquippedImages.acorn = pixelateStoryFrame(this.textures.get("falling-acorn").getSourceImage());
@@ -3783,6 +3787,7 @@ class PlayScene extends Phaser.Scene {
     this.elevatorSignBubble = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.wingPromptActive = false;
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
@@ -3892,15 +3897,7 @@ class PlayScene extends Phaser.Scene {
     const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack);
     const onFloor = this.player.body.blocked.down;
 
-    if (this.lanternPromptActive) {
-      this.player.setAccelerationX(0);
-      this.player.setVelocity(0, 0);
-      this.setGabiAnimation("idle");
-      if (action) this.handleItemPickupOk(time);
-      return;
-    }
-
-    if (this.basketPromptActive) {
+    if (this.isItemPromptActive()) {
       this.player.setAccelerationX(0);
       this.player.setVelocity(0, 0);
       this.setGabiAnimation("idle");
@@ -3960,12 +3957,19 @@ class PlayScene extends Phaser.Scene {
   }
 
   isItemPromptActive() {
-    return Boolean(this.basketPromptActive || this.lanternPromptActive);
+    return Boolean(this.basketPromptActive || this.lanternPromptActive || this.wingPromptActive);
   }
 
   handleItemPickupOk(time = this.time?.now || 0) {
     if (this.lanternPromptActive) {
       this.lanternPromptActive = false;
+      setItemPickupVisible(false);
+      this.releaseBasketPromptControlLock();
+      return;
+    }
+
+    if (this.wingPromptActive) {
+      this.wingPromptActive = false;
       setItemPickupVisible(false);
       this.releaseBasketPromptControlLock();
       return;
@@ -6088,7 +6092,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateAcorns(time) {
-    if (this.basketPromptActive || this.lanternPromptActive) return;
+    if (this.isItemPromptActive()) return;
     const quake = this.level.environmentalQuake;
     const quakeDropWindowOpen = !quake || (time >= this.quakeDropStartsAt && time <= this.quakeDropUntil);
     this.acorns.children.iterate((acorn) => {
@@ -6426,6 +6430,7 @@ class PlayScene extends Phaser.Scene {
     this.clearOldLadyNpc();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.wingPromptActive = false;
     this.releaseBasketPromptControlLock();
     if (this.timerEvent) {
       this.timerEvent.remove(false);
@@ -6466,6 +6471,15 @@ class PlayScene extends Phaser.Scene {
     doubleJump.disableBody(true, true);
     state.hasDoubleJump = true;
     awardScore(300);
+    if (this.level.actionAbility === "command-birds") {
+      this.wingPromptActive = true;
+      this.lockPlayerForBasketPrompt();
+      setItemPickupVisible(true, {
+        name: "Wing",
+        instruction: "You can now command birds. Press Shift to send them after enemies.",
+        image: this.pixelatedWingImage || `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`
+      });
+    }
     updateHud();
     this.maybeShowPickupSpeech("wing");
   }
@@ -6645,7 +6659,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   hitAcorn(_player, acorn) {
-    if (!state.running || this.basketPromptActive || this.lanternPromptActive || acorn.getData("armed")) return;
+    if (!state.running || this.isItemPromptActive() || acorn.getData("armed")) return;
     this.resetAcorn(acorn);
     this.loseLife();
   }
@@ -6685,6 +6699,7 @@ class PlayScene extends Phaser.Scene {
     this.resetGlideState();
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
+    this.wingPromptActive = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
     this.thrownItems.clear(true, true);
