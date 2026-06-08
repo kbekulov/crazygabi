@@ -86,6 +86,7 @@ const ACORN_SCALE = 0.36;
 const BRICK_SCALE = 0.27;
 const FALLING_OBJECT_SPAWN_OFFSET = 140;
 const EARTHQUAKE_SFX_KEY = "earthquake-1";
+const MAGPIE_CALL_SFX_KEY = "magpie-call-1";
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -192,7 +193,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260606-item-enter-key";
+const ASSET_VERSION = "20260608-magpie-sfx";
 const STORY_ASSET_VERSION = "20260603-ruins-1";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -467,6 +468,8 @@ const LEVELS = [
     enemySprite: "robot-lv1",
     actionAbility: "command-birds",
     birdSprite: "magpie-bird",
+    birdScale: 1.2,
+    birdSfx: MAGPIE_CALL_SFX_KEY,
     ambientBirds: true,
     storyFrames: [
       { key: "story-level-5-frame-1-v2", src: "./public/assets/story/level-5/frame_1_v2.png" },
@@ -1810,6 +1813,7 @@ class PlayScene extends Phaser.Scene {
       if (level.soundtrack) audio(level.soundtrack, this.getSoundtrackPath(level.soundtrack));
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
       if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
+      if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
@@ -1889,6 +1893,10 @@ class PlayScene extends Phaser.Scene {
     return `${key}-fly`;
   }
 
+  getBirdScaleMultiplier() {
+    return this.level?.birdScale || 1;
+  }
+
   getHazardPath(key = "falling-acorn") {
     return key === "falling-brick"
       ? "./public/assets/environment/brick.png"
@@ -1925,7 +1933,8 @@ class PlayScene extends Phaser.Scene {
 
   getSfxPath(key) {
     return {
-      [EARTHQUAKE_SFX_KEY]: "./public/assets/sound/sfx/earthquake_1.mp3"
+      [EARTHQUAKE_SFX_KEY]: "./public/assets/sound/sfx/earthquake_1.mp3",
+      [MAGPIE_CALL_SFX_KEY]: "./public/assets/sound/sfx/magpie_call_1.mp3"
     }[key];
   }
 
@@ -4034,6 +4043,7 @@ class PlayScene extends Phaser.Scene {
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
+    if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, 0.48);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
   }
@@ -4126,7 +4136,7 @@ class PlayScene extends Phaser.Scene {
         birdSprite,
         Phaser.Math.Between(0, 3)
       );
-      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
+      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088) * this.getBirdScaleMultiplier());
       bird.setDepth(BIRD_ATTACK_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
@@ -4889,6 +4899,9 @@ class PlayScene extends Phaser.Scene {
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
+    if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.5) {
+      this.playLevelSfx(this.level.birdSfx, 0.42);
+    }
 
     for (let index = 0; index < count; index += 1) {
       const bird = this.add.sprite(
@@ -4897,7 +4910,7 @@ class PlayScene extends Phaser.Scene {
         birdSprite,
         Phaser.Math.Between(0, 3)
       );
-      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
+      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088) * this.getBirdScaleMultiplier());
       bird.setDepth(BIRD_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
