@@ -465,7 +465,9 @@ const LEVELS = [
     timeLimit: 180,
     soundtrack: "wind-1",
     enemySprite: "robot-lv1",
-    actionAbility: null,
+    actionAbility: "command-birds",
+    birdSprite: "magpie-bird",
+    ambientBirds: true,
     storyFrames: [
       { key: "story-level-5-frame-1-v2", src: "./public/assets/story/level-5/frame_1_v2.png" },
       { key: "story-level-5-frame-2-v2", src: "./public/assets/story/level-5/frame_2_v2.png" },
@@ -1764,7 +1766,10 @@ class PlayScene extends Phaser.Scene {
       if (level.oldLady) sheet("old-lady", "./public/assets/character/old_lady.png", OLD_LADY_FRAME_WIDTH, OLD_LADY_FRAME_HEIGHT);
       if (level.catNpc) sheet("grey-cat", "./public/assets/character/grey_cat.png", CAT_FRAME_WIDTH, CAT_FRAME_HEIGHT);
       if (level.mysteriousMan) sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
-      if (level.finalElevator || level.actionAbility === "command-birds") sheet("white-bird", "./public/assets/character/white_bird.png", BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
+      if (level.finalElevator || level.actionAbility === "command-birds" || level.ambientBirds) {
+        const birdSprite = this.getBirdSpriteKey(level);
+        sheet(birdSprite, this.getBirdSpritePath(birdSprite), BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
+      }
       if (level.ambientLeaves) {
         sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
       }
@@ -1867,6 +1872,21 @@ class PlayScene extends Phaser.Scene {
       "robot-shadow-ghost-lv2": "./public/assets/character/robot_shadow_ghost_lv2.png",
       "robot-ghost-lv3": "./public/assets/character/robot_ghost_lv3.png"
     }[key] || "./public/assets/character/robot_lv1.png";
+  }
+
+  getBirdSpriteKey(level = this.level) {
+    return level?.birdSprite || "white-bird";
+  }
+
+  getBirdSpritePath(key = "white-bird") {
+    return {
+      "white-bird": "./public/assets/character/white_bird.png",
+      "magpie-bird": "./public/assets/character/magpie_bird.png"
+    }[key] || "./public/assets/character/white_bird.png";
+  }
+
+  getBirdAnimationKey(key = this.getBirdSpriteKey()) {
+    return `${key}-fly`;
   }
 
   getHazardPath(key = "falling-acorn") {
@@ -2762,14 +2782,16 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
-    if (this.textures.exists("white-bird") && !this.anims.exists("white-bird-fly")) {
+    ["white-bird", "magpie-bird"].forEach((birdSprite) => {
+      const animationKey = this.getBirdAnimationKey(birdSprite);
+      if (!this.textures.exists(birdSprite) || this.anims.exists(animationKey)) return;
       this.anims.create({
-        key: "white-bird-fly",
-        frames: this.anims.generateFrameNumbers("white-bird", { frames: [0, 1, 2, 3] }),
+        key: animationKey,
+        frames: this.anims.generateFrameNumbers(birdSprite, { frames: [0, 1, 2, 3] }),
         frameRate: 14,
         repeat: -1
       });
-    }
+    });
     if (this.textures.exists("mr-magpie") && !this.anims.exists("mr-magpie-idle")) {
       this.anims.create({
         key: "mr-magpie-idle",
@@ -3791,7 +3813,7 @@ class PlayScene extends Phaser.Scene {
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
-    if (this.level.finalElevator) this.nextBirdFlockAt = this.time.now + 1400;
+    if (this.level.finalElevator || this.level.ambientBirds) this.nextBirdFlockAt = this.time.now + 1400;
     this.releaseBasketPromptControlLock();
     this.resetMobileGestureInput();
     this.resetFinalElevator();
@@ -4067,7 +4089,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnAttackBirdFlock(target, time = 0) {
-    if (!this.textures.exists("white-bird")) return;
+    const birdSprite = this.getBirdSpriteKey();
+    const birdAnimation = this.getBirdAnimationKey(birdSprite);
+    if (!this.textures.exists(birdSprite) || !this.anims.exists(birdAnimation)) return;
     const camera = this.cameras.main;
     const directionX = target?.active ? (target.x >= this.player.x ? 1 : -1) : (this.player.flipX ? -1 : 1);
     const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
@@ -4099,14 +4123,14 @@ class PlayScene extends Phaser.Scene {
       const bird = this.add.sprite(
         baseX,
         baseY,
-        "white-bird",
+        birdSprite,
         Phaser.Math.Between(0, 3)
       );
       bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
       bird.setDepth(BIRD_ATTACK_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
-      bird.play("white-bird-fly", true);
+      bird.play(birdAnimation, true);
       bird.formationX = Phaser.Math.Between(-74, 74);
       bird.formationY = Phaser.Math.Between(-24, 24);
       bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
@@ -4753,9 +4777,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateBirdFlocks(time = 0, delta = 0) {
-    if ((!this.level.finalElevator && !this.birdAttackFlocks?.length) || !state.running || state.won) return;
-    if (this.level.finalElevator && !this.nextBirdFlockAt) this.scheduleNextBirdFlock(time);
-    if (this.level.finalElevator && time >= this.nextBirdFlockAt) {
+    const ambientBirdsEnabled = this.level.finalElevator || this.level.ambientBirds;
+    if ((!ambientBirdsEnabled && !this.birdAttackFlocks?.length) || !state.running || state.won) return;
+    if (ambientBirdsEnabled && !this.nextBirdFlockAt) this.scheduleNextBirdFlock(time);
+    if (ambientBirdsEnabled && time >= this.nextBirdFlockAt) {
       this.spawnBirdFlock(time);
       this.scheduleNextBirdFlock(time);
     }
@@ -4842,7 +4867,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnBirdFlock(time = 0) {
-    if (!this.textures.exists("white-bird")) return;
+    const birdSprite = this.getBirdSpriteKey();
+    const birdAnimation = this.getBirdAnimationKey(birdSprite);
+    if (!this.textures.exists(birdSprite) || !this.anims.exists(birdAnimation)) return;
     const camera = this.cameras.main;
     const count = Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
     const fromLeft = Phaser.Math.Between(0, 1) === 0;
@@ -4867,14 +4894,14 @@ class PlayScene extends Phaser.Scene {
       const bird = this.add.sprite(
         baseX,
         baseY,
-        "white-bird",
+        birdSprite,
         Phaser.Math.Between(0, 3)
       );
       bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088));
       bird.setDepth(BIRD_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
-      bird.play("white-bird-fly", true);
+      bird.play(birdAnimation, true);
       bird.formationX = Phaser.Math.Between(-74, 74);
       bird.formationY = Phaser.Math.Between(-24, 24);
       bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
