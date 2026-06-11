@@ -7,6 +7,9 @@ const MAX_LIVES = 9;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
+const GABI_DIVE_SCALE = (GABI_FRAME_HEIGHT * GABI_SCALE) / 775;
+const GABI_DIVE_EDGE_DISTANCE = 42;
+const GABI_DIVE_MIN_DURATION = 260;
 const BIRD_FRAME_WIDTH = 243;
 const BIRD_FRAME_HEIGHT = 243;
 const BIRD_MIN_FLOCK_SIZE = 5;
@@ -196,7 +199,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260611-magpie-volume";
+const ASSET_VERSION = "20260612-gabi-dive";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1595,6 +1598,8 @@ class PlayScene extends Phaser.Scene {
     this.lastActionAt = -Infinity;
     this.lastBirdAttackAt = -Infinity;
     this.lastPickupSpeechAt = -Infinity;
+    this.gabiDiveUntil = 0;
+    this.gabiDiveActive = false;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -1764,6 +1769,7 @@ class PlayScene extends Phaser.Scene {
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
+      image("gabi-dive", "./public/assets/character/main_char_dive.png");
       if (level.actionAbility === "command-birds") {
         sheet("gabi-point-sheet", "./public/assets/character/main_char_sprite_point.png", GABI_POINT_FRAME_WIDTH, GABI_POINT_FRAME_HEIGHT);
       }
@@ -3971,16 +3977,19 @@ class PlayScene extends Phaser.Scene {
       this.airJumpsUsed = 0;
       this.usingWingJump = false;
       this.resetGlideState();
+      if (this.gabiDiveActive && time > this.gabiDiveUntil) this.resetGabiDiveState();
     }
 
     if (jump && this.isGliding) {
       this.cancelGlideToFall();
     } else if (jump && onFloor) {
       this.player.setVelocityY(-510);
+      if (this.shouldUseGabiDiveJump(left, right)) this.startGabiDive(time);
     } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
       this.airJumpsUsed += 1;
       this.usingWingJump = true;
       this.resetGlideState();
+      this.resetGabiDiveState();
       this.player.setVelocityY(-490);
     }
 
@@ -3998,6 +4007,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.finalElevatorActive || !this.isPlayerInsideFinalElevatorCabin()) return;
     this.usingWingJump = false;
     this.resetGlideState();
+    this.resetGabiDiveState();
     this.setGabiAnimation("idle");
   }
 
@@ -4112,6 +4122,7 @@ class PlayScene extends Phaser.Scene {
 
   playGabiPointAnimation(time = 0) {
     if (!this.textures.exists("gabi-point-sheet") || !this.anims.exists("gabi-point")) return;
+    this.resetGabiDiveState();
     this.gabiActionUntil = time + GABI_POINT_DURATION;
     this.gabiActionRestoreTimer?.remove?.(false);
     this.player.setTexture("gabi-point-sheet", 0);
@@ -4123,6 +4134,59 @@ class PlayScene extends Phaser.Scene {
       this.currentGabiAnimation = null;
       this.updateGabiAnimation(Math.abs(this.player.body?.velocity?.x || 0) > 20, this.player.body?.blocked?.down);
     });
+  }
+
+  getPlayerGroundRun() {
+    if (!this.player?.body) return null;
+    const ridingPlatform = this.getRidingMovingPlatform(this.player);
+    if (ridingPlatform?.body?.body) {
+      const body = ridingPlatform.body.body;
+      return {
+        startX: body.x,
+        endX: body.x + body.width,
+        topY: body.y
+      };
+    }
+
+    const body = this.player.body;
+    const bodyCenterX = body.x + body.width / 2;
+    const bodyBottom = body.y + body.height;
+    return this.platformRuns
+      .filter((run) => {
+        const overlaps = body.x + body.width > run.startX + 3 && body.x < run.endX - 3;
+        const nearFeet = bodyBottom >= run.topY - 8 && bodyBottom <= run.topY + 16;
+        return overlaps && nearFeet;
+      })
+      .sort((a, b) => {
+        const edgeDistanceA = Math.min(Math.abs(bodyCenterX - a.startX), Math.abs(bodyCenterX - a.endX));
+        const edgeDistanceB = Math.min(Math.abs(bodyCenterX - b.startX), Math.abs(bodyCenterX - b.endX));
+        return edgeDistanceA - edgeDistanceB;
+      })[0] || null;
+  }
+
+  shouldUseGabiDiveJump(left = false, right = false) {
+    if (!this.textures.exists("gabi-dive") || !this.player?.body) return false;
+    const run = this.getPlayerGroundRun();
+    if (!run) return false;
+    const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
+    const body = this.player.body;
+    const distanceToEdge = direction > 0
+      ? run.endX - (body.x + body.width)
+      : body.x - run.startX;
+    return distanceToEdge >= -6 && distanceToEdge <= GABI_DIVE_EDGE_DISTANCE;
+  }
+
+  startGabiDive(time = 0) {
+    if (!this.textures.exists("gabi-dive") || !this.player) return;
+    this.gabiDiveActive = true;
+    this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
+    this.currentGabiAnimation = null;
+    this.setGabiAnimation("dive");
+  }
+
+  resetGabiDiveState() {
+    this.gabiDiveActive = false;
+    this.gabiDiveUntil = 0;
   }
 
   spawnAttackBirdFlock(target, time = 0) {
@@ -4222,6 +4286,13 @@ class PlayScene extends Phaser.Scene {
   setGabiAnimation(name) {
     if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
+    if (name === "dive" && this.textures.exists("gabi-dive")) {
+      this.player.stop();
+      this.player.setTexture("gabi-dive");
+      this.player.setScale(GABI_DIVE_SCALE);
+      return;
+    }
+    this.player.setScale(GABI_SCALE);
     const animationKey = name === "wing-jump"
       ? "gabi-wing-jump"
       : name === "glide"
@@ -4232,6 +4303,12 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiAnimation(isMoving, onFloor) {
     if (this.gabiActionUntil && this.time.now < this.gabiActionUntil) return;
+    const shouldHoldDive = this.gabiDiveActive && !this.usingWingJump && !this.isGliding && (!onFloor || this.time.now <= this.gabiDiveUntil);
+    if (shouldHoldDive) {
+      this.setGabiAnimation("dive");
+      return;
+    }
+    if (this.gabiDiveActive) this.resetGabiDiveState();
     if (!onFloor) {
       this.setGabiAnimation(this.isGliding ? "glide" : this.usingWingJump ? "wing-jump" : "jump");
     } else if (isMoving) {
@@ -4277,6 +4354,7 @@ class PlayScene extends Phaser.Scene {
     const verticalVelocity = Math.max(this.player.body.velocity.y, GLIDE_FALL_SPEED);
     this.usingWingJump = false;
     this.resetGlideState();
+    this.resetGabiDiveState();
     this.player.setVelocity(horizontalVelocity, verticalVelocity);
   }
 
@@ -4293,6 +4371,7 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.resetPlayerMotion();
     this.resetGlideState();
+    this.resetGabiDiveState();
     this.gabiActionRestoreTimer?.remove?.(false);
     this.gabiActionRestoreTimer = null;
     this.gabiActionUntil = 0;
@@ -4303,6 +4382,7 @@ class PlayScene extends Phaser.Scene {
 
   switchPlayerToLanternSprite() {
     if (!this.level.lanternPlayerSheet || !this.player) return;
+    this.resetGabiDiveState();
     this.playerAnimationPrefix = this.level.lanternAnimationPrefix || "gabi-lantern";
     this.player.setTexture(this.level.lanternPlayerSheet, this.player.frame?.name || 0);
     this.currentGabiAnimation = null;
