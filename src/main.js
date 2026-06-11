@@ -87,6 +87,8 @@ const BRICK_SCALE = 0.27;
 const FALLING_OBJECT_SPAWN_OFFSET = 140;
 const EARTHQUAKE_SFX_KEY = "earthquake-1";
 const MAGPIE_CALL_SFX_KEY = "magpie-call-1";
+const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
+const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -193,7 +195,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260608-lv5-bgm";
+const ASSET_VERSION = "20260611-magpie-volume";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -4065,7 +4067,7 @@ class PlayScene extends Phaser.Scene {
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
-    if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, 0.38);
+    if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_ATTACK_SFX_VOLUME);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
   }
@@ -4922,7 +4924,7 @@ class PlayScene extends Phaser.Scene {
       birds: []
     };
     if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.25) {
-      this.playLevelSfx(this.level.birdSfx, 0.34);
+      this.playLevelSfx(this.level.birdSfx, MAGPIE_AMBIENT_SFX_VOLUME);
     }
 
     for (let index = 0; index < count; index += 1) {
