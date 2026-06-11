@@ -89,6 +89,7 @@ const EARTHQUAKE_SFX_KEY = "earthquake-1";
 const MAGPIE_CALL_SFX_KEY = "magpie-call-1";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
+const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -3972,7 +3973,9 @@ class PlayScene extends Phaser.Scene {
       this.resetGlideState();
     }
 
-    if (jump && onFloor) {
+    if (jump && this.isGliding) {
+      this.cancelGlideToFall();
+    } else if (jump && onFloor) {
       this.player.setVelocityY(-510);
     } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
       this.airJumpsUsed += 1;
@@ -4266,6 +4269,15 @@ class PlayScene extends Phaser.Scene {
     this.player.setMaxVelocity(GLIDE_HORIZONTAL_SPEED, 620);
     this.player.setVelocity(this.glideDirection * GLIDE_HORIZONTAL_SPEED, GLIDE_FALL_SPEED);
     this.setGabiFlip(this.glideDirection < 0);
+  }
+
+  cancelGlideToFall() {
+    if (!this.player?.body) return;
+    const horizontalVelocity = this.player.body.velocity.x;
+    const verticalVelocity = Math.max(this.player.body.velocity.y, GLIDE_FALL_SPEED);
+    this.usingWingJump = false;
+    this.resetGlideState();
+    this.player.setVelocity(horizontalVelocity, verticalVelocity);
   }
 
   resetPlayerMotion({ freeze = false } = {}) {
@@ -4923,7 +4935,7 @@ class PlayScene extends Phaser.Scene {
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
-    if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < 0.25) {
+    if (this.level.birdSfx && Phaser.Math.FloatBetween(0, 1) < MAGPIE_AMBIENT_SFX_CHANCE) {
       this.playLevelSfx(this.level.birdSfx, MAGPIE_AMBIENT_SFX_VOLUME);
     }
 
