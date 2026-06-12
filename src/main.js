@@ -65,6 +65,7 @@ const HAYSTACK_SCALE = 0.36;
 const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
+const HAY_BURST_MIN_TOUCH_SPEED = 44;
 const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
@@ -212,7 +213,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-haystack-landing-cue";
+const ASSET_VERSION = "20260612-static-dive-cue";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -2733,7 +2734,7 @@ class PlayScene extends Phaser.Scene {
         (config.column ?? 0) * TILE + TILE / 2,
         (config.row ?? 0) * TILE - (config.yOffset ?? 18),
         birdSprite,
-        0
+        config.frame ?? 2
       );
       bird.setScale((config.scale ?? DIVE_INDICATOR_SCALE) * this.getBirdScaleMultiplier());
       bird.setDepth(config.depth ?? BIRD_ATTACK_DEPTH - 0.2);
@@ -4400,6 +4401,12 @@ class PlayScene extends Phaser.Scene {
   landInHaystack(_player, haystack) {
     if (!haystack?.active || !this.player?.body) return;
     const now = this.time.now;
+    const touchSpeed = Phaser.Math.Distance.Between(
+      this.player.body.velocity.x,
+      this.player.body.velocity.y,
+      0,
+      0
+    );
     const shouldSettle =
       Boolean(this.scriptedHaystackDive) ||
       this.gabiDiveActive ||
@@ -4410,6 +4417,7 @@ class PlayScene extends Phaser.Scene {
       this.resetGabiDiveState();
       this.settlePlayerOnHaystackPlatform(haystack);
     }
+    if (!shouldSettle && touchSpeed < HAY_BURST_MIN_TOUCH_SPEED) return;
     if (now - (haystack.getData("lastBurstAt") || -Infinity) < 260) return;
     haystack.setData("lastBurstAt", now);
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
@@ -5343,7 +5351,7 @@ class PlayScene extends Phaser.Scene {
       if (!bird?.active) return false;
       const stateName = bird.getData("state");
       if (stateName === "perched") {
-        bird.y = bird.getData("homeY") + Math.sin(time * 0.004) * 1.5;
+        bird.setPosition(bird.getData("homeX"), bird.getData("homeY"));
         if (
           state.running &&
           this.player?.active &&
