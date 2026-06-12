@@ -1672,6 +1672,7 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackZoomTween = null;
     this.birdAttackZoomTimers = [];
     this.birdAttackZoomProxy = null;
+    this.birdAttackCameraFocus = null;
     this.lastPickupSpeechAt = -Infinity;
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
@@ -1685,6 +1686,7 @@ class PlayScene extends Phaser.Scene {
     this.diveCameraZoomActive = false;
     this.diveCameraZoomTween = null;
     this.diveCameraZoomProxy = null;
+    this.diveCameraFocus = null;
     this.pendingDiveLedge = null;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
@@ -1733,6 +1735,7 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
     this.cameras.main.setZoom(1);
+    this.cameras.main.roundPixels = true;
     this.physics.world.setBounds(0, -PLAY_HEIGHT * 2, this.levelWidth, this.levelHeight + PLAY_HEIGHT * 3);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
@@ -4296,16 +4299,23 @@ class PlayScene extends Phaser.Scene {
     this.cancelBirdAttackCameraZoom({ restoreCamera: false });
     const camera = this.cameras.main;
     const proxy = { zoom: camera.zoom || 1 };
+    const focus = {
+      x: camera.midPoint?.x ?? this.player.x,
+      y: camera.midPoint?.y ?? this.player.y
+    };
     this.birdAttackZoomActive = true;
     this.birdAttackZoomProxy = proxy;
+    this.birdAttackCameraFocus = focus;
     camera.stopFollow();
 
-    const centerOnGabi = () => {
+    const centerOnGabi = (lerp = 0.1) => {
       if (!this.birdAttackZoomActive || !this.player?.active) return;
       camera.setZoom(proxy.zoom);
-      camera.centerOn(this.player.x, this.player.y - 14);
+      focus.x = Phaser.Math.Linear(focus.x, this.player.x, lerp);
+      focus.y = Phaser.Math.Linear(focus.y, this.player.y - 14, lerp);
+      camera.centerOn(Math.round(focus.x), Math.round(focus.y));
     };
-    centerOnGabi();
+    centerOnGabi(0.04);
     this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
     camera.shake(95, 0.0022);
 
@@ -4314,9 +4324,9 @@ class PlayScene extends Phaser.Scene {
       zoom: BIRD_ATTACK_CAMERA_ZOOM,
       duration: BIRD_ATTACK_CAMERA_ZOOM_IN_MS,
       ease: "Sine.easeInOut",
-      onUpdate: centerOnGabi,
+      onUpdate: () => centerOnGabi(0.12),
       onComplete: () => {
-        centerOnGabi();
+        centerOnGabi(0.18);
         const holdTimer = this.time.delayedCall(500, () => {
           if (target?.active) {
             this.startBirdAttackEnemyCameraFocus(target, centerOnGabi);
@@ -4335,15 +4345,16 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     const camera = this.cameras.main;
-    const focus = { x: this.player.x, y: this.player.y - 14 };
-    const centerOnEnemy = () => {
+    const focus = this.birdAttackCameraFocus || { x: this.player.x, y: this.player.y - 14 };
+    this.birdAttackCameraFocus = focus;
+    const centerOnEnemy = (lerp = 0.08) => {
       if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
-      if (target?.active) {
-        focus.x = target.x;
-        focus.y = target.y - 18;
-      }
+      const targetX = target?.active ? target.x : focus.x;
+      const targetY = target?.active ? target.y - 18 : focus.y;
+      focus.x = Phaser.Math.Linear(focus.x, targetX, lerp);
+      focus.y = Phaser.Math.Linear(focus.y, targetY, lerp);
       camera.setZoom(this.birdAttackZoomProxy.zoom);
-      camera.centerOn(focus.x, focus.y);
+      camera.centerOn(Math.round(focus.x), Math.round(focus.y));
     };
 
     this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
@@ -4357,13 +4368,13 @@ class PlayScene extends Phaser.Scene {
       ease: "Sine.easeInOut",
       onUpdate: () => {
         camera.setZoom(this.birdAttackZoomProxy.zoom);
-        camera.centerOn(focus.x, focus.y);
+        camera.centerOn(Math.round(focus.x), Math.round(focus.y));
       },
       onComplete: () => {
         const followTimer = this.time.addEvent({
-          delay: 50,
-          repeat: Math.floor(BIRD_ATTACK_CAMERA_ENEMY_HOLD_MS / 50),
-          callback: centerOnEnemy
+          delay: 16,
+          repeat: Math.floor(BIRD_ATTACK_CAMERA_ENEMY_HOLD_MS / 16),
+          callback: () => centerOnEnemy(0.11)
         });
         this.birdAttackZoomTimers.push(followTimer);
         const exitTimer = this.time.delayedCall(
@@ -4402,9 +4413,11 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackZoomTimers?.forEach((timer) => timer?.remove?.(false));
     this.birdAttackZoomTimers = [];
     this.birdAttackZoomProxy = null;
+    this.birdAttackCameraFocus = null;
     this.birdAttackZoomActive = false;
     if (restoreCamera && this.cameras?.main && this.player) {
       this.cameras.main.setZoom(1);
+      this.cameras.main.roundPixels = true;
       this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
       this.cameras.main.setDeadzone(170, 110);
     }
@@ -4594,8 +4607,13 @@ class PlayScene extends Phaser.Scene {
     this.cancelDiveCameraZoom();
     const camera = this.cameras.main;
     const proxy = { zoom: camera.zoom || 1 };
+    const focus = {
+      x: camera.midPoint?.x ?? this.player.x,
+      y: camera.midPoint?.y ?? this.player.y
+    };
     this.diveCameraZoomActive = true;
     this.diveCameraZoomProxy = proxy;
+    this.diveCameraFocus = focus;
     camera.stopFollow();
     this.updateDiveCameraZoom();
     this.diveCameraZoomTween = this.tweens.add({
@@ -4610,8 +4628,12 @@ class PlayScene extends Phaser.Scene {
   updateDiveCameraZoom() {
     if (!this.diveCameraZoomActive || !this.diveCameraZoomProxy || !this.player?.active || !this.cameras?.main) return;
     const camera = this.cameras.main;
+    const focus = this.diveCameraFocus || { x: camera.midPoint?.x ?? this.player.x, y: camera.midPoint?.y ?? this.player.y };
+    this.diveCameraFocus = focus;
+    focus.x = Phaser.Math.Linear(focus.x, this.player.x, 0.045);
+    focus.y = Phaser.Math.Linear(focus.y, this.player.y - 16, 0.045);
     camera.setZoom(this.diveCameraZoomProxy.zoom);
-    camera.centerOn(this.player.x, this.player.y - 16);
+    camera.centerOn(Math.round(focus.x), Math.round(focus.y));
   }
 
   finishDiveCameraZoomImpact() {
@@ -4622,6 +4644,8 @@ class PlayScene extends Phaser.Scene {
     }
     const camera = this.cameras.main;
     const proxy = this.diveCameraZoomProxy || { zoom: camera.zoom || 1 };
+    const focus = this.diveCameraFocus || { x: camera.midPoint?.x ?? this.player.x, y: camera.midPoint?.y ?? this.player.y - 12 };
+    this.diveCameraFocus = focus;
     this.diveCameraZoomTween?.remove?.();
     camera.shake(260, 0.012);
     this.diveCameraZoomTween = this.tweens.add({
@@ -4630,8 +4654,10 @@ class PlayScene extends Phaser.Scene {
       duration: DIVE_CAMERA_SNAP_OUT_MS,
       ease: "Cubic.easeOut",
       onUpdate: () => {
+        focus.x = Phaser.Math.Linear(focus.x, this.player.x, 0.2);
+        focus.y = Phaser.Math.Linear(focus.y, this.player.y - 12, 0.2);
         camera.setZoom(proxy.zoom);
-        camera.centerOn(this.player.x, this.player.y - 12);
+        camera.centerOn(Math.round(focus.x), Math.round(focus.y));
       },
       onComplete: () => {
         this.cancelDiveCameraZoom({ restoreCamera: true });
@@ -4644,9 +4670,11 @@ class PlayScene extends Phaser.Scene {
     this.diveCameraZoomTween?.remove?.();
     this.diveCameraZoomTween = null;
     this.diveCameraZoomProxy = null;
+    this.diveCameraFocus = null;
     this.diveCameraZoomActive = false;
     if (restoreCamera && this.cameras?.main && this.player) {
       this.cameras.main.setZoom(1);
+      this.cameras.main.roundPixels = true;
       this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
       this.cameras.main.setDeadzone(170, 110);
     }

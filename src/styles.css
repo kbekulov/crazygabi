@@ -70,6 +70,8 @@ button:active {
   touch-action: none;
   user-select: none;
   background: #000;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 #hud {
