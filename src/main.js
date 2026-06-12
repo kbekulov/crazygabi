@@ -4388,9 +4388,21 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  startBirdAttackCameraZoomOut(centerOnGabi) {
+  startBirdAttackCameraZoomOut() {
     if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
     const camera = this.cameras.main;
+    const focus = this.birdAttackCameraFocus || {
+      x: camera.midPoint?.x ?? this.player.x,
+      y: camera.midPoint?.y ?? this.player.y
+    };
+    this.birdAttackCameraFocus = focus;
+    const centerBackOnGabi = (lerp = 0.16) => {
+      if (!this.player?.active) return;
+      focus.x = Phaser.Math.Linear(focus.x, this.player.x, lerp);
+      focus.y = Phaser.Math.Linear(focus.y, this.player.y - 14, lerp);
+      camera.setZoom(this.birdAttackZoomProxy?.zoom || camera.zoom || 1);
+      camera.centerOn(Math.round(focus.x), Math.round(focus.y));
+    };
     this.playLevelSfx(BIRD_ZOOM_OUT_SFX_KEY, 1.0);
     camera.shake(95, 0.0024);
     this.birdAttackZoomTween?.remove?.();
@@ -4399,9 +4411,10 @@ class PlayScene extends Phaser.Scene {
       zoom: 1,
       duration: BIRD_ATTACK_CAMERA_ZOOM_OUT_MS,
       ease: "Sine.easeInOut",
-      onUpdate: centerOnGabi,
+      onUpdate: () => centerBackOnGabi(0.18),
       onComplete: () => {
         camera.setZoom(1);
+        centerBackOnGabi(1);
         this.cancelBirdAttackCameraZoom({ restoreCamera: true });
       }
     });
@@ -4630,8 +4643,8 @@ class PlayScene extends Phaser.Scene {
     const camera = this.cameras.main;
     const focus = this.diveCameraFocus || { x: camera.midPoint?.x ?? this.player.x, y: camera.midPoint?.y ?? this.player.y };
     this.diveCameraFocus = focus;
-    focus.x = Phaser.Math.Linear(focus.x, this.player.x, 0.045);
-    focus.y = Phaser.Math.Linear(focus.y, this.player.y - 16, 0.045);
+    focus.x = Phaser.Math.Linear(focus.x, this.player.x, 0.055);
+    focus.y = Phaser.Math.Linear(focus.y, this.player.y + 4, 0.12);
     camera.setZoom(this.diveCameraZoomProxy.zoom);
     camera.centerOn(Math.round(focus.x), Math.round(focus.y));
   }
