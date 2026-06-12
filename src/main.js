@@ -13,6 +13,7 @@ const GABI_DIVE_EDGE_DISTANCE = 42;
 const GABI_DIVE_MIN_DURATION = 260;
 const GABI_DIVE_ANGLE = 15;
 const GABI_DIVE_ANGLE_DURATION = 900;
+const DIVE_WIND_FADE_DELAY_MS = 1500;
 const DIVE_WIND_RAMP_MS = 1000;
 const DIVE_WIND_LINE_COUNT = 36;
 const BIRD_FRAME_WIDTH = 243;
@@ -4410,7 +4411,7 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveActive = true;
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
     this.diveWindStartedAt = time;
-    this.nextDiveWindShakeAt = time + 180;
+    this.nextDiveWindShakeAt = time + DIVE_WIND_FADE_DELAY_MS + 180;
     this.startDiveWindSfx();
     const direction = this.player.flipX ? -1 : 1;
     this.gabiDiveTween?.remove?.();
@@ -4465,12 +4466,16 @@ class PlayScene extends Phaser.Scene {
 
     const graphics = this.ensureDiveWindGraphics();
     graphics.clear();
-    const ramp = Phaser.Math.Clamp((time - (this.diveWindStartedAt || time)) / DIVE_WIND_RAMP_MS, 0, 1);
+    const ramp = Phaser.Math.Clamp(
+      (time - (this.diveWindStartedAt || time) - DIVE_WIND_FADE_DELAY_MS) / DIVE_WIND_RAMP_MS,
+      0,
+      1
+    );
     if (ramp <= 0) return;
 
     if (time >= (this.nextDiveWindShakeAt || 0)) {
-      this.cameras.main.shake(90, 0.0015 + ramp * 0.0035);
-      this.nextDiveWindShakeAt = time + 130;
+      this.cameras.main.shake(70, 0.0004 + ramp * 0.0012);
+      this.nextDiveWindShakeAt = time + 180;
     }
 
     const speed = 0.62;
@@ -4479,9 +4484,11 @@ class PlayScene extends Phaser.Scene {
       const x = (seed * 19.31) % VIEW_WIDTH;
       const drift = Math.sin(time * 0.003 + i) * 12;
       const y = ((time * speed + seed * 11) % (PLAY_HEIGHT + 180)) - 110;
-      const length = 34 + ((i * 31) % 142);
-      const alpha = (0.1 + ((i % 5) * 0.035)) * ramp;
       const width = i % 9 === 0 ? 4 : i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1;
+      const heavyLine = width >= 3;
+      const length = (34 + ((i * 31) % 142)) * (heavyLine ? 1.18 : 1);
+      const alphaBase = heavyLine ? 0.32 + (i % 2) * 0.08 : 0.09 + ((i % 4) * 0.03);
+      const alpha = Phaser.Math.Clamp(alphaBase * ramp, 0, 0.48);
       graphics.lineStyle(width, 0xf5efe0, alpha);
       graphics.lineBetween(x + drift, y, x + drift, y + length);
     }
