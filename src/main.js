@@ -13,6 +13,8 @@ const GABI_DIVE_EDGE_DISTANCE = 42;
 const GABI_DIVE_MIN_DURATION = 260;
 const GABI_DIVE_ANGLE = 15;
 const GABI_DIVE_ANGLE_DURATION = 900;
+const DIVE_WIND_RAMP_MS = 1000;
+const DIVE_WIND_LINE_COUNT = 36;
 const BIRD_FRAME_WIDTH = 243;
 const BIRD_FRAME_HEIGHT = 243;
 const BIRD_MIN_FLOCK_SIZE = 5;
@@ -1661,6 +1663,8 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveTween = null;
     this.diveWindSfx = null;
     this.diveWindGraphics = null;
+    this.diveWindStartedAt = 0;
+    this.nextDiveWindShakeAt = 0;
     this.pendingDiveLedge = null;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
@@ -4405,6 +4409,8 @@ class PlayScene extends Phaser.Scene {
     this.pendingDiveLedge = null;
     this.gabiDiveActive = true;
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
+    this.diveWindStartedAt = time;
+    this.nextDiveWindShakeAt = time + 180;
     this.startDiveWindSfx();
     const direction = this.player.flipX ? -1 : 1;
     this.gabiDiveTween?.remove?.();
@@ -4459,17 +4465,25 @@ class PlayScene extends Phaser.Scene {
 
     const graphics = this.ensureDiveWindGraphics();
     graphics.clear();
+    const ramp = Phaser.Math.Clamp((time - (this.diveWindStartedAt || time)) / DIVE_WIND_RAMP_MS, 0, 1);
+    if (ramp <= 0) return;
+
+    if (time >= (this.nextDiveWindShakeAt || 0)) {
+      this.cameras.main.shake(90, 0.0015 + ramp * 0.0035);
+      this.nextDiveWindShakeAt = time + 130;
+    }
+
     const speed = 0.62;
-    for (let i = 0; i < 30; i += 1) {
+    for (let i = 0; i < DIVE_WIND_LINE_COUNT; i += 1) {
       const seed = i * 73.17;
       const x = (seed * 19.31) % VIEW_WIDTH;
       const drift = Math.sin(time * 0.003 + i) * 12;
       const y = ((time * speed + seed * 11) % (PLAY_HEIGHT + 180)) - 110;
-      const length = 46 + ((i * 29) % 92);
-      const alpha = 0.16 + ((i % 5) * 0.035);
-      const width = i % 6 === 0 ? 2 : 1;
+      const length = 34 + ((i * 31) % 142);
+      const alpha = (0.1 + ((i % 5) * 0.035)) * ramp;
+      const width = i % 9 === 0 ? 4 : i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1;
       graphics.lineStyle(width, 0xf5efe0, alpha);
-      graphics.lineBetween(x + drift, y, x + drift + Math.sin(i) * 4, y + length);
+      graphics.lineBetween(x + drift, y, x + drift, y + length);
     }
   }
 
@@ -4541,6 +4555,8 @@ class PlayScene extends Phaser.Scene {
     this.pendingDiveLedge = null;
     this.stopDiveWindSfx();
     this.clearDiveWindLines();
+    this.diveWindStartedAt = 0;
+    this.nextDiveWindShakeAt = 0;
     if (this.player) this.player.setAngle(0);
   }
 
@@ -4958,7 +4974,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.cat || !this.level.catNpc || !state.running || now < (this.nextCatMeowAt || 0)) return;
     this.nextCatMeowAt = now + Phaser.Math.Between(CAT_MEOW_MIN_DELAY, CAT_MEOW_MAX_DELAY);
     if (Phaser.Math.FloatBetween(0, 1) > CAT_MEOW_CHANCE) return;
-    this.playLevelSfx(Phaser.Utils.Array.GetRandom(CAT_MEOW_SFX_KEYS), 0.46);
+    this.playLevelSfx(Phaser.Utils.Array.GetRandom(CAT_MEOW_SFX_KEYS), 0.23);
     this.showCatSpeech("Meow!");
   }
 
