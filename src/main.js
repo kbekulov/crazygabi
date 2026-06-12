@@ -62,10 +62,12 @@ const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
 const LIGHT_RAY_IMPACT_DEPTH = PLATFORM_DEPTH + 0.65;
 const LIGHT_RAY_TEXTURE_PADDING = 96;
 const HAYSTACK_SCALE = 0.36;
+const HAYSTACK_Y_OFFSET = 10;
 const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
+const HAY_BURST_COOLDOWN_MS = 1000;
 const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
@@ -213,7 +215,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-static-dive-cue";
+const ASSET_VERSION = "20260612-haystack-cooldown";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -2708,7 +2710,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.level.haystacks?.length || !this.textures.exists("haystack")) return;
     this.level.haystacks.forEach((config) => {
       const x = config.x ?? ((config.column ?? 0) * TILE + TILE / 2);
-      const y = (config.floorRow ?? 0) * TILE + (config.yOffset ?? 4);
+      const y = (config.floorRow ?? 0) * TILE + (config.yOffset ?? HAYSTACK_Y_OFFSET);
       const haystack = this.haystacks.create(x, y, "haystack");
       haystack.setOrigin(0.5, 1);
       haystack.setScale(config.scale ?? HAYSTACK_SCALE);
@@ -4418,7 +4420,7 @@ class PlayScene extends Phaser.Scene {
       this.settlePlayerOnHaystackPlatform(haystack);
     }
     if (!shouldSettle && touchSpeed < HAY_BURST_MIN_TOUCH_SPEED) return;
-    if (now - (haystack.getData("lastBurstAt") || -Infinity) < 260) return;
+    if (now - (haystack.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
     haystack.setData("lastBurstAt", now);
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
   }
