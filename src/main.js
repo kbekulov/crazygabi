@@ -29,6 +29,8 @@ const BIRD_ATTACK_HIT_RADIUS = 54;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
+const GABI_AIR_DIVE_FRAME_WIDTH = 1034;
+const GABI_AIR_DIVE_FRAME_HEIGHT = 775;
 const MR_MAGPIE_FRAME_WIDTH = 238;
 const MR_MAGPIE_FRAME_HEIGHT = 238;
 const MR_MAGPIE_SCALE = 0.34;
@@ -76,7 +78,7 @@ const HAY_BURST_COOLDOWN_MS = 1000;
 const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
-const SCRIPTED_DIVE_LOCK_DELAY_MS = 1400;
+const SCRIPTED_DIVE_LOCK_DELAY_MS = 2400;
 const DIVE_INDICATOR_TRIGGER_DISTANCE = 150;
 const DIVE_INDICATOR_SCALE = 0.105;
 const DIVE_INDICATOR_IDLE_ANGLE = -20;
@@ -221,7 +223,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-level4-scripted-dive";
+const ASSET_VERSION = "20260612-air-dive-sprite";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1822,7 +1824,7 @@ class PlayScene extends Phaser.Scene {
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
-      image("gabi-dive", "./public/assets/character/main_char_dive.png");
+      sheet("gabi-air-dive-sheet", "./public/assets/character/main_char_air_dive.png", GABI_AIR_DIVE_FRAME_WIDTH, GABI_AIR_DIVE_FRAME_HEIGHT);
       if (level.actionAbility === "command-birds") {
         sheet("gabi-point-sheet", "./public/assets/character/main_char_sprite_point.png", GABI_POINT_FRAME_WIDTH, GABI_POINT_FRAME_HEIGHT);
       }
@@ -2734,6 +2736,7 @@ class PlayScene extends Phaser.Scene {
       haystack.body.immovable = true;
       haystack.body.setSize(270, 84).setOffset(54, 54);
       haystack.setData("floorTop", (config.floorRow ?? 0) * TILE);
+      haystack.setData("baseScale", config.scale ?? HAYSTACK_SCALE);
       haystack.refreshBody?.();
     });
   }
@@ -2827,6 +2830,14 @@ class PlayScene extends Phaser.Scene {
         key: "gabi-glide",
         frames: this.anims.generateFrameNumbers("gabi-glide-sheet", { frames: [2, 3] }),
         frameRate: 6,
+        repeat: -1
+      });
+    }
+    if (this.textures.exists("gabi-air-dive-sheet") && !this.anims.exists("gabi-dive")) {
+      this.anims.create({
+        key: "gabi-dive",
+        frames: this.anims.generateFrameNumbers("gabi-air-dive-sheet", { frames: [0, 1] }),
+        frameRate: 7,
         repeat: -1
       });
     }
@@ -4276,7 +4287,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   shouldUseGabiDiveJump(left = false, right = false) {
-    if (!this.textures.exists("gabi-dive") || !this.player?.body) return false;
+    if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
     const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
     const diveLedge = this.getPlayerManualDiveLedge(direction);
     this.pendingDiveLedge = diveLedge || null;
@@ -4338,7 +4349,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   startGabiDive(time = 0) {
-    if (!this.textures.exists("gabi-dive") || !this.player) return;
+    if (!this.anims.exists("gabi-dive") || !this.player) return;
     const diveLedge = this.pendingDiveLedge;
     this.pendingDiveLedge = null;
     this.gabiDiveActive = true;
@@ -4385,7 +4396,13 @@ class PlayScene extends Phaser.Scene {
       this.stopScriptedHaystackDive();
       return false;
     }
-    if (time < this.scriptedHaystackDive.lockAt) return false;
+    if (time < this.scriptedHaystackDive.lockAt) {
+      this.player.setAccelerationX(0);
+      this.gabiDiveActive = true;
+      this.gabiDiveUntil = Math.max(this.gabiDiveUntil, time + 120);
+      this.setGabiAnimation("dive");
+      return true;
+    }
 
     const dx = haystack.x - this.player.x;
     const direction = dx === 0 ? (this.player.flipX ? -1 : 1) : Math.sign(dx);
@@ -4431,15 +4448,32 @@ class PlayScene extends Phaser.Scene {
       this.gabiDiveActive ||
       this.isGliding ||
       this.player.body.velocity.y > 80;
+    const diveImpact = Boolean(this.scriptedHaystackDive) || this.gabiDiveActive;
     if (shouldSettle) {
       this.stopScriptedHaystackDive();
       this.resetGabiDiveState();
       this.settlePlayerOnHaystackPlatform(haystack);
+      if (diveImpact) this.animateHaystackImpact(haystack);
     }
     if (!shouldSettle && touchSpeed < HAY_BURST_MIN_TOUCH_SPEED) return;
     if (now - (haystack.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
     haystack.setData("lastBurstAt", now);
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
+  }
+
+  animateHaystackImpact(haystack) {
+    if (!haystack?.active) return;
+    const baseScale = haystack.getData("baseScale") ?? HAYSTACK_SCALE;
+    haystack.getData("impactTween")?.remove?.();
+    haystack.setScale(baseScale * 1.025, baseScale * 0.94);
+    const tween = this.tweens.add({
+      targets: haystack,
+      scaleX: baseScale,
+      scaleY: baseScale,
+      duration: 180,
+      ease: "Elastic.Out"
+    });
+    haystack.setData("impactTween", tween);
   }
 
   settlePlayerOnHaystackPlatform(haystack) {
@@ -4601,10 +4635,9 @@ class PlayScene extends Phaser.Scene {
   setGabiAnimation(name) {
     if (this.currentGabiAnimation === name || !this.player) return;
     this.currentGabiAnimation = name;
-    if (name === "dive" && this.textures.exists("gabi-dive")) {
-      this.player.stop();
-      this.player.setTexture("gabi-dive");
+    if (name === "dive" && this.anims.exists("gabi-dive")) {
       this.player.setScale(GABI_DIVE_SCALE);
+      this.player.play("gabi-dive", true);
       return;
     }
     this.player.setScale(name === "glide" ? GABI_GLIDE_SCALE : GABI_SCALE);
@@ -4619,7 +4652,7 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiAnimation(isMoving, onFloor) {
     if (this.gabiActionUntil && this.time.now < this.gabiActionUntil) return;
-    const shouldHoldDive = this.gabiDiveActive && !this.usingWingJump && !this.isGliding && (!onFloor || this.time.now <= this.gabiDiveUntil);
+    const shouldHoldDive = this.gabiDiveActive && !this.usingWingJump && !this.isGliding && !onFloor;
     if (shouldHoldDive) {
       this.setGabiAnimation("dive");
       return;
