@@ -128,6 +128,8 @@ const HEART_PICKUP_SFX_KEY = "heart-pickup";
 const KEY_PICKUP_SFX_KEY = "key-pickup";
 const MISC_PICKUP_SFX_KEY = "misc-pickup";
 const KILL_SFX_KEY = "kill-1";
+const BIRD_ZOOM_IN_SFX_KEY = "bird-zoom-in";
+const BIRD_ZOOM_OUT_SFX_KEY = "bird-zoom-out";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
@@ -237,7 +239,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-dive-wind-meow-sfx";
+const ASSET_VERSION = "20260612-bird-attack-zoom";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1658,6 +1660,10 @@ class PlayScene extends Phaser.Scene {
     this.enemyNameIndex = 0;
     this.lastActionAt = -Infinity;
     this.lastBirdAttackAt = -Infinity;
+    this.birdAttackZoomActive = false;
+    this.birdAttackZoomTween = null;
+    this.birdAttackZoomTimers = [];
+    this.birdAttackZoomProxy = null;
     this.lastPickupSpeechAt = -Infinity;
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
@@ -1715,6 +1721,7 @@ class PlayScene extends Phaser.Scene {
 
     this.cameras.main.setBounds(0, 0, this.levelWidth, this.levelHeight);
     this.cameras.main.setViewport(0, 0, VIEW_WIDTH, PLAY_HEIGHT);
+    this.cameras.main.setZoom(1);
     this.physics.world.setBounds(0, -PLAY_HEIGHT * 2, this.levelWidth, this.levelHeight + PLAY_HEIGHT * 3);
     this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
     this.cameras.main.setDeadzone(170, 110);
@@ -1924,7 +1931,9 @@ class PlayScene extends Phaser.Scene {
         HEART_PICKUP_SFX_KEY,
         KEY_PICKUP_SFX_KEY,
         MISC_PICKUP_SFX_KEY,
-        KILL_SFX_KEY
+        KILL_SFX_KEY,
+        BIRD_ZOOM_IN_SFX_KEY,
+        BIRD_ZOOM_OUT_SFX_KEY
       ].forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
 
       if (!queued) {
@@ -2059,7 +2068,9 @@ class PlayScene extends Phaser.Scene {
       [HEART_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/heart_pickup.mp3",
       [KEY_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/key_pickup.mp3",
       [MISC_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/misc_pickup.mp3",
-      [KILL_SFX_KEY]: "./public/assets/sound/sfx/kill_1.mp3"
+      [KILL_SFX_KEY]: "./public/assets/sound/sfx/kill_1.mp3",
+      [BIRD_ZOOM_IN_SFX_KEY]: "./public/assets/sound/sfx/zoom_in.mp3",
+      [BIRD_ZOOM_OUT_SFX_KEY]: "./public/assets/sound/sfx/zoom_out.mp3"
     }[key];
   }
 
@@ -4260,9 +4271,82 @@ class PlayScene extends Phaser.Scene {
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
+    this.playBirdAttackCameraZoom();
     if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_ATTACK_SFX_VOLUME);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
+  }
+
+  playBirdAttackCameraZoom() {
+    if (!this.player || !this.cameras?.main) return;
+    this.cancelBirdAttackCameraZoom({ restoreCamera: false });
+    const camera = this.cameras.main;
+    const proxy = { zoom: camera.zoom || 1 };
+    this.birdAttackZoomActive = true;
+    this.birdAttackZoomProxy = proxy;
+    camera.stopFollow();
+
+    const centerOnGabi = () => {
+      if (!this.birdAttackZoomActive || !this.player?.active) return;
+      camera.setZoom(proxy.zoom);
+      camera.centerOn(this.player.x, this.player.y - 14);
+    };
+    centerOnGabi();
+    this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
+    const shakeTimer = this.time.addEvent({
+      delay: 120,
+      repeat: 12,
+      callback: () => {
+        if (!this.birdAttackZoomActive) return;
+        camera.shake(78, proxy.zoom > 2.35 ? 0.0048 : 0.0036);
+      }
+    });
+    this.birdAttackZoomTimers.push(shakeTimer);
+
+    this.birdAttackZoomTween = this.tweens.add({
+      targets: proxy,
+      zoom: 3,
+      duration: 480,
+      ease: "Sine.easeInOut",
+      onUpdate: centerOnGabi,
+      onComplete: () => {
+        centerOnGabi();
+        const holdTimer = this.time.delayedCall(500, () => this.startBirdAttackCameraZoomOut(centerOnGabi), undefined, this);
+        this.birdAttackZoomTimers.push(holdTimer);
+      }
+    });
+  }
+
+  startBirdAttackCameraZoomOut(centerOnGabi) {
+    if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
+    const camera = this.cameras.main;
+    this.playLevelSfx(BIRD_ZOOM_OUT_SFX_KEY, 1.0);
+    this.birdAttackZoomTween?.remove?.();
+    this.birdAttackZoomTween = this.tweens.add({
+      targets: this.birdAttackZoomProxy,
+      zoom: 1,
+      duration: 560,
+      ease: "Sine.easeInOut",
+      onUpdate: centerOnGabi,
+      onComplete: () => {
+        camera.setZoom(1);
+        this.cancelBirdAttackCameraZoom({ restoreCamera: true });
+      }
+    });
+  }
+
+  cancelBirdAttackCameraZoom({ restoreCamera = true } = {}) {
+    this.birdAttackZoomTween?.remove?.();
+    this.birdAttackZoomTween = null;
+    this.birdAttackZoomTimers?.forEach((timer) => timer?.remove?.(false));
+    this.birdAttackZoomTimers = [];
+    this.birdAttackZoomProxy = null;
+    this.birdAttackZoomActive = false;
+    if (restoreCamera && this.cameras?.main && this.player) {
+      this.cameras.main.setZoom(1);
+      this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+      this.cameras.main.setDeadzone(170, 110);
+    }
   }
 
   updateBirdAttackCooldown(time = 0) {
@@ -7253,6 +7337,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
+    this.cancelBirdAttackCameraZoom();
     this.clearFinalElevatorCredits();
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
@@ -7528,6 +7613,7 @@ class PlayScene extends Phaser.Scene {
 
   loseLife() {
     if (!state.running) return;
+    this.cancelBirdAttackCameraZoom();
     state.lives -= 1;
     updateHud();
     this.cameras.main.shake(180, 0.012);
