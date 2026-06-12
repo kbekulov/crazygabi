@@ -202,7 +202,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-gabi-glide-dive-scale";
+const ASSET_VERSION = "20260612-manual-dive-ledges";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -421,6 +421,9 @@ const LEVELS = [
       speed: 112,
       wallFaceColumn: 178
     },
+    manualDiveLedges: [
+      { type: "final-elevator-top", side: "both" }
+    ],
     mysteriousMan: {
       sprite: "mr-magpie",
       xOffset: 0,
@@ -4170,9 +4173,56 @@ class PlayScene extends Phaser.Scene {
 
   shouldUseGabiDiveJump(left = false, right = false) {
     if (!this.textures.exists("gabi-dive") || !this.player?.body) return false;
-    const run = this.getPlayerGroundRun();
-    if (!run) return false;
     const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
+    return this.isPlayerOnManualDiveLedge(direction);
+  }
+
+  isPlayerOnManualDiveLedge(direction = 1) {
+    const ledges = this.level.manualDiveLedges || [];
+    if (!ledges.length) return false;
+    return ledges.some((ledge) => {
+      if (!this.matchesDiveLedgeSide(ledge, direction)) return false;
+      if (ledge.type === "final-elevator-top") return this.isPlayerOnFinalElevatorDiveLedge(direction);
+      const run = this.getManualDiveLedgeRun(ledge);
+      return run ? this.isPlayerNearDiveRunEdge(run, direction) : false;
+    });
+  }
+
+  matchesDiveLedgeSide(ledge, direction = 1) {
+    if (!ledge?.side || ledge.side === "both") return true;
+    return direction > 0 ? ledge.side === "right" : ledge.side === "left";
+  }
+
+  getManualDiveLedgeRun(ledge) {
+    if (!ledge || !Number.isFinite(ledge.row)) return null;
+    const row = ledge.row;
+    const startX = Number.isFinite(ledge.startColumn) ? ledge.startColumn * TILE : -Infinity;
+    const endX = Number.isFinite(ledge.endColumn)
+      ? ledge.endColumn * TILE
+      : Number.isFinite(ledge.startColumn) && Number.isFinite(ledge.widthTiles)
+        ? (ledge.startColumn + ledge.widthTiles) * TILE
+        : Infinity;
+    const topY = row * TILE;
+    return this.platformRuns.find((run) => {
+      const sameRow = Math.abs(run.topY - topY) < 1;
+      const overlaps = run.endX > startX && run.startX < endX;
+      return sameRow && overlaps;
+    }) || null;
+  }
+
+  isPlayerOnFinalElevatorDiveLedge(direction = 1) {
+    if (!this.finalElevatorCompleted || !this.isPlayerOnFinalElevator()) return false;
+    const platformBody = this.finalElevator?.body?.body;
+    if (!platformBody) return false;
+    const run = {
+      startX: platformBody.x,
+      endX: platformBody.x + platformBody.width
+    };
+    return this.isPlayerNearDiveRunEdge(run, direction);
+  }
+
+  isPlayerNearDiveRunEdge(run, direction = 1) {
+    if (!run || !this.player?.body) return false;
     const body = this.player.body;
     const distanceToEdge = direction > 0
       ? run.endX - (body.x + body.width)
