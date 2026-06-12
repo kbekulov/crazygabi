@@ -114,6 +114,8 @@ const BRICK_SCALE = 0.27;
 const FALLING_OBJECT_SPAWN_OFFSET = 140;
 const EARTHQUAKE_SFX_KEY = "earthquake-1";
 const MAGPIE_CALL_SFX_KEY = "magpie-call-1";
+const HAYSTACK_LAND_SFX_KEY = "haystack-land";
+const HAYSTACK_WALKIN_SFX_KEY = "haystack-walkin";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
@@ -223,7 +225,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-ban-dive-double-jump";
+const ASSET_VERSION = "20260612-haystack-sfx";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1891,6 +1893,10 @@ class PlayScene extends Phaser.Scene {
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
       if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
       if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
+      if (level.haystacks?.length) {
+        audio(HAYSTACK_LAND_SFX_KEY, this.getSfxPath(HAYSTACK_LAND_SFX_KEY));
+        audio(HAYSTACK_WALKIN_SFX_KEY, this.getSfxPath(HAYSTACK_WALKIN_SFX_KEY));
+      }
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
@@ -2011,7 +2017,9 @@ class PlayScene extends Phaser.Scene {
   getSfxPath(key) {
     return {
       [EARTHQUAKE_SFX_KEY]: "./public/assets/sound/sfx/earthquake_1.mp3",
-      [MAGPIE_CALL_SFX_KEY]: "./public/assets/sound/sfx/magpie_call_1.mp3"
+      [MAGPIE_CALL_SFX_KEY]: "./public/assets/sound/sfx/magpie_call_1.mp3",
+      [HAYSTACK_LAND_SFX_KEY]: "./public/assets/sound/sfx/haystack_land.mp3",
+      [HAYSTACK_WALKIN_SFX_KEY]: "./public/assets/sound/sfx/haystack_walkin.mp3"
     }[key];
   }
 
@@ -4458,11 +4466,15 @@ class PlayScene extends Phaser.Scene {
       this.stopScriptedHaystackDive();
       this.resetGabiDiveState();
       this.settlePlayerOnHaystackPlatform(haystack);
-      if (diveImpact) this.animateHaystackImpact(haystack);
+      if (diveImpact) {
+        this.animateHaystackImpact(haystack);
+        this.playLevelSfx(HAYSTACK_LAND_SFX_KEY, 0.58);
+      }
     }
     if (!shouldSettle && touchSpeed < HAY_BURST_MIN_TOUCH_SPEED) return;
     if (now - (haystack.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
     haystack.setData("lastBurstAt", now);
+    if (!diveImpact) this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.45);
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
   }
 
