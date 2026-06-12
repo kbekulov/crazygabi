@@ -1005,11 +1005,20 @@ function createLevelFive() {
   return rows.map((row) => row.join(""));
 }
 
+function createQuestProgress() {
+  return {
+    birdAttackUsed: false,
+    leapOfFaith: false
+  };
+}
+
 const state = {
   levelIndex: 0,
   score: 0,
   gems: 0,
   totalGems: 0,
+  totalEnemies: 0,
+  enemiesDefeated: 0,
   lives: 3,
   timeLeft: TIME_LIMIT,
   hasKey: false,
@@ -1022,6 +1031,7 @@ const state = {
   resetProgressOnCreate: true,
   autoStartLevel: false,
   pendingLevelPrompt: null,
+  questProgress: createQuestProgress(),
   difficulty: DIFFICULTY_HARD
 };
 
@@ -1054,6 +1064,7 @@ const hud = {
   itemPickupOk: document.querySelector("#item-pickup-ok"),
   coinIcon: document.querySelector("#coin-icon"),
   keyIcon: document.querySelector("#key-icon"),
+  questList: document.querySelector("#quest-list"),
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
   itemActionKey: document.querySelector("#item-action-key"),
@@ -1125,6 +1136,7 @@ function updateHud() {
   hud.time.textContent = String(state.timeLeft).padStart(3, "0");
   hud.key.textContent = state.hasKey ? "01" : "00";
   updateEquippedHud();
+  updateQuestHud();
 }
 
 function updateEquippedHud() {
@@ -1154,6 +1166,55 @@ function updateBirdCooldownHud(progress = 0) {
   const value = Phaser.Math.Clamp(progress || 0, 0, 1);
   hud.birdCooldown.style.setProperty("--bird-cooldown-progress", value.toFixed(3));
   hud.birdCooldown.style.setProperty("--bird-cooldown-hidden", `${(value * 100).toFixed(1)}%`);
+}
+
+function getActiveLevel() {
+  return LEVELS[state.levelIndex] || LEVELS[0];
+}
+
+function levelHasQuestCell(level, cell) {
+  return (level?.rows || []).some((row) => row.includes(cell));
+}
+
+function getLevelQuestDefinitions(level = getActiveLevel()) {
+  const quests = [];
+  if (levelHasQuestCell(level, "k")) {
+    quests.push({ key: "key", label: "FIND THE KEY", complete: () => state.hasKey });
+  }
+  if (state.totalGems > 0 || levelHasQuestCell(level, "g") || levelHasQuestCell(level, "c")) {
+    quests.push({ key: "coins", label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.gems >= state.totalGems });
+  }
+  if (level.actionAbility === "command-birds") {
+    quests.push({ key: "bird", label: "USE BIRD ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) });
+  }
+  if (level.manualDiveLedges?.length || level.haystacks?.length) {
+    quests.push({ key: "leap", label: "DO A LEAP OF FAITH", complete: () => Boolean(state.questProgress?.leapOfFaith) });
+  }
+  if (state.totalEnemies > 0 || levelHasQuestCell(level, "m")) {
+    quests.push({ key: "enemies", label: "DEFEAT ALL ENEMIES", complete: () => state.totalEnemies > 0 && state.enemiesDefeated >= state.totalEnemies });
+  }
+  return quests;
+}
+
+function updateQuestHud() {
+  if (!hud.questList) return;
+  const quests = getLevelQuestDefinitions();
+  const visible = Boolean(state.running && !state.won && quests.length);
+  hud.questList.hidden = !visible;
+  if (!visible) {
+    hud.questList.replaceChildren();
+    return;
+  }
+
+  hud.questList.replaceChildren(
+    ...quests.map((quest) => {
+      const complete = quest.complete();
+      const row = document.createElement("span");
+      row.className = `hud-quest${complete ? " is-complete" : ""}`;
+      row.textContent = `${quest.label} [ ${complete ? "X" : " "} ]`;
+      return row;
+    })
+  );
 }
 
 function getCookieValue(name) {
@@ -1283,6 +1344,9 @@ function resetGameProgress() {
   state.levelIndex = 0;
   state.score = 0;
   state.gems = 0;
+  state.totalGems = 0;
+  state.totalEnemies = 0;
+  state.enemiesDefeated = 0;
   state.lives = 3;
   state.timeLeft = TIME_LIMIT;
   state.hasKey = false;
@@ -1295,6 +1359,8 @@ function resetGameProgress() {
   state.resetProgressOnCreate = false;
   state.autoStartLevel = false;
   state.pendingLevelPrompt = null;
+  state.questProgress = createQuestProgress();
+  updateQuestHud();
 }
 
 function hardResetDocument() {
@@ -1717,6 +1783,9 @@ class PlayScene extends Phaser.Scene {
     this.catFollowPlayerAfterElevator = false;
 
     state.totalGems = 0;
+    state.totalEnemies = 0;
+    state.enemiesDefeated = 0;
+    state.questProgress = createQuestProgress();
     this.createAnimations();
     this.planWallForegroundTiles();
     this.buildLevel();
@@ -3083,6 +3152,7 @@ class PlayScene extends Phaser.Scene {
           enemy.play(`${enemySprite}-move`);
           this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
           this.attachEnemyLabel(enemy);
+          state.totalEnemies += 1;
         }
         if (cell === "a") {
           const hazardKey = this.level.fallingHazard || "falling-acorn";
@@ -4091,6 +4161,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.moves = true;
     this.player.body.setAllowGravity(true);
     state.running = true;
+    updateHud();
     this.startTimer();
     this.scheduleNextQuake(this.time.now + 1800);
     this.showGabiSpeech(this.level.startSpeech);
@@ -4284,7 +4355,9 @@ class PlayScene extends Phaser.Scene {
     const target = this.findNearestVisibleLivingEnemy();
 
     this.lastBirdAttackAt = time;
+    state.questProgress.birdAttackUsed = true;
     updateBirdCooldownHud(1);
+    updateQuestHud();
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
@@ -4867,6 +4940,10 @@ class PlayScene extends Phaser.Scene {
       this.player.body.velocity.y > 80;
     const diveImpact = Boolean(this.scriptedHaystackDive) || this.gabiDiveActive;
     if (shouldSettle) {
+      if (diveImpact) {
+        state.questProgress.leapOfFaith = true;
+        updateQuestHud();
+      }
       this.stopScriptedHaystackDive();
       if (diveImpact) this.finishDiveCameraZoomImpact();
       this.resetGabiDiveState({ restoreCamera: !diveImpact });
@@ -7648,6 +7725,7 @@ class PlayScene extends Phaser.Scene {
 
   defeatEnemy(enemy) {
     if (!enemy?.active || enemy.getData("dying")) return;
+    state.enemiesDefeated = Math.min(state.totalEnemies, state.enemiesDefeated + 1);
     this.playLevelSfx(KILL_SFX_KEY, 0.39);
     this.tryDropHeart(enemy.x, enemy.y);
     enemy.setData("dying", true);
@@ -7880,6 +7958,9 @@ class PlayScene extends Phaser.Scene {
     state.hasBirdControl = false;
     state.hasAcornBasket = false;
     state.hasLantern = false;
+    state.totalEnemies = 0;
+    state.enemiesDefeated = 0;
+    state.questProgress = createQuestProgress();
     state.won = false;
     state.running = false;
     state.resetProgressOnCreate = false;

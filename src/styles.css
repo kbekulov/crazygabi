@@ -122,6 +122,44 @@ button:active {
   justify-items: end;
 }
 
+.hud-quests {
+  position: absolute;
+  top: clamp(72px, 8.6vw, 104px);
+  right: 24px;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  max-width: min(330px, 34vw);
+  padding: 2px 0;
+  color: rgba(244, 220, 176, 0.84);
+  font-size: clamp(0.46rem, 0.82vw, 0.62rem);
+  font-weight: 900;
+  line-height: 1.06;
+  text-align: right;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.72);
+}
+
+.hud-quests[hidden] {
+  display: none;
+}
+
+.hud-quest {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.82;
+}
+
+.hud-quest.is-complete {
+  color: rgba(213, 173, 115, 0.66);
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  opacity: 0.72;
+}
+
 .bird-cooldown {
   --bird-cooldown-progress: 0;
   --bird-cooldown-hidden: 100%;
@@ -1183,6 +1221,13 @@ button:active {
   .hud-top-right,
   .hud-score {
     right: 8px;
+  }
+
+  .hud-quests {
+    top: 58px;
+    right: 12px;
+    max-width: min(250px, 44vw);
+    gap: 3px;
   }
 
   .hud-top-left,
