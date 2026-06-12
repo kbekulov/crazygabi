@@ -38,6 +38,11 @@ const AUTUMN_LEAF_FRAME_HEIGHT = 326;
 const AUTUMN_LEAF_MAX_COUNT = 21;
 const AUTUMN_LEAF_MIN_DEPTH = -10;
 const AUTUMN_LEAF_MAX_DEPTH = 31.5;
+const DIVE_FIELD_LEAF_COUNT = 86;
+const DIVE_FIELD_LEAF_MIN_SPEED_X = 22;
+const DIVE_FIELD_LEAF_MAX_SPEED_X = 86;
+const DIVE_FIELD_LEAF_MIN_SPEED_Y = 10;
+const DIVE_FIELD_LEAF_MAX_SPEED_Y = 38;
 const GAZEBO_SCALE = 0.23;
 const GAZEBO_BACK_DEPTH = -9;
 const GAZEBO_FRONT_DEPTH = 34;
@@ -216,7 +221,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-magpie-idle-angle";
+const ASSET_VERSION = "20260612-dive-leaf-field";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -523,7 +528,14 @@ const LEVELS = [
       sprite: "autumn-leaf-1",
       minDelay: 240,
       maxDelay: 720,
-      burstChance: 0.28
+      burstChance: 0.28,
+      diveField: {
+        count: DIVE_FIELD_LEAF_COUNT,
+        xMin: 30 * TILE,
+        xMax: 76 * TILE,
+        yMin: 12 * TILE,
+        yMax: 158 * TILE
+      }
     },
     constructionBillboard: {
       x: 9 * TILE,
@@ -1650,6 +1662,7 @@ class PlayScene extends Phaser.Scene {
     this.nextBirdFlockAt = 0;
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
+    this.diveFieldLeaves = [];
     this.gabiActionUntil = 0;
     this.gabiActionRestoreTimer = null;
     this.elevatorSignBubble = null;
@@ -1668,6 +1681,7 @@ class PlayScene extends Phaser.Scene {
     this.buildLevel();
     this.createHaystacks();
     this.createDiveIndicatorBirds();
+    this.createDiveFieldLeaves();
     this.createLightRays();
     this.createPlayer();
     this.createLanternOverlay();
@@ -4024,6 +4038,7 @@ class PlayScene extends Phaser.Scene {
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
     this.updateDiveIndicatorBirds(time, delta);
+    this.updateDiveFieldLeaves(time, delta);
     this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
@@ -5426,6 +5441,73 @@ class PlayScene extends Phaser.Scene {
       if (!outside) return true;
       leaf.destroy();
       return false;
+    });
+  }
+
+  createDiveFieldLeaves() {
+    const config = this.level.ambientLeaves;
+    const field = config?.diveField;
+    if (!field || !this.textures.exists(config.sprite)) return;
+    this.clearDiveFieldLeaves();
+    const count = field.count ?? DIVE_FIELD_LEAF_COUNT;
+    for (let index = 0; index < count; index += 1) {
+      const leaf = this.add.sprite(
+        Phaser.Math.FloatBetween(field.xMin, field.xMax),
+        Phaser.Math.FloatBetween(field.yMin, field.yMax),
+        config.sprite,
+        Phaser.Math.Between(0, 2)
+      );
+      const scale = Phaser.Math.FloatBetween(0.046, 0.088);
+      const mirrored = Phaser.Math.Between(0, 1) === 1 ? -1 : 1;
+      leaf.setScale(scale * mirrored, scale * (Phaser.Math.Between(0, 1) === 1 ? -1 : 1));
+      leaf.setFlipX(Phaser.Math.Between(0, 1) === 1);
+      leaf.setFlipY(Phaser.Math.Between(0, 1) === 1);
+      leaf.setDepth(Phaser.Math.FloatBetween(AUTUMN_LEAF_MIN_DEPTH, AUTUMN_LEAF_MAX_DEPTH));
+      leaf.setAlpha(Phaser.Math.FloatBetween(0.42, 0.84));
+      leaf.setAngle(Phaser.Math.Between(0, 359));
+      this.diveFieldLeaves.push({
+        leaf,
+        field,
+        vx: Phaser.Math.FloatBetween(DIVE_FIELD_LEAF_MIN_SPEED_X, DIVE_FIELD_LEAF_MAX_SPEED_X),
+        vy: Phaser.Math.FloatBetween(DIVE_FIELD_LEAF_MIN_SPEED_Y, DIVE_FIELD_LEAF_MAX_SPEED_Y),
+        spin: Phaser.Math.FloatBetween(-3.4, 3.4),
+        phase: Phaser.Math.FloatBetween(0, Math.PI * 2),
+        gustFrequency: Phaser.Math.FloatBetween(1.2, 3.4),
+        gustStrength: Phaser.Math.FloatBetween(10, 42),
+        curlFrequency: Phaser.Math.FloatBetween(2.6, 5.8),
+        curlStrength: Phaser.Math.FloatBetween(8, 32)
+      });
+    }
+  }
+
+  clearDiveFieldLeaves() {
+    this.diveFieldLeaves?.forEach((entry) => entry.leaf?.destroy?.());
+    this.diveFieldLeaves = [];
+  }
+
+  updateDiveFieldLeaves(time = 0, delta = 0) {
+    if (!this.diveFieldLeaves?.length || state.won) return;
+    const seconds = delta / 1000;
+    this.diveFieldLeaves = this.diveFieldLeaves.filter((entry) => {
+      const leaf = entry.leaf;
+      if (!leaf?.active) return false;
+      const ageSeconds = Math.max(0, time / 1000);
+      const gust = Math.sin(ageSeconds * entry.gustFrequency + entry.phase) * entry.gustStrength;
+      const curl = Math.sin(ageSeconds * entry.curlFrequency + entry.phase * 0.7) * entry.curlStrength;
+      leaf.x += (entry.vx + gust) * seconds;
+      leaf.y += (entry.vy + curl) * seconds;
+      leaf.rotation += entry.spin * seconds;
+
+      const field = entry.field;
+      if (leaf.x > field.xMax + 90) {
+        leaf.x = field.xMin - Phaser.Math.Between(20, 90);
+        leaf.y = Phaser.Math.FloatBetween(field.yMin, field.yMax);
+      }
+      if (leaf.y > field.yMax + 80) {
+        leaf.y = field.yMin - Phaser.Math.Between(10, 70);
+        leaf.x = Phaser.Math.FloatBetween(field.xMin, field.xMax);
+      }
+      return true;
     });
   }
 
@@ -6969,6 +7051,7 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
     this.clearDiveIndicatorBirds();
+    this.clearDiveFieldLeaves();
     this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
