@@ -7,9 +7,11 @@ const MAX_LIVES = 9;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
-const GABI_DIVE_SCALE = (GABI_FRAME_HEIGHT * GABI_SCALE) / 775;
+const GABI_DIVE_SCALE = ((GABI_FRAME_HEIGHT * GABI_SCALE) / 775) * 0.8;
 const GABI_DIVE_EDGE_DISTANCE = 42;
 const GABI_DIVE_MIN_DURATION = 260;
+const GABI_DIVE_ANGLE = 15;
+const GABI_DIVE_ANGLE_DURATION = 900;
 const BIRD_FRAME_WIDTH = 243;
 const BIRD_FRAME_HEIGHT = 243;
 const BIRD_MIN_FLOCK_SIZE = 5;
@@ -199,7 +201,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-gabi-dive";
+const ASSET_VERSION = "20260612-gabi-dive-scale";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1600,6 +1602,7 @@ class PlayScene extends Phaser.Scene {
     this.lastPickupSpeechAt = -Infinity;
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
+    this.gabiDiveTween = null;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -4180,13 +4183,25 @@ class PlayScene extends Phaser.Scene {
     if (!this.textures.exists("gabi-dive") || !this.player) return;
     this.gabiDiveActive = true;
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
+    const direction = this.player.flipX ? -1 : 1;
+    this.gabiDiveTween?.remove?.();
+    this.player.setAngle(0);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("dive");
+    this.gabiDiveTween = this.tweens.add({
+      targets: this.player,
+      angle: direction * GABI_DIVE_ANGLE,
+      duration: GABI_DIVE_ANGLE_DURATION,
+      ease: "Sine.easeOut"
+    });
   }
 
   resetGabiDiveState() {
+    this.gabiDiveTween?.remove?.();
+    this.gabiDiveTween = null;
     this.gabiDiveActive = false;
     this.gabiDiveUntil = 0;
+    if (this.player) this.player.setAngle(0);
   }
 
   spawnAttackBirdFlock(target, time = 0) {
@@ -4293,6 +4308,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     this.player.setScale(GABI_SCALE);
+    this.player.setAngle(0);
     const animationKey = name === "wing-jump"
       ? "gabi-wing-jump"
       : name === "glide"
