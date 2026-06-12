@@ -128,13 +128,13 @@ button:active {
   right: 24px;
   display: grid;
   justify-items: end;
-  gap: 4px;
-  max-width: min(330px, 34vw);
+  gap: 6px;
+  max-width: min(430px, 42vw);
   padding: 2px 0;
-  color: rgba(244, 220, 176, 0.84);
-  font-size: clamp(0.46rem, 0.82vw, 0.62rem);
+  color: rgba(244, 220, 176, 0.92);
+  font-size: clamp(0.62rem, 1.08vw, 0.86rem);
   font-weight: 900;
-  line-height: 1.06;
+  line-height: 1.08;
   text-align: right;
   text-transform: uppercase;
   text-shadow: 2px 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.72);
@@ -155,8 +155,6 @@ button:active {
 
 .hud-quest.is-complete {
   color: rgba(213, 173, 115, 0.66);
-  text-decoration: line-through;
-  text-decoration-thickness: 2px;
   opacity: 0.72;
 }
 
@@ -1224,10 +1222,10 @@ button:active {
   }
 
   .hud-quests {
-    top: 58px;
+    top: 64px;
     right: 12px;
-    max-width: min(250px, 44vw);
-    gap: 3px;
+    max-width: min(330px, 56vw);
+    gap: 4px;
   }
 
   .hud-top-left,

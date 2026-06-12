@@ -323,7 +323,8 @@ const LEVELS = [
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     introTitle: "Level 1",
-    introCopy: "Collect the coins, grab the brass key, and reach the door before time runs out."
+    introCopy: "Collect the coins, grab the brass key, and reach the door before time runs out.",
+    questTasks: ["key", "coins", "enemies"]
   },
   {
     name: "Level 2",
@@ -374,7 +375,8 @@ const LEVELS = [
       floorRow: 18,
       speech: "This tunnel is dark, young lady. Please pick up that lantern over there to proceed."
     },
-    introCopy: "Find the lantern, move carefully through the dark tunnel, and survive what waits just beyond the edge of the light."
+    introCopy: "Find the lantern, move carefully through the dark tunnel, and survive what waits just beyond the edge of the light.",
+    questTasks: ["lantern", "key", "coins", "enemies"]
   },
   {
     name: "Level 3",
@@ -438,7 +440,8 @@ const LEVELS = [
         "underground-wall-5"
       ]
     },
-    introCopy: "Follow the strange cat through the lower city, collect coins, claim the acorn basket, and fight your way to the brass key and exit."
+    introCopy: "Follow the strange cat through the lower city, collect coins, claim the acorn basket, and fight your way to the brass key and exit.",
+    questTasks: ["basket", "key", "coins", "enemies"]
   },
   {
     name: "Level 4",
@@ -519,7 +522,8 @@ const LEVELS = [
       { x: 4210, y: 2960, topWidth: 74, bottomWidth: 430, height: 2360, lean: 160, alpha: 0.35, thickness: 2, layerAlpha: 1.95, opacityMode: "pulse", skipCrackGlow: true, beamBoost: 2.4 },
       { x: 5120, y: 3160, topWidth: 106, bottomWidth: 620, height: 2140, lean: 220, alpha: 0.4, thickness: 2, layerAlpha: 2.15, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "steady", skipCrackGlow: true, beamBoost: 2.75 }
     ],
-    introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator toward the stranger above."
+    introCopy: "Follow the strange cat across the cathedral rooftops, find the key, and ride the old elevator toward the stranger above.",
+    questTasks: ["key", "bird", "elevator", "leap", "coins", "enemies"]
   },
   {
     name: "Level 5",
@@ -598,7 +602,8 @@ const LEVELS = [
       { x: 58 * TILE, floorRow: 160 }
     ],
     introTitle: "Level 5",
-    introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below."
+    introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below.",
+    questTasks: ["leap", "bird", "coins"]
   }
 ];
 
@@ -1008,7 +1013,8 @@ function createLevelFive() {
 function createQuestProgress() {
   return {
     birdAttackUsed: false,
-    leapOfFaith: false
+    leapOfFaith: false,
+    elevatorRidden: false
   };
 }
 
@@ -1016,6 +1022,7 @@ const state = {
   levelIndex: 0,
   score: 0,
   gems: 0,
+  levelGems: 0,
   totalGems: 0,
   totalEnemies: 0,
   enemiesDefeated: 0,
@@ -1177,23 +1184,32 @@ function levelHasQuestCell(level, cell) {
 }
 
 function getLevelQuestDefinitions(level = getActiveLevel()) {
-  const quests = [];
-  if (levelHasQuestCell(level, "k")) {
-    quests.push({ key: "key", label: "FIND THE KEY", complete: () => state.hasKey });
-  }
-  if (state.totalGems > 0 || levelHasQuestCell(level, "g") || levelHasQuestCell(level, "c")) {
-    quests.push({ key: "coins", label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.gems >= state.totalGems });
-  }
-  if (level.actionAbility === "command-birds") {
-    quests.push({ key: "bird", label: "USE BIRD ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) });
-  }
-  if (level.manualDiveLedges?.length || level.haystacks?.length) {
-    quests.push({ key: "leap", label: "DO A LEAP OF FAITH", complete: () => Boolean(state.questProgress?.leapOfFaith) });
-  }
-  if (state.totalEnemies > 0 || levelHasQuestCell(level, "m")) {
-    quests.push({ key: "enemies", label: "DEFEAT ALL ENEMIES", complete: () => state.totalEnemies > 0 && state.enemiesDefeated >= state.totalEnemies });
-  }
-  return quests;
+  const taskTypes = level.questTasks || [
+    ...(levelHasQuestCell(level, "l") ? ["lantern"] : []),
+    ...(levelHasQuestCell(level, "b") ? ["basket"] : []),
+    ...(levelHasQuestCell(level, "k") ? ["key"] : []),
+    ...(levelHasQuestCell(level, "g") || levelHasQuestCell(level, "c") ? ["coins"] : []),
+    ...(level.actionAbility === "command-birds" ? ["bird"] : []),
+    ...(level.manualDiveLedges?.length || level.haystacks?.length ? ["leap"] : []),
+    ...(level.finalElevator ? ["elevator"] : []),
+    ...(levelHasQuestCell(level, "m") ? ["enemies"] : [])
+  ];
+  const definitions = {
+    lantern: { label: "PICK UP THE LANTERN", complete: () => state.hasLantern },
+    basket: { label: "CLAIM THE ACORN BASKET", complete: () => state.hasAcornBasket },
+    key: { label: "FIND THE KEY", complete: () => state.hasKey },
+    coins: { label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.levelGems >= state.totalGems },
+    bird: { label: "USE BIRD ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) },
+    leap: { label: "DO A LEAP OF FAITH", complete: () => Boolean(state.questProgress?.leapOfFaith) },
+    elevator: { label: "RIDE THE ELEVATOR", complete: () => Boolean(state.questProgress?.elevatorRidden) },
+    enemies: { label: "DEFEAT ALL ENEMIES", complete: () => state.totalEnemies > 0 && state.enemiesDefeated >= state.totalEnemies }
+  };
+  return taskTypes
+    .map((type) => {
+      const definition = definitions[type];
+      return definition ? { key: type, ...definition } : null;
+    })
+    .filter(Boolean);
 }
 
 function updateQuestHud() {
@@ -1340,10 +1356,20 @@ function setItemPickupVisible(visible, details = {}) {
   hud.itemPickupInstruction.textContent = details.instruction || "";
 }
 
+function createSpeechText(scene, x, y, text, style = {}) {
+  const label = scene.add.text(x, y, text, style);
+  if (typeof label.setResolution === "function") {
+    const resolution = Phaser.Math.Clamp(window.devicePixelRatio || 2, 2, 3);
+    label.setResolution(resolution);
+  }
+  return label;
+}
+
 function resetGameProgress() {
   state.levelIndex = 0;
   state.score = 0;
   state.gems = 0;
+  state.levelGems = 0;
   state.totalGems = 0;
   state.totalEnemies = 0;
   state.enemiesDefeated = 0;
@@ -1783,6 +1809,7 @@ class PlayScene extends Phaser.Scene {
     this.catFollowPlayerAfterElevator = false;
 
     state.totalGems = 0;
+    state.levelGems = 0;
     state.totalEnemies = 0;
     state.enemiesDefeated = 0;
     state.questProgress = createQuestProgress();
@@ -1814,7 +1841,6 @@ class PlayScene extends Phaser.Scene {
     this.player.body.moves = false;
     this.player.setVelocity(0, 0);
 
-    state.gems = 0;
     state.timeLeft = this.level.timeLimit;
     state.hasKey = false;
     state.hasDoubleJump = false;
@@ -2918,7 +2944,7 @@ class PlayScene extends Phaser.Scene {
   createBillboardPrompt(text = "Press [ 0 ] to interact", width = 146) {
     const bubbleWidth = width;
     const prompt = this.add.container(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
-    const label = this.add.text(0, 0, text, {
+    const label = createSpeechText(this, 0, 0, text, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "9px",
       color: "#f4f0dc",
@@ -3880,7 +3906,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.mysteriousMan || !text) return;
     this.mysteriousManSpeechBubble?.destroy(true);
     const container = this.add.container(this.mysteriousMan.x, this.mysteriousMan.y - 96);
-    const label = this.add.text(0, 0, text, {
+    const label = createSpeechText(this, 0, 0, text, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "10px",
       color: "#f4f0dc",
@@ -5253,7 +5279,7 @@ class PlayScene extends Phaser.Scene {
     bubble.fillStyle(0x050505, 0.86);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, text, {
+    const label = createSpeechText(this, 0, -bubbleHeight / 2, text, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "11px",
       color: "#f4f0dc",
@@ -5308,7 +5334,7 @@ class PlayScene extends Phaser.Scene {
     bubble.fillStyle(0x050505, 0.9);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, this.oldLadySpeechText, {
+    const label = createSpeechText(this, 0, -bubbleHeight / 2, this.oldLadySpeechText, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "10px",
       color: "#f4f0dc",
@@ -5358,7 +5384,7 @@ class PlayScene extends Phaser.Scene {
     bubble.fillStyle(0x050505, 0.9);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, text, {
+    const label = createSpeechText(this, 0, -bubbleHeight / 2, text, {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "10px",
       color: "#f4f0dc",
@@ -5555,6 +5581,8 @@ class PlayScene extends Phaser.Scene {
     if (!elevator) return;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = true;
+    state.questProgress.elevatorRidden = true;
+    updateQuestHud();
     elevator.body.setVelocity(0, 0);
     elevator.body.setPosition(elevator.body.x, elevator.topY);
     elevator.body.body.updateFromGameObject();
@@ -5575,6 +5603,8 @@ class PlayScene extends Phaser.Scene {
     if (!elevator) return;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
+    state.questProgress.elevatorRidden = false;
+    updateQuestHud();
     this.finalElevatorStartedAt = 0;
     this.finalElevatorReadySince = 0;
     elevator.body.setVelocity(0, 0);
@@ -5733,7 +5763,7 @@ class PlayScene extends Phaser.Scene {
     bubble.fillStyle(0x050505, 0.9);
     bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
     bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = this.add.text(0, -bubbleHeight / 2, "KEY PLEASE", {
+    const label = createSpeechText(this, 0, -bubbleHeight / 2, "KEY PLEASE", {
       fontFamily: "\"Courier New\", monospace",
       fontSize: "10px",
       color: "#f4f0dc",
@@ -7628,6 +7658,7 @@ class PlayScene extends Phaser.Scene {
   collectGem(_player, gem) {
     gem.disableBody(true, true);
     state.gems += 1;
+    state.levelGems += 1;
     awardScore(100);
     this.playLevelSfx(COIN_PICKUP_SFX_KEY, 0.44);
     updateHud();
@@ -7902,7 +7933,7 @@ class PlayScene extends Phaser.Scene {
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
     if (this.timerEvent) this.timerEvent.remove(false);
-    awardScore(state.gems === state.totalGems ? 1000 : 350);
+    awardScore(state.levelGems === state.totalGems ? 1000 : 350);
     awardScore(state.timeLeft * 10);
     updateHud();
     if (state.levelIndex < LEVELS.length - 1) {
@@ -7951,6 +7982,7 @@ class PlayScene extends Phaser.Scene {
     if (resetScore) {
       state.score = 0;
       state.gems = 0;
+      state.levelGems = 0;
       state.lives = 3;
     }
     state.hasKey = false;
