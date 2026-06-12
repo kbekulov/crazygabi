@@ -16,6 +16,9 @@ const GABI_DIVE_ANGLE_DURATION = 900;
 const DIVE_WIND_FADE_DELAY_MS = 1500;
 const DIVE_WIND_RAMP_MS = 1000;
 const DIVE_WIND_LINE_COUNT = 36;
+const DIVE_CAMERA_ZOOM = 1.85;
+const DIVE_CAMERA_ZOOM_IN_MS = 1800;
+const DIVE_CAMERA_SNAP_OUT_MS = 220;
 const BIRD_FRAME_WIDTH = 243;
 const BIRD_FRAME_HEIGHT = 243;
 const BIRD_MIN_FLOCK_SIZE = 5;
@@ -1674,6 +1677,9 @@ class PlayScene extends Phaser.Scene {
     this.diveWindStartedAt = 0;
     this.nextDiveWindShakeAt = 0;
     this.diveWindLineProfile = [];
+    this.diveCameraZoomActive = false;
+    this.diveCameraZoomTween = null;
+    this.diveCameraZoomProxy = null;
     this.pendingDiveLedge = null;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
@@ -4110,6 +4116,7 @@ class PlayScene extends Phaser.Scene {
     this.updateDiveIndicatorBirds(time, delta);
     this.updateDiveFieldLeaves(time, delta);
     this.updateDiveWindLines(time);
+    this.updateDiveCameraZoom();
     this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
@@ -4122,6 +4129,7 @@ class PlayScene extends Phaser.Scene {
     if (this.updateScriptedHaystackDive(time, delta)) {
       if (this.player.y > this.levelHeight + 56) this.loseLife();
       this.updateDiveWindLines(time);
+      this.updateDiveCameraZoom();
       this.updateGabiAnimation(false, false);
       return;
     }
@@ -4188,6 +4196,7 @@ class PlayScene extends Phaser.Scene {
     if (action) this.performAction(time);
     this.constrainPlayerToActiveFinalElevator();
     this.updateDiveWindLines(time);
+    this.updateDiveCameraZoom();
 
     if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
@@ -4500,6 +4509,7 @@ class PlayScene extends Phaser.Scene {
     this.nextDiveWindShakeAt = time + DIVE_WIND_FADE_DELAY_MS + 180;
     this.randomizeDiveWindLineProfile();
     this.startDiveWindSfx();
+    this.startDiveCameraZoom();
     const direction = this.player.flipX ? -1 : 1;
     this.player.setAngle(0);
     this.currentGabiAnimation = null;
@@ -4525,6 +4535,68 @@ class PlayScene extends Phaser.Scene {
     const direction = this.player.flipX ? -1 : 1;
     if (this.gabiDiveAngleDirection === direction && !immediate) return;
     this.tweenGabiDiveAngle(direction, immediate ? 0 : 180);
+  }
+
+  startDiveCameraZoom() {
+    if (!this.player || !this.cameras?.main || this.birdAttackZoomActive) return;
+    this.cancelDiveCameraZoom();
+    const camera = this.cameras.main;
+    const proxy = { zoom: camera.zoom || 1 };
+    this.diveCameraZoomActive = true;
+    this.diveCameraZoomProxy = proxy;
+    camera.stopFollow();
+    this.updateDiveCameraZoom();
+    this.diveCameraZoomTween = this.tweens.add({
+      targets: proxy,
+      zoom: DIVE_CAMERA_ZOOM,
+      duration: DIVE_CAMERA_ZOOM_IN_MS,
+      ease: "Sine.easeInOut",
+      onUpdate: () => this.updateDiveCameraZoom()
+    });
+  }
+
+  updateDiveCameraZoom() {
+    if (!this.diveCameraZoomActive || !this.diveCameraZoomProxy || !this.player?.active || !this.cameras?.main) return;
+    const camera = this.cameras.main;
+    camera.setZoom(this.diveCameraZoomProxy.zoom);
+    camera.centerOn(this.player.x, this.player.y - 16);
+  }
+
+  finishDiveCameraZoomImpact() {
+    if (!this.cameras?.main || !this.player) return;
+    if (!this.diveCameraZoomActive) {
+      this.cameras.main.shake(220, 0.008);
+      return;
+    }
+    const camera = this.cameras.main;
+    const proxy = this.diveCameraZoomProxy || { zoom: camera.zoom || 1 };
+    this.diveCameraZoomTween?.remove?.();
+    camera.shake(260, 0.012);
+    this.diveCameraZoomTween = this.tweens.add({
+      targets: proxy,
+      zoom: 1,
+      duration: DIVE_CAMERA_SNAP_OUT_MS,
+      ease: "Cubic.easeOut",
+      onUpdate: () => {
+        camera.setZoom(proxy.zoom);
+        camera.centerOn(this.player.x, this.player.y - 12);
+      },
+      onComplete: () => {
+        this.cancelDiveCameraZoom({ restoreCamera: true });
+      }
+    });
+  }
+
+  cancelDiveCameraZoom({ restoreCamera = true } = {}) {
+    this.diveCameraZoomTween?.remove?.();
+    this.diveCameraZoomTween = null;
+    this.diveCameraZoomProxy = null;
+    this.diveCameraZoomActive = false;
+    if (restoreCamera && this.cameras?.main && this.player) {
+      this.cameras.main.setZoom(1);
+      this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+      this.cameras.main.setDeadzone(170, 110);
+    }
   }
 
   startDiveWindSfx() {
@@ -4669,7 +4741,7 @@ class PlayScene extends Phaser.Scene {
     return true;
   }
 
-  resetGabiDiveState() {
+  resetGabiDiveState({ restoreCamera = true } = {}) {
     this.gabiDiveTween?.remove?.();
     this.gabiDiveTween = null;
     this.gabiDiveActive = false;
@@ -4681,6 +4753,7 @@ class PlayScene extends Phaser.Scene {
     this.diveWindStartedAt = 0;
     this.nextDiveWindShakeAt = 0;
     this.diveWindLineProfile = [];
+    if (restoreCamera) this.cancelDiveCameraZoom({ restoreCamera: true });
     if (this.player) this.player.setAngle(0);
   }
 
@@ -4701,7 +4774,8 @@ class PlayScene extends Phaser.Scene {
     const diveImpact = Boolean(this.scriptedHaystackDive) || this.gabiDiveActive;
     if (shouldSettle) {
       this.stopScriptedHaystackDive();
-      this.resetGabiDiveState();
+      if (diveImpact) this.finishDiveCameraZoomImpact();
+      this.resetGabiDiveState({ restoreCamera: !diveImpact });
       this.settlePlayerOnHaystackPlatform(haystack);
       if (diveImpact) {
         this.animateHaystackImpact(haystack);
@@ -7338,6 +7412,7 @@ class PlayScene extends Phaser.Scene {
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
     this.cancelBirdAttackCameraZoom();
+    this.cancelDiveCameraZoom();
     this.clearFinalElevatorCredits();
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
@@ -7614,6 +7689,7 @@ class PlayScene extends Phaser.Scene {
   loseLife() {
     if (!state.running) return;
     this.cancelBirdAttackCameraZoom();
+    this.cancelDiveCameraZoom();
     state.lives -= 1;
     updateHud();
     this.cameras.main.shake(180, 0.012);
