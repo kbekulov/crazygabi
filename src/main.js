@@ -4497,10 +4497,11 @@ class PlayScene extends Phaser.Scene {
       const seed = i * 73.17;
       const x = (seed * 19.31) % VIEW_WIDTH;
       const drift = Math.sin(time * 0.003 + i) * 12;
-      const lineSpeed = speed * (0.68 + ((i * 17) % 9) * 0.12);
-      const y = PLAY_HEIGHT + 110 - ((time * lineSpeed + seed * 11) % (PLAY_HEIGHT + 180));
       const width = i % 9 === 0 ? 4 : i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1;
       const heavyLine = width >= 3;
+      const speedBoost = 0.85 + width * 0.55;
+      const lineSpeed = speed * (0.68 + ((i * 17) % 9) * 0.12) * speedBoost;
+      const y = PLAY_HEIGHT + 110 - ((time * lineSpeed + seed * 11) % (PLAY_HEIGHT + 180));
       const length = (34 + ((i * 31) % 142)) * (heavyLine ? 1.18 : 1);
       const alphaBase = heavyLine ? 0.32 + (i % 2) * 0.08 : 0.09 + ((i % 4) * 0.03);
       const alpha = Phaser.Math.Clamp(alphaBase * ramp, 0, 0.48);
