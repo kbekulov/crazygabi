@@ -1667,6 +1667,7 @@ class PlayScene extends Phaser.Scene {
     this.diveWindGraphics = null;
     this.diveWindStartedAt = 0;
     this.nextDiveWindShakeAt = 0;
+    this.diveWindLineProfile = [];
     this.pendingDiveLedge = null;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
@@ -4413,6 +4414,7 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
     this.diveWindStartedAt = time;
     this.nextDiveWindShakeAt = time + DIVE_WIND_FADE_DELAY_MS + 180;
+    this.randomizeDiveWindLineProfile();
     this.startDiveWindSfx();
     const direction = this.player.flipX ? -1 : 1;
     this.player.setAngle(0);
@@ -4471,6 +4473,25 @@ class PlayScene extends Phaser.Scene {
     return this.diveWindGraphics;
   }
 
+  randomizeDiveWindLineProfile() {
+    this.diveWindLineProfile = Array.from({ length: DIVE_WIND_LINE_COUNT }, (_, index) => {
+      const weightRoll = Phaser.Math.FloatBetween(0, 1);
+      const width = weightRoll > 0.9 ? 4 : weightRoll > 0.72 ? 3 : weightRoll > 0.42 ? 2 : 1;
+      return {
+        x: Phaser.Math.FloatBetween(0, VIEW_WIDTH),
+        phase: Phaser.Math.FloatBetween(0, 999),
+        driftPhase: Phaser.Math.FloatBetween(0, Math.PI * 2),
+        driftSpeed: Phaser.Math.FloatBetween(0.0014, 0.0042),
+        driftAmount: Phaser.Math.FloatBetween(4, 18),
+        width,
+        length: Phaser.Math.FloatBetween(28, 78) * (0.7 + width * 0.45),
+        speed: Phaser.Math.FloatBetween(0.48, 0.92) * (0.72 + width * 0.56),
+        alpha: Phaser.Math.FloatBetween(0.065, 0.105) + width * 0.085,
+        drawOrder: index
+      };
+    });
+  }
+
   updateDiveWindLines(time = 0) {
     const isDiving = Boolean(this.gabiDiveActive || this.scriptedHaystackDive);
     if (!isDiving || !state.running || state.won) {
@@ -4492,22 +4513,16 @@ class PlayScene extends Phaser.Scene {
       this.nextDiveWindShakeAt = time + 180;
     }
 
-    const speed = 0.62;
-    for (let i = 0; i < DIVE_WIND_LINE_COUNT; i += 1) {
-      const seed = i * 73.17;
-      const x = (seed * 19.31) % VIEW_WIDTH;
-      const drift = Math.sin(time * 0.003 + i) * 12;
-      const width = i % 9 === 0 ? 4 : i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1;
-      const heavyLine = width >= 3;
-      const speedBoost = 0.85 + width * 0.55;
-      const lineSpeed = speed * (0.68 + ((i * 17) % 9) * 0.12) * speedBoost;
-      const y = PLAY_HEIGHT + 110 - ((time * lineSpeed + seed * 11) % (PLAY_HEIGHT + 180));
-      const length = (34 + ((i * 31) % 142)) * (heavyLine ? 1.18 : 1);
-      const alphaBase = heavyLine ? 0.32 + (i % 2) * 0.08 : 0.09 + ((i % 4) * 0.03);
-      const alpha = Phaser.Math.Clamp(alphaBase * ramp, 0, 0.48);
+    if (!this.diveWindLineProfile?.length) this.randomizeDiveWindLineProfile();
+    this.diveWindLineProfile.forEach((line) => {
+      const drift = Math.sin(time * line.driftSpeed + line.driftPhase) * line.driftAmount;
+      const y = PLAY_HEIGHT + 110 - ((time * line.speed + line.phase) % (PLAY_HEIGHT + 180));
+      const alpha = Phaser.Math.Clamp(line.alpha * ramp, 0, 0.55);
+      const x = line.x + drift;
+      const width = line.width;
       graphics.lineStyle(width, 0xf5efe0, alpha);
-      graphics.lineBetween(x + drift, y, x + drift, y + length);
-    }
+      graphics.lineBetween(x, y, x, y + line.length);
+    });
   }
 
   clearDiveWindLines() {
@@ -4581,6 +4596,7 @@ class PlayScene extends Phaser.Scene {
     this.clearDiveWindLines();
     this.diveWindStartedAt = 0;
     this.nextDiveWindShakeAt = 0;
+    this.diveWindLineProfile = [];
     if (this.player) this.player.setAngle(0);
   }
 
@@ -7532,7 +7548,6 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
-    state.hasBirdControl = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
     this.thrownItems.clear(true, true);
