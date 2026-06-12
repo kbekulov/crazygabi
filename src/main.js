@@ -62,9 +62,12 @@ const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
 const LIGHT_RAY_IMPACT_DEPTH = PLATFORM_DEPTH + 0.65;
 const LIGHT_RAY_TEXTURE_PADDING = 96;
 const HAYSTACK_SCALE = 0.36;
-const HAYSTACK_DEPTH = PLATFORM_DEPTH + 1.1;
-const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 1;
+const HAYSTACK_DEPTH = 4.7;
+const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
+const SCRIPTED_DIVE_MIN_SPEED_X = 160;
+const SCRIPTED_DIVE_MAX_SPEED_X = 430;
+const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -206,7 +209,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-haystack-dive";
+const ASSET_VERSION = "20260612-scripted-haystack-dive";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -429,7 +432,7 @@ const LEVELS = [
       { type: "final-elevator-top", side: "both" }
     ],
     haystacks: [
-      { x: 175 * TILE, floorRow: 160 }
+      { x: 164 * TILE, floorRow: 145 }
     ],
     mysteriousMan: {
       sprite: "mr-magpie",
@@ -536,6 +539,9 @@ const LEVELS = [
       leapVelocityY: -510,
       exitPadding: 360
     },
+    manualDiveLedges: [
+      { row: 8, startColumn: 0, widthTiles: 30, side: "right", edgeDistance: 96, scriptedHaystackDive: true }
+    ],
     finishZone: {
       x: 452 * TILE,
       y: 154 * TILE
@@ -1618,6 +1624,8 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
     this.gabiDiveTween = null;
+    this.pendingDiveLedge = null;
+    this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
@@ -2695,7 +2703,7 @@ class PlayScene extends Phaser.Scene {
       const haystack = this.haystacks.create(x, y, "haystack");
       haystack.setOrigin(0.5, 1);
       haystack.setScale(config.scale ?? HAYSTACK_SCALE);
-      haystack.setDepth(config.depth ?? HAYSTACK_DEPTH);
+      haystack.setDepth(Math.max(config.depth ?? HAYSTACK_DEPTH, HAYSTACK_DEPTH));
       haystack.body.allowGravity = false;
       haystack.body.immovable = true;
       haystack.body.setSize(270, 84).setOffset(54, 54);
@@ -3979,6 +3987,11 @@ class PlayScene extends Phaser.Scene {
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
     this.updateFinishZone();
+    if (this.updateScriptedHaystackDive(time, delta)) {
+      if (this.player.y > this.levelHeight + 56) this.loseLife();
+      this.updateGabiAnimation(false, false);
+      return;
+    }
 
     const mobileDirection = this.getMobileMoveDirection();
     const left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
@@ -4204,18 +4217,20 @@ class PlayScene extends Phaser.Scene {
   shouldUseGabiDiveJump(left = false, right = false) {
     if (!this.textures.exists("gabi-dive") || !this.player?.body) return false;
     const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
-    return this.isPlayerOnManualDiveLedge(direction);
+    const diveLedge = this.getPlayerManualDiveLedge(direction);
+    this.pendingDiveLedge = diveLedge || null;
+    return Boolean(diveLedge);
   }
 
-  isPlayerOnManualDiveLedge(direction = 1) {
+  getPlayerManualDiveLedge(direction = 1) {
     const ledges = this.level.manualDiveLedges || [];
-    if (!ledges.length) return false;
-    return ledges.some((ledge) => {
-      if (!this.matchesDiveLedgeSide(ledge, direction)) return false;
-      if (ledge.type === "final-elevator-top") return this.isPlayerOnFinalElevatorDiveLedge(direction);
+    if (!ledges.length) return null;
+    return ledges.find((ledge) => {
+      if (!this.matchesDiveLedgeSide(ledge, direction)) return null;
+      if (ledge.type === "final-elevator-top") return this.isPlayerOnFinalElevatorDiveLedge(direction) ? ledge : null;
       const run = this.getManualDiveLedgeRun(ledge);
-      return run ? this.isPlayerNearDiveRunEdge(run, direction) : false;
-    });
+      return run && this.isPlayerNearDiveRunEdge(run, direction, ledge) ? ledge : null;
+    }) || null;
   }
 
   matchesDiveLedgeSide(ledge, direction = 1) {
@@ -4251,17 +4266,20 @@ class PlayScene extends Phaser.Scene {
     return this.isPlayerNearDiveRunEdge(run, direction);
   }
 
-  isPlayerNearDiveRunEdge(run, direction = 1) {
+  isPlayerNearDiveRunEdge(run, direction = 1, ledge = {}) {
     if (!run || !this.player?.body) return false;
     const body = this.player.body;
     const distanceToEdge = direction > 0
       ? run.endX - (body.x + body.width)
       : body.x - run.startX;
-    return distanceToEdge >= -6 && distanceToEdge <= GABI_DIVE_EDGE_DISTANCE;
+    const edgeDistance = ledge.edgeDistance ?? GABI_DIVE_EDGE_DISTANCE;
+    return distanceToEdge >= -6 && distanceToEdge <= edgeDistance;
   }
 
   startGabiDive(time = 0) {
     if (!this.textures.exists("gabi-dive") || !this.player) return;
+    const diveLedge = this.pendingDiveLedge;
+    this.pendingDiveLedge = null;
     this.gabiDiveActive = true;
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
     const direction = this.player.flipX ? -1 : 1;
@@ -4275,6 +4293,54 @@ class PlayScene extends Phaser.Scene {
       duration: GABI_DIVE_ANGLE_DURATION,
       ease: "Sine.easeOut"
     });
+    if (diveLedge?.scriptedHaystackDive) this.startScriptedHaystackDive();
+  }
+
+  startScriptedHaystackDive() {
+    const haystack = this.getPrimaryHaystack();
+    if (!haystack || !this.player?.body) return;
+    this.scriptedHaystackDive = { haystack };
+    this.usingWingJump = false;
+    this.resetGlideState();
+    this.player.setAccelerationX(0);
+    this.player.setMaxVelocity(SCRIPTED_DIVE_MAX_SPEED_X, SCRIPTED_DIVE_MAX_SPEED_Y);
+  }
+
+  stopScriptedHaystackDive() {
+    if (!this.scriptedHaystackDive) return;
+    this.scriptedHaystackDive = null;
+    this.player?.setMaxVelocity(260, 620);
+  }
+
+  getPrimaryHaystack() {
+    return this.haystacks?.children?.entries?.find((haystack) => haystack?.active) || null;
+  }
+
+  updateScriptedHaystackDive(time = 0) {
+    const haystack = this.scriptedHaystackDive?.haystack;
+    if (!haystack?.active || !this.player?.body) {
+      this.stopScriptedHaystackDive();
+      return false;
+    }
+
+    const dx = haystack.x - this.player.x;
+    const direction = dx === 0 ? (this.player.flipX ? -1 : 1) : Math.sign(dx);
+    const horizontalSpeed = Math.abs(dx) < 10
+      ? 0
+      : Phaser.Math.Clamp(Math.abs(dx) * 1.9, SCRIPTED_DIVE_MIN_SPEED_X, SCRIPTED_DIVE_MAX_SPEED_X);
+    const downwardSpeed = Phaser.Math.Clamp(
+      Math.max(this.player.body.velocity.y + 34, 280),
+      280,
+      SCRIPTED_DIVE_MAX_SPEED_Y
+    );
+
+    this.player.setAccelerationX(0);
+    this.player.setVelocity(horizontalSpeed * direction, downwardSpeed);
+    this.setGabiFlip(direction < 0);
+    this.gabiDiveActive = true;
+    this.gabiDiveUntil = Math.max(this.gabiDiveUntil, time + 120);
+    this.setGabiAnimation("dive");
+    return true;
   }
 
   resetGabiDiveState() {
@@ -4282,18 +4348,16 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveTween = null;
     this.gabiDiveActive = false;
     this.gabiDiveUntil = 0;
+    this.pendingDiveLedge = null;
     if (this.player) this.player.setAngle(0);
   }
 
   landInHaystack(_player, haystack) {
     if (!haystack?.active || !this.player?.body) return;
     const now = this.time.now;
-    const playerBottom = this.player.body.y + this.player.body.height;
-    const hayTop = haystack.body?.y ?? (haystack.y - haystack.displayHeight);
-    const descending = this.player.body.velocity.y > 40 || this.gabiDiveActive || this.isGliding;
-    if (!descending || playerBottom < hayTop - 12) return;
-    if (now - (haystack.getData("lastBurstAt") || -Infinity) < 700) return;
+    if (now - (haystack.getData("lastBurstAt") || -Infinity) < 260) return;
     haystack.setData("lastBurstAt", now);
+    this.stopScriptedHaystackDive();
     this.resetGabiDiveState();
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
   }
@@ -4511,6 +4575,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   resetPlayerToSpawn() {
+    this.stopScriptedHaystackDive();
     this.resetPlayerMotion();
     this.resetGlideState();
     this.resetGabiDiveState();
