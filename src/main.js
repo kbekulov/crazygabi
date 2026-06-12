@@ -69,6 +69,8 @@ const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
 const SCRIPTED_DIVE_LOCK_DELAY_MS = 1400;
+const DIVE_INDICATOR_TRIGGER_DISTANCE = 150;
+const DIVE_INDICATOR_SCALE = 0.105;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -210,7 +212,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-delayed-haystack-dive";
+const ASSET_VERSION = "20260612-haystack-landing-cue";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -542,6 +544,9 @@ const LEVELS = [
     },
     manualDiveLedges: [
       { row: 8, startColumn: 0, widthTiles: 30, side: "right", edgeDistance: 96, scriptedHaystackDive: true }
+    ],
+    diveIndicators: [
+      { row: 8, column: 28.4, direction: 1 }
     ],
     finishZone: {
       x: 452 * TILE,
@@ -1637,6 +1642,7 @@ class PlayScene extends Phaser.Scene {
     this.birdFlocks = [];
     this.birdFlockGroups = [];
     this.birdAttackFlocks = [];
+    this.diveIndicatorBirds = [];
     this.nextBirdFlockAt = 0;
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
@@ -1657,6 +1663,7 @@ class PlayScene extends Phaser.Scene {
     this.planWallForegroundTiles();
     this.buildLevel();
     this.createHaystacks();
+    this.createDiveIndicatorBirds();
     this.createLightRays();
     this.createPlayer();
     this.createLanternOverlay();
@@ -2708,8 +2715,40 @@ class PlayScene extends Phaser.Scene {
       haystack.body.allowGravity = false;
       haystack.body.immovable = true;
       haystack.body.setSize(270, 84).setOffset(54, 54);
+      haystack.setData("floorTop", (config.floorRow ?? 0) * TILE);
       haystack.refreshBody?.();
     });
+  }
+
+  createDiveIndicatorBirds() {
+    this.clearDiveIndicatorBirds();
+    const indicators = this.level.diveIndicators || [];
+    if (!indicators.length) return;
+    const birdSprite = this.getBirdSpriteKey();
+    const birdAnimation = this.getBirdAnimationKey(birdSprite);
+    if (!this.textures.exists(birdSprite) || !this.anims.exists(birdAnimation)) return;
+    this.diveIndicatorBirds = indicators.map((config) => {
+      const direction = config.direction ?? 1;
+      const bird = this.add.sprite(
+        (config.column ?? 0) * TILE + TILE / 2,
+        (config.row ?? 0) * TILE - (config.yOffset ?? 18),
+        birdSprite,
+        0
+      );
+      bird.setScale((config.scale ?? DIVE_INDICATOR_SCALE) * this.getBirdScaleMultiplier());
+      bird.setDepth(config.depth ?? BIRD_ATTACK_DEPTH - 0.2);
+      bird.setFlipX(direction < 0);
+      bird.setData("direction", direction);
+      bird.setData("homeX", bird.x);
+      bird.setData("homeY", bird.y);
+      bird.setData("state", "perched");
+      return bird;
+    });
+  }
+
+  clearDiveIndicatorBirds() {
+    this.diveIndicatorBirds?.forEach((bird) => bird?.destroy?.());
+    this.diveIndicatorBirds = [];
   }
 
   createBillboardPrompt(text = "Press [ 0 ] to interact", width = 146) {
@@ -3979,6 +4018,7 @@ class PlayScene extends Phaser.Scene {
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
+    this.updateDiveIndicatorBirds(time, delta);
     this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
@@ -4360,11 +4400,49 @@ class PlayScene extends Phaser.Scene {
   landInHaystack(_player, haystack) {
     if (!haystack?.active || !this.player?.body) return;
     const now = this.time.now;
+    const shouldSettle =
+      Boolean(this.scriptedHaystackDive) ||
+      this.gabiDiveActive ||
+      this.isGliding ||
+      this.player.body.velocity.y > 80;
+    if (shouldSettle) {
+      this.stopScriptedHaystackDive();
+      this.resetGabiDiveState();
+      this.settlePlayerOnHaystackPlatform(haystack);
+    }
     if (now - (haystack.getData("lastBurstAt") || -Infinity) < 260) return;
     haystack.setData("lastBurstAt", now);
-    this.stopScriptedHaystackDive();
-    this.resetGabiDiveState();
     this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
+  }
+
+  settlePlayerOnHaystackPlatform(haystack) {
+    if (!this.player?.body || !haystack) return;
+    const floorTop = haystack.getData("floorTop") ?? this.findHaystackFloorTop(haystack);
+    if (!Number.isFinite(floorTop)) return;
+    const bodyBottom = this.player.body.y + this.player.body.height;
+    const adjustment = floorTop - bodyBottom;
+    if (Math.abs(adjustment) > TILE * 5) return;
+    const nextY = this.player.y + adjustment - 1;
+    const nextX = Phaser.Math.Clamp(
+      this.player.x,
+      haystack.x - Math.max(18, haystack.displayWidth * 0.28),
+      haystack.x + Math.max(18, haystack.displayWidth * 0.28)
+    );
+    this.player.setPosition(nextX, nextY);
+    this.player.body.reset(nextX, nextY);
+    this.player.setVelocity(this.player.flipX ? -22 : 22, 0);
+    this.player.setAccelerationX(0);
+    this.airJumpsUsed = 0;
+    this.usingWingJump = false;
+    this.resetGlideState();
+    this.setGabiAnimation("idle");
+  }
+
+  findHaystackFloorTop(haystack) {
+    const platform = this.platformRuns
+      .filter((run) => haystack.x >= run.startX - TILE && haystack.x <= run.endX + TILE)
+      .sort((a, b) => Math.abs(a.topY - haystack.y) - Math.abs(b.topY - haystack.y))[0];
+    return platform?.topY;
   }
 
   spawnHayBurst(x, y) {
@@ -5255,6 +5333,52 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups.push(flock);
     this.birdFlocks = this.birdFlockGroups.flatMap((entry) => entry.birds);
     this.nextBirdFlockAt = Math.max(this.nextBirdFlockAt || 0, time + 200);
+  }
+
+  updateDiveIndicatorBirds(time = 0, delta = 0) {
+    if (!this.diveIndicatorBirds?.length) return;
+    const seconds = delta / 1000;
+    const birdAnimation = this.getBirdAnimationKey(this.getBirdSpriteKey());
+    this.diveIndicatorBirds = this.diveIndicatorBirds.filter((bird) => {
+      if (!bird?.active) return false;
+      const stateName = bird.getData("state");
+      if (stateName === "perched") {
+        bird.y = bird.getData("homeY") + Math.sin(time * 0.004) * 1.5;
+        if (
+          state.running &&
+          this.player?.active &&
+          Math.abs(this.player.x - bird.x) <= DIVE_INDICATOR_TRIGGER_DISTANCE &&
+          Math.abs(this.player.y - bird.y) <= 160
+        ) {
+          const direction = bird.getData("direction") || 1;
+          bird.setData("state", "flying");
+          bird.setData("vx", direction * Phaser.Math.Between(150, 210));
+          bird.setData("vy", Phaser.Math.Between(-86, -46));
+          bird.setData("startedAt", time);
+          bird.setFlipX(direction < 0);
+          bird.play(birdAnimation, true);
+          if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_AMBIENT_SFX_VOLUME);
+        }
+        return true;
+      }
+
+      const age = time - (bird.getData("startedAt") || time);
+      const direction = bird.getData("direction") || 1;
+      const vx = bird.getData("vx") || direction * 180;
+      const vy = (bird.getData("vy") || -60) + age * 0.018;
+      bird.x += vx * seconds;
+      bird.y += vy * seconds;
+      bird.rotation = Phaser.Math.Clamp(vy / Math.max(1, Math.abs(vx)) * 0.18, -0.18, 0.18) * direction;
+      const camera = this.cameras.main;
+      const outside =
+        bird.x < camera.scrollX - 180 ||
+        bird.x > camera.scrollX + VIEW_WIDTH + 180 ||
+        bird.y < camera.scrollY - 180 ||
+        bird.y > camera.scrollY + PLAY_HEIGHT + 120;
+      if (!outside) return true;
+      bird.destroy();
+      return false;
+    });
   }
 
   updateAmbientLeaves(time = 0, delta = 0) {
@@ -6831,6 +6955,7 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.clearDiveIndicatorBirds();
     this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
@@ -7119,6 +7244,7 @@ class PlayScene extends Phaser.Scene {
     this.thrownItems.clear(true, true);
     if (!state.hasKey) this.resetKeyReveal();
     this.resetCatNpc();
+    this.createDiveIndicatorBirds();
   }
 
   enterDoor() {
