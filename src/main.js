@@ -118,7 +118,7 @@ const HAYSTACK_LAND_SFX_KEY = "haystack-land";
 const HAYSTACK_WALKIN_SFX_KEY = "haystack-walkin";
 const COIN_PICKUP_SFX_KEY = "coin-pickup";
 const WING_PICKUP_SFX_KEY = "wing-pickup";
-const DOUBLE_JUMP_SFX_KEY = "double-jump";
+const DOUBLE_JUMP_SFX_KEYS = ["double-jump-1", "double-jump-2"];
 const HEART_PICKUP_SFX_KEY = "heart-pickup";
 const KEY_PICKUP_SFX_KEY = "key-pickup";
 const MISC_PICKUP_SFX_KEY = "misc-pickup";
@@ -232,7 +232,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-kill-sfx";
+const ASSET_VERSION = "20260612-double-jump-variants";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1907,7 +1907,7 @@ class PlayScene extends Phaser.Scene {
       [
         COIN_PICKUP_SFX_KEY,
         WING_PICKUP_SFX_KEY,
-        DOUBLE_JUMP_SFX_KEY,
+        ...DOUBLE_JUMP_SFX_KEYS,
         HEART_PICKUP_SFX_KEY,
         KEY_PICKUP_SFX_KEY,
         MISC_PICKUP_SFX_KEY,
@@ -2038,7 +2038,8 @@ class PlayScene extends Phaser.Scene {
       [HAYSTACK_WALKIN_SFX_KEY]: "./public/assets/sound/sfx/haystack_walkin.mp3",
       [COIN_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/coin_pickup.mp3",
       [WING_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/wing_pickup.mp3",
-      [DOUBLE_JUMP_SFX_KEY]: "./public/assets/sound/sfx/double_jump.mp3",
+      [DOUBLE_JUMP_SFX_KEYS[0]]: "./public/assets/sound/sfx/double_jump_1.mp3",
+      [DOUBLE_JUMP_SFX_KEYS[1]]: "./public/assets/sound/sfx/double_jump_2.mp3",
       [HEART_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/heart_pickup.mp3",
       [KEY_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/key_pickup.mp3",
       [MISC_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/misc_pickup.mp3",
@@ -4150,7 +4151,7 @@ class PlayScene extends Phaser.Scene {
       this.resetGlideState();
       this.resetGabiDiveState();
       this.player.setVelocityY(-490);
-      this.playLevelSfx(DOUBLE_JUMP_SFX_KEY, 0.46);
+      this.playLevelSfx(Phaser.Utils.Array.GetRandom(DOUBLE_JUMP_SFX_KEYS), 0.46);
     }
 
     this.updateGlideState(time, left, right, onFloor);
