@@ -116,6 +116,11 @@ const EARTHQUAKE_SFX_KEY = "earthquake-1";
 const MAGPIE_CALL_SFX_KEY = "magpie-call-1";
 const HAYSTACK_LAND_SFX_KEY = "haystack-land";
 const HAYSTACK_WALKIN_SFX_KEY = "haystack-walkin";
+const COIN_PICKUP_SFX_KEY = "coin-pickup";
+const WING_PICKUP_SFX_KEY = "wing-pickup";
+const HEART_PICKUP_SFX_KEY = "heart-pickup";
+const KEY_PICKUP_SFX_KEY = "key-pickup";
+const MISC_PICKUP_SFX_KEY = "misc-pickup";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
@@ -225,7 +230,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-haystack-sfx";
+const ASSET_VERSION = "20260612-pickup-sfx-dive-trigger";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1897,6 +1902,13 @@ class PlayScene extends Phaser.Scene {
         audio(HAYSTACK_LAND_SFX_KEY, this.getSfxPath(HAYSTACK_LAND_SFX_KEY));
         audio(HAYSTACK_WALKIN_SFX_KEY, this.getSfxPath(HAYSTACK_WALKIN_SFX_KEY));
       }
+      [
+        COIN_PICKUP_SFX_KEY,
+        WING_PICKUP_SFX_KEY,
+        HEART_PICKUP_SFX_KEY,
+        KEY_PICKUP_SFX_KEY,
+        MISC_PICKUP_SFX_KEY
+      ].forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
@@ -2019,7 +2031,12 @@ class PlayScene extends Phaser.Scene {
       [EARTHQUAKE_SFX_KEY]: "./public/assets/sound/sfx/earthquake_1.mp3",
       [MAGPIE_CALL_SFX_KEY]: "./public/assets/sound/sfx/magpie_call_1.mp3",
       [HAYSTACK_LAND_SFX_KEY]: "./public/assets/sound/sfx/haystack_land.mp3",
-      [HAYSTACK_WALKIN_SFX_KEY]: "./public/assets/sound/sfx/haystack_walkin.mp3"
+      [HAYSTACK_WALKIN_SFX_KEY]: "./public/assets/sound/sfx/haystack_walkin.mp3",
+      [COIN_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/coin_pickup.mp3",
+      [WING_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/wing_pickup.mp3",
+      [HEART_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/heart_pickup.mp3",
+      [KEY_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/key_pickup.mp3",
+      [MISC_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/misc_pickup.mp3"
     }[key];
   }
 
@@ -4127,6 +4144,7 @@ class PlayScene extends Phaser.Scene {
       this.resetGlideState();
       this.resetGabiDiveState();
       this.player.setVelocityY(-490);
+      this.playLevelSfx(WING_PICKUP_SFX_KEY, 0.42);
     }
 
     this.updateGlideState(time, left, right, onFloor);
@@ -4303,7 +4321,7 @@ class PlayScene extends Phaser.Scene {
   shouldUseGabiDiveJump(left = false, right = false) {
     if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
     const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
-    const diveLedge = this.getPlayerManualDiveLedge(direction);
+    const diveLedge = this.getPlayerManualDiveLedge(direction) || this.getPlayerManualDiveLedge(-direction);
     this.pendingDiveLedge = diveLedge || null;
     return Boolean(diveLedge);
   }
@@ -4359,7 +4377,7 @@ class PlayScene extends Phaser.Scene {
       ? run.endX - (body.x + body.width)
       : body.x - run.startX;
     const edgeDistance = ledge.edgeDistance ?? GABI_DIVE_EDGE_DISTANCE;
-    return distanceToEdge >= -6 && distanceToEdge <= edgeDistance;
+    return distanceToEdge >= -32 && distanceToEdge <= edgeDistance;
   }
 
   startGabiDive(time = 0) {
@@ -7140,6 +7158,7 @@ class PlayScene extends Phaser.Scene {
     gem.disableBody(true, true);
     state.gems += 1;
     awardScore(100);
+    this.playLevelSfx(COIN_PICKUP_SFX_KEY, 0.44);
     updateHud();
     this.maybeShowPickupSpeech("coin");
   }
@@ -7150,6 +7169,7 @@ class PlayScene extends Phaser.Scene {
     heart.disableBody(true, true);
     state.lives = Math.min(MAX_LIVES, state.lives + 1);
     awardScore(150);
+    this.playLevelSfx(HEART_PICKUP_SFX_KEY, 0.48);
     updateHud();
     this.maybeShowPickupSpeech("heart");
   }
@@ -7158,15 +7178,11 @@ class PlayScene extends Phaser.Scene {
     doubleJump.disableBody(true, true);
     state.hasDoubleJump = true;
     awardScore(300);
+    this.playLevelSfx(WING_PICKUP_SFX_KEY, 0.5);
     if (this.level.actionAbility === "command-birds") {
-      state.hasBirdControl = false;
-      this.wingPromptActive = true;
-      this.lockPlayerForBasketPrompt();
-      setItemPickupVisible(true, {
-        name: "Wing",
-        instruction: "You can now command birds. Press [ SHIFT ] to send them after enemies.",
-        image: this.pixelatedWingImage || `./public/assets/environment/double_jump_item.png?v=${ASSET_VERSION}`
-      });
+      state.hasBirdControl = true;
+      this.lastBirdAttackAt = -Infinity;
+      updateBirdCooldownHud(0);
     }
     updateHud();
     this.maybeShowPickupSpeech("wing");
@@ -7180,6 +7196,7 @@ class PlayScene extends Phaser.Scene {
     this.lockPlayerForBasketPrompt();
     this.switchPlayerToLanternSprite();
     this.updateLanternOverlay();
+    this.playLevelSfx(MISC_PICKUP_SFX_KEY, 0.5);
     setItemPickupVisible(true, {
       name: "Lantern",
       instruction: "Its light cuts through the tunnel darkness. Press [ ENTER ] to continue.",
@@ -7198,6 +7215,7 @@ class PlayScene extends Phaser.Scene {
     this.catRoute = null;
     this.lockPlayerForBasketPrompt();
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
+    this.playLevelSfx(MISC_PICKUP_SFX_KEY, 0.5);
     setItemPickupVisible(true, {
       name: "Acorn Basket",
       instruction: "Press [ ENTER ] to throw acorns.",
@@ -7230,6 +7248,7 @@ class PlayScene extends Phaser.Scene {
     key.disableBody(true, true);
     state.hasKey = true;
     awardScore(500);
+    this.playLevelSfx(KEY_PICKUP_SFX_KEY, 0.5);
     updateHud();
   }
 
