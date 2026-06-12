@@ -32,6 +32,11 @@ const BIRD_ATTACK_DEPTH = 9.4;
 const BIRD_ATTACK_COOLDOWN = 10000;
 const BIRD_ATTACK_SPEED_MULTIPLIER = 6;
 const BIRD_ATTACK_HIT_RADIUS = 54;
+const BIRD_ATTACK_CAMERA_ZOOM = 2.4;
+const BIRD_ATTACK_CAMERA_ZOOM_IN_MS = 480;
+const BIRD_ATTACK_CAMERA_ENEMY_SHIFT_MS = 420;
+const BIRD_ATTACK_CAMERA_ENEMY_HOLD_MS = 1500;
+const BIRD_ATTACK_CAMERA_ZOOM_OUT_MS = 560;
 const GABI_POINT_FRAME_WIDTH = 238;
 const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
@@ -4280,13 +4285,13 @@ class PlayScene extends Phaser.Scene {
     if (target) this.setGabiFlip(target.x < this.player.x);
     this.playGabiPointAnimation(time);
     this.spawnAttackBirdFlock(target, time);
-    this.playBirdAttackCameraZoom();
+    this.playBirdAttackCameraZoom(target);
     if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_ATTACK_SFX_VOLUME);
     this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
     return true;
   }
 
-  playBirdAttackCameraZoom() {
+  playBirdAttackCameraZoom(target = null) {
     if (!this.player || !this.cameras?.main) return;
     this.cancelBirdAttackCameraZoom({ restoreCamera: false });
     const camera = this.cameras.main;
@@ -4306,14 +4311,68 @@ class PlayScene extends Phaser.Scene {
 
     this.birdAttackZoomTween = this.tweens.add({
       targets: proxy,
-      zoom: 3,
-      duration: 480,
+      zoom: BIRD_ATTACK_CAMERA_ZOOM,
+      duration: BIRD_ATTACK_CAMERA_ZOOM_IN_MS,
       ease: "Sine.easeInOut",
       onUpdate: centerOnGabi,
       onComplete: () => {
         centerOnGabi();
-        const holdTimer = this.time.delayedCall(500, () => this.startBirdAttackCameraZoomOut(centerOnGabi), undefined, this);
+        const holdTimer = this.time.delayedCall(500, () => {
+          if (target?.active) {
+            this.startBirdAttackEnemyCameraFocus(target, centerOnGabi);
+          } else {
+            this.startBirdAttackCameraZoomOut(centerOnGabi);
+          }
+        }, undefined, this);
         this.birdAttackZoomTimers.push(holdTimer);
+      }
+    });
+  }
+
+  startBirdAttackEnemyCameraFocus(target, centerOnGabi) {
+    if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy || !target?.active) {
+      this.startBirdAttackCameraZoomOut(centerOnGabi);
+      return;
+    }
+    const camera = this.cameras.main;
+    const focus = { x: this.player.x, y: this.player.y - 14 };
+    const centerOnEnemy = () => {
+      if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
+      if (target?.active) {
+        focus.x = target.x;
+        focus.y = target.y - 18;
+      }
+      camera.setZoom(this.birdAttackZoomProxy.zoom);
+      camera.centerOn(focus.x, focus.y);
+    };
+
+    this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
+    camera.shake(85, 0.0018);
+    this.birdAttackZoomTween?.remove?.();
+    this.birdAttackZoomTween = this.tweens.add({
+      targets: focus,
+      x: target.x,
+      y: target.y - 18,
+      duration: BIRD_ATTACK_CAMERA_ENEMY_SHIFT_MS,
+      ease: "Sine.easeInOut",
+      onUpdate: () => {
+        camera.setZoom(this.birdAttackZoomProxy.zoom);
+        camera.centerOn(focus.x, focus.y);
+      },
+      onComplete: () => {
+        const followTimer = this.time.addEvent({
+          delay: 50,
+          repeat: Math.floor(BIRD_ATTACK_CAMERA_ENEMY_HOLD_MS / 50),
+          callback: centerOnEnemy
+        });
+        this.birdAttackZoomTimers.push(followTimer);
+        const exitTimer = this.time.delayedCall(
+          BIRD_ATTACK_CAMERA_ENEMY_HOLD_MS,
+          () => this.startBirdAttackCameraZoomOut(centerOnEnemy),
+          undefined,
+          this
+        );
+        this.birdAttackZoomTimers.push(exitTimer);
       }
     });
   }
@@ -4327,7 +4386,7 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackZoomTween = this.tweens.add({
       targets: this.birdAttackZoomProxy,
       zoom: 1,
-      duration: 560,
+      duration: BIRD_ATTACK_CAMERA_ZOOM_OUT_MS,
       ease: "Sine.easeInOut",
       onUpdate: centerOnGabi,
       onComplete: () => {
