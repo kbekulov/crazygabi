@@ -61,6 +61,10 @@ const PLATFORM_SHADOW_DEPTH = PLATFORM_DEPTH + 0.52;
 const LIGHT_RAY_DEPTH = WATER_DEPTH + 0.25;
 const LIGHT_RAY_IMPACT_DEPTH = PLATFORM_DEPTH + 0.65;
 const LIGHT_RAY_TEXTURE_PADDING = 96;
+const HAYSTACK_SCALE = 0.36;
+const HAYSTACK_DEPTH = PLATFORM_DEPTH + 1.1;
+const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 1;
+const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -202,7 +206,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-manual-dive-ledges";
+const ASSET_VERSION = "20260612-haystack-dive";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -424,6 +428,9 @@ const LEVELS = [
     manualDiveLedges: [
       { type: "final-elevator-top", side: "both" }
     ],
+    haystacks: [
+      { x: 175 * TILE, floorRow: 160 }
+    ],
     mysteriousMan: {
       sprite: "mr-magpie",
       xOffset: 0,
@@ -533,6 +540,9 @@ const LEVELS = [
       x: 452 * TILE,
       y: 154 * TILE
     },
+    haystacks: [
+      { x: 58 * TILE, floorRow: 160 }
+    ],
     introTitle: "Level 5",
     introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below."
   }
@@ -1595,6 +1605,7 @@ class PlayScene extends Phaser.Scene {
     this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
+    this.haystacks = this.physics.add.group({ allowGravity: false, immovable: true });
     this.platformRuns = [];
     this.wallForegroundAnchors = new Set();
     this.enemyDirection = new Map();
@@ -1636,6 +1647,7 @@ class PlayScene extends Phaser.Scene {
     this.createAnimations();
     this.planWallForegroundTiles();
     this.buildLevel();
+    this.createHaystacks();
     this.createLightRays();
     this.createPlayer();
     this.createLanternOverlay();
@@ -1810,6 +1822,7 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.parallax === "parallax-park") image("parallax-park", "./public/assets/environment/paralax_park.png");
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
+      if (level.haystacks?.length) image("haystack", "./public/assets/environment/haystack.png");
       if (level.showStartingHouse || level.constructionBillboard) {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
@@ -2671,6 +2684,22 @@ class PlayScene extends Phaser.Scene {
       ruins.setOrigin(0, 1);
       ruins.setScale(ruinsConfig.scale ?? STARTING_RUINS_SCALE);
       ruins.setDepth(STARTING_HOUSE_DEPTH);
+    });
+  }
+
+  createHaystacks() {
+    if (!this.level.haystacks?.length || !this.textures.exists("haystack")) return;
+    this.level.haystacks.forEach((config) => {
+      const x = config.x ?? ((config.column ?? 0) * TILE + TILE / 2);
+      const y = (config.floorRow ?? 0) * TILE + (config.yOffset ?? 4);
+      const haystack = this.haystacks.create(x, y, "haystack");
+      haystack.setOrigin(0.5, 1);
+      haystack.setScale(config.scale ?? HAYSTACK_SCALE);
+      haystack.setDepth(config.depth ?? HAYSTACK_DEPTH);
+      haystack.body.allowGravity = false;
+      haystack.body.immovable = true;
+      haystack.body.setSize(270, 84).setOffset(54, 54);
+      haystack.refreshBody?.();
     });
   }
 
@@ -3826,6 +3855,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
+    this.physics.add.overlap(this.player, this.haystacks, this.landInHaystack, null, this);
     this.physics.add.overlap(this.player, this.doors, this.enterDoor, null, this);
   }
 
@@ -4253,6 +4283,51 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveActive = false;
     this.gabiDiveUntil = 0;
     if (this.player) this.player.setAngle(0);
+  }
+
+  landInHaystack(_player, haystack) {
+    if (!haystack?.active || !this.player?.body) return;
+    const now = this.time.now;
+    const playerBottom = this.player.body.y + this.player.body.height;
+    const hayTop = haystack.body?.y ?? (haystack.y - haystack.displayHeight);
+    const descending = this.player.body.velocity.y > 40 || this.gabiDiveActive || this.isGliding;
+    if (!descending || playerBottom < hayTop - 12) return;
+    if (now - (haystack.getData("lastBurstAt") || -Infinity) < 700) return;
+    haystack.setData("lastBurstAt", now);
+    this.resetGabiDiveState();
+    this.spawnHayBurst(haystack.x, haystack.y - haystack.displayHeight * 0.36);
+  }
+
+  spawnHayBurst(x, y) {
+    const pieces = 34;
+    for (let index = 0; index < pieces; index += 1) {
+      const color = Phaser.Math.RND.pick(HAY_BURST_COLORS);
+      const width = Phaser.Math.Between(8, 24);
+      const height = Phaser.Math.Between(1, 3);
+      const piece = this.add.rectangle(
+        x + Phaser.Math.Between(-48, 48),
+        y + Phaser.Math.Between(-12, 12),
+        width,
+        height,
+        color,
+        Phaser.Math.FloatBetween(0.78, 1)
+      );
+      const direction = index % 2 === 0 ? -1 : 1;
+      const targetX = piece.x + direction * Phaser.Math.Between(46, 132) + Phaser.Math.Between(-24, 24);
+      const targetY = piece.y - Phaser.Math.Between(28, 112);
+      piece.setDepth(HAY_BURST_DEPTH + Phaser.Math.FloatBetween(0, 0.2));
+      piece.setRotation(Phaser.Math.FloatBetween(-0.85, 0.85));
+      this.tweens.add({
+        targets: piece,
+        x: targetX,
+        y: targetY,
+        angle: Phaser.Math.Between(-210, 210),
+        alpha: 0,
+        duration: Phaser.Math.Between(620, 980),
+        ease: "Quad.easeOut",
+        onComplete: () => piece.destroy()
+      });
+    }
   }
 
   spawnAttackBirdFlock(target, time = 0) {
