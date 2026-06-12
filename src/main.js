@@ -119,6 +119,8 @@ const HAYSTACK_WALKIN_SFX_KEY = "haystack-walkin";
 const COIN_PICKUP_SFX_KEY = "coin-pickup";
 const WING_PICKUP_SFX_KEY = "wing-pickup";
 const DOUBLE_JUMP_SFX_KEYS = ["double-jump-1", "double-jump-2"];
+const CAT_MEOW_SFX_KEYS = ["cat-meow-1", "cat-meow-2"];
+const DIVE_FALL_WIND_SFX_KEY = "dive-fall-wind";
 const HEART_PICKUP_SFX_KEY = "heart-pickup";
 const KEY_PICKUP_SFX_KEY = "key-pickup";
 const MISC_PICKUP_SFX_KEY = "misc-pickup";
@@ -232,7 +234,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-double-jump-variants";
+const ASSET_VERSION = "20260612-dive-wind-meow-sfx";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -1657,6 +1659,8 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
     this.gabiDiveTween = null;
+    this.diveWindSfx = null;
+    this.diveWindGraphics = null;
     this.pendingDiveLedge = null;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
@@ -1908,6 +1912,8 @@ class PlayScene extends Phaser.Scene {
         COIN_PICKUP_SFX_KEY,
         WING_PICKUP_SFX_KEY,
         ...DOUBLE_JUMP_SFX_KEYS,
+        ...CAT_MEOW_SFX_KEYS,
+        DIVE_FALL_WIND_SFX_KEY,
         HEART_PICKUP_SFX_KEY,
         KEY_PICKUP_SFX_KEY,
         MISC_PICKUP_SFX_KEY,
@@ -2040,6 +2046,9 @@ class PlayScene extends Phaser.Scene {
       [WING_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/wing_pickup.mp3",
       [DOUBLE_JUMP_SFX_KEYS[0]]: "./public/assets/sound/sfx/double_jump_1.mp3",
       [DOUBLE_JUMP_SFX_KEYS[1]]: "./public/assets/sound/sfx/double_jump_2.mp3",
+      [CAT_MEOW_SFX_KEYS[0]]: "./public/assets/sound/sfx/meow_1.mp3",
+      [CAT_MEOW_SFX_KEYS[1]]: "./public/assets/sound/sfx/meow_2.mp3",
+      [DIVE_FALL_WIND_SFX_KEY]: "./public/assets/sound/sfx/dive_fall_wind.mp3",
       [HEART_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/heart_pickup.mp3",
       [KEY_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/key_pickup.mp3",
       [MISC_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/misc_pickup.mp3",
@@ -4082,6 +4091,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBirdFlocks(time, delta);
     this.updateDiveIndicatorBirds(time, delta);
     this.updateDiveFieldLeaves(time, delta);
+    this.updateDiveWindLines(time);
     this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
     this.updateGabiSpeechPosition();
@@ -4093,6 +4103,7 @@ class PlayScene extends Phaser.Scene {
     this.updateFinishZone();
     if (this.updateScriptedHaystackDive(time, delta)) {
       if (this.player.y > this.levelHeight + 56) this.loseLife();
+      this.updateDiveWindLines(time);
       this.updateGabiAnimation(false, false);
       return;
     }
@@ -4131,7 +4142,7 @@ class PlayScene extends Phaser.Scene {
       this.airJumpsUsed = 0;
       this.usingWingJump = false;
       this.resetGlideState();
-      if (this.gabiDiveActive && time > this.gabiDiveUntil) this.resetGabiDiveState();
+      if (this.gabiDiveActive) this.resetGabiDiveState();
     }
 
     if (jump && this.isGliding) {
@@ -4158,6 +4169,7 @@ class PlayScene extends Phaser.Scene {
     if (birdAttack) this.commandBirdAttack(time);
     if (action) this.performAction(time);
     this.constrainPlayerToActiveFinalElevator();
+    this.updateDiveWindLines(time);
 
     if (this.player.y > this.levelHeight + 56) this.loseLife();
     this.updateGabiAnimation(left || right, onFloor);
@@ -4393,6 +4405,7 @@ class PlayScene extends Phaser.Scene {
     this.pendingDiveLedge = null;
     this.gabiDiveActive = true;
     this.gabiDiveUntil = time + GABI_DIVE_MIN_DURATION;
+    this.startDiveWindSfx();
     const direction = this.player.flipX ? -1 : 1;
     this.gabiDiveTween?.remove?.();
     this.player.setAngle(0);
@@ -4405,6 +4418,63 @@ class PlayScene extends Phaser.Scene {
       ease: "Sine.easeOut"
     });
     if (diveLedge?.scriptedHaystackDive) this.startScriptedHaystackDive();
+  }
+
+  startDiveWindSfx() {
+    if (this.diveWindSfx?.isPlaying || !this.cache.audio.exists(DIVE_FALL_WIND_SFX_KEY)) return;
+    try {
+      this.resumeAudioContext();
+      this.diveWindSfx = this.sound.add(DIVE_FALL_WIND_SFX_KEY, { loop: true, volume: 0.42 });
+      this.diveWindSfx.play();
+    } catch (_error) {
+      this.diveWindSfx = null;
+    }
+  }
+
+  stopDiveWindSfx() {
+    if (!this.diveWindSfx) return;
+    try {
+      this.diveWindSfx.stop();
+      this.diveWindSfx.destroy();
+    } catch (_error) {
+      // Ignore audio cleanup failures during scene transitions.
+    }
+    this.diveWindSfx = null;
+  }
+
+  ensureDiveWindGraphics() {
+    if (this.diveWindGraphics?.active) return this.diveWindGraphics;
+    this.diveWindGraphics = this.add.graphics();
+    this.diveWindGraphics.setScrollFactor(0);
+    this.diveWindGraphics.setDepth(DARKNESS_DEPTH + 1.3);
+    return this.diveWindGraphics;
+  }
+
+  updateDiveWindLines(time = 0) {
+    const isDiving = Boolean(this.gabiDiveActive || this.scriptedHaystackDive);
+    if (!isDiving || !state.running || state.won) {
+      this.diveWindGraphics?.clear();
+      return;
+    }
+
+    const graphics = this.ensureDiveWindGraphics();
+    graphics.clear();
+    const speed = 0.62;
+    for (let i = 0; i < 30; i += 1) {
+      const seed = i * 73.17;
+      const x = (seed * 19.31) % VIEW_WIDTH;
+      const drift = Math.sin(time * 0.003 + i) * 12;
+      const y = ((time * speed + seed * 11) % (PLAY_HEIGHT + 180)) - 110;
+      const length = 46 + ((i * 29) % 92);
+      const alpha = 0.16 + ((i % 5) * 0.035);
+      const width = i % 6 === 0 ? 2 : 1;
+      graphics.lineStyle(width, 0xf5efe0, alpha);
+      graphics.lineBetween(x + drift, y, x + drift + Math.sin(i) * 4, y + length);
+    }
+  }
+
+  clearDiveWindLines() {
+    this.diveWindGraphics?.clear();
   }
 
   startScriptedHaystackDive() {
@@ -4469,6 +4539,8 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveActive = false;
     this.gabiDiveUntil = 0;
     this.pendingDiveLedge = null;
+    this.stopDiveWindSfx();
+    this.clearDiveWindLines();
     if (this.player) this.player.setAngle(0);
   }
 
@@ -4886,6 +4958,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.cat || !this.level.catNpc || !state.running || now < (this.nextCatMeowAt || 0)) return;
     this.nextCatMeowAt = now + Phaser.Math.Between(CAT_MEOW_MIN_DELAY, CAT_MEOW_MAX_DELAY);
     if (Phaser.Math.FloatBetween(0, 1) > CAT_MEOW_CHANCE) return;
+    this.playLevelSfx(Phaser.Utils.Array.GetRandom(CAT_MEOW_SFX_KEYS), 0.46);
     this.showCatSpeech("Meow!");
   }
 
@@ -7131,6 +7204,8 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackFlocks = [];
     this.clearDiveIndicatorBirds();
     this.clearDiveFieldLeaves();
+    this.stopDiveWindSfx();
+    this.clearDiveWindLines();
     this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
@@ -7150,6 +7225,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   stopGameAudio() {
+    this.stopDiveWindSfx();
     if (this.bgm?.isPlaying) this.bgm.stop();
     if (this.ambientBgm?.isPlaying) this.ambientBgm.stop();
     if (this.sound?.context?.state === "running") this.sound.context.suspend();
