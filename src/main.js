@@ -221,7 +221,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-dive-leaf-field";
+const ASSET_VERSION = "20260612-level4-scripted-dive";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -441,7 +441,7 @@ const LEVELS = [
       wallFaceColumn: 178
     },
     manualDiveLedges: [
-      { type: "final-elevator-top", side: "both" }
+      { type: "final-elevator-top", side: "both", scriptedHaystackDive: true }
     ],
     haystacks: [
       { x: 164 * TILE, floorRow: 145 }
