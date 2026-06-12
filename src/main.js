@@ -223,7 +223,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-dive-jump-arc";
+const ASSET_VERSION = "20260612-ban-dive-double-jump";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -4107,7 +4107,13 @@ class PlayScene extends Phaser.Scene {
     } else if (jump && onFloor) {
       this.player.setVelocityY(-510);
       if (this.shouldUseGabiDiveJump(left, right)) this.startGabiDive(time);
-    } else if (jump && state.hasDoubleJump && this.airJumpsUsed < 1) {
+    } else if (
+      jump &&
+      state.hasDoubleJump &&
+      this.airJumpsUsed < 1 &&
+      !this.gabiDiveActive &&
+      !this.scriptedHaystackDive
+    ) {
       this.airJumpsUsed += 1;
       this.usingWingJump = true;
       this.resetGlideState();
