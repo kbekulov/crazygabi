@@ -223,7 +223,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-air-dive-sprite";
+const ASSET_VERSION = "20260612-dive-jump-arc";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -4397,11 +4397,10 @@ class PlayScene extends Phaser.Scene {
       return false;
     }
     if (time < this.scriptedHaystackDive.lockAt) {
-      this.player.setAccelerationX(0);
       this.gabiDiveActive = true;
       this.gabiDiveUntil = Math.max(this.gabiDiveUntil, time + 120);
       this.setGabiAnimation("dive");
-      return true;
+      return false;
     }
 
     const dx = haystack.x - this.player.x;
@@ -4652,7 +4651,11 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiAnimation(isMoving, onFloor) {
     if (this.gabiActionUntil && this.time.now < this.gabiActionUntil) return;
-    const shouldHoldDive = this.gabiDiveActive && !this.usingWingJump && !this.isGliding && !onFloor;
+    const shouldHoldDive =
+      (this.gabiDiveActive || this.scriptedHaystackDive) &&
+      !this.usingWingJump &&
+      !this.isGliding &&
+      (!onFloor || this.scriptedHaystackDive);
     if (shouldHoldDive) {
       this.setGabiAnimation("dive");
       return;
