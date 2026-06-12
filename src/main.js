@@ -74,6 +74,7 @@ const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
 const SCRIPTED_DIVE_LOCK_DELAY_MS = 1400;
 const DIVE_INDICATOR_TRIGGER_DISTANCE = 150;
 const DIVE_INDICATOR_SCALE = 0.105;
+const DIVE_INDICATOR_IDLE_ANGLE = -20;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -215,7 +216,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-haystack-cooldown";
+const ASSET_VERSION = "20260612-magpie-idle-angle";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -2741,6 +2742,7 @@ class PlayScene extends Phaser.Scene {
       bird.setScale((config.scale ?? DIVE_INDICATOR_SCALE) * this.getBirdScaleMultiplier());
       bird.setDepth(config.depth ?? BIRD_ATTACK_DEPTH - 0.2);
       bird.setFlipX(direction < 0);
+      bird.setAngle(config.idleAngle ?? DIVE_INDICATOR_IDLE_ANGLE);
       bird.setData("direction", direction);
       bird.setData("homeX", bird.x);
       bird.setData("homeY", bird.y);
@@ -5366,6 +5368,7 @@ class PlayScene extends Phaser.Scene {
           bird.setData("vy", Phaser.Math.Between(-86, -46));
           bird.setData("startedAt", time);
           bird.setFlipX(direction < 0);
+          bird.setAngle(0);
           bird.play(birdAnimation, true);
           if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_AMBIENT_SFX_VOLUME);
         }
