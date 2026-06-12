@@ -16,8 +16,8 @@ const GABI_DIVE_ANGLE_DURATION = 900;
 const DIVE_WIND_FADE_DELAY_MS = 1500;
 const DIVE_WIND_RAMP_MS = 1000;
 const DIVE_WIND_LINE_COUNT = 36;
-const DIVE_CAMERA_ZOOM = 1.85;
-const DIVE_CAMERA_ZOOM_IN_MS = 1800;
+const DIVE_CAMERA_ZOOM = 1.35;
+const DIVE_CAMERA_ZOOM_IN_MS = 5200;
 const DIVE_CAMERA_SNAP_OUT_MS = 220;
 const BIRD_FRAME_WIDTH = 243;
 const BIRD_FRAME_HEIGHT = 243;
@@ -4302,15 +4302,7 @@ class PlayScene extends Phaser.Scene {
     };
     centerOnGabi();
     this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
-    const shakeTimer = this.time.addEvent({
-      delay: 120,
-      repeat: 12,
-      callback: () => {
-        if (!this.birdAttackZoomActive) return;
-        camera.shake(78, proxy.zoom > 2.35 ? 0.0048 : 0.0036);
-      }
-    });
-    this.birdAttackZoomTimers.push(shakeTimer);
+    camera.shake(95, 0.0022);
 
     this.birdAttackZoomTween = this.tweens.add({
       targets: proxy,
@@ -4330,6 +4322,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
     const camera = this.cameras.main;
     this.playLevelSfx(BIRD_ZOOM_OUT_SFX_KEY, 1.0);
+    camera.shake(95, 0.0024);
     this.birdAttackZoomTween?.remove?.();
     this.birdAttackZoomTween = this.tweens.add({
       targets: this.birdAttackZoomProxy,
@@ -4588,6 +4581,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   cancelDiveCameraZoom({ restoreCamera = true } = {}) {
+    if (!this.diveCameraZoomActive && !this.diveCameraZoomTween && !this.diveCameraZoomProxy) return;
     this.diveCameraZoomTween?.remove?.();
     this.diveCameraZoomTween = null;
     this.diveCameraZoomProxy = null;
@@ -7811,6 +7805,8 @@ const game = new Phaser.Game({
   width: VIEW_WIDTH,
   height: VIEW_HEIGHT,
   pixelArt: true,
+  antialias: false,
+  roundPixels: true,
   backgroundColor: "#171922",
   scale: {
     mode: Phaser.Scale.FIT,
