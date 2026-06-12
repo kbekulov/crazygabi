@@ -1662,6 +1662,7 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveUntil = 0;
     this.gabiDiveActive = false;
     this.gabiDiveTween = null;
+    this.gabiDiveAngleDirection = 0;
     this.diveWindSfx = null;
     this.diveWindGraphics = null;
     this.diveWindStartedAt = 0;
@@ -4414,17 +4415,30 @@ class PlayScene extends Phaser.Scene {
     this.nextDiveWindShakeAt = time + DIVE_WIND_FADE_DELAY_MS + 180;
     this.startDiveWindSfx();
     const direction = this.player.flipX ? -1 : 1;
-    this.gabiDiveTween?.remove?.();
     this.player.setAngle(0);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("dive");
+    this.tweenGabiDiveAngle(direction, GABI_DIVE_ANGLE_DURATION);
+    if (diveLedge?.scriptedHaystackDive) this.startScriptedHaystackDive();
+  }
+
+  tweenGabiDiveAngle(direction = 1, duration = GABI_DIVE_ANGLE_DURATION) {
+    if (!this.player) return;
+    this.gabiDiveAngleDirection = direction;
+    this.gabiDiveTween?.remove?.();
     this.gabiDiveTween = this.tweens.add({
       targets: this.player,
       angle: direction * GABI_DIVE_ANGLE,
-      duration: GABI_DIVE_ANGLE_DURATION,
+      duration,
       ease: "Sine.easeOut"
     });
-    if (diveLedge?.scriptedHaystackDive) this.startScriptedHaystackDive();
+  }
+
+  syncGabiDiveAngleToFacing({ immediate = false } = {}) {
+    if (!this.player || (!this.gabiDiveActive && !this.scriptedHaystackDive)) return;
+    const direction = this.player.flipX ? -1 : 1;
+    if (this.gabiDiveAngleDirection === direction && !immediate) return;
+    this.tweenGabiDiveAngle(direction, immediate ? 0 : 180);
   }
 
   startDiveWindSfx() {
@@ -4483,7 +4497,8 @@ class PlayScene extends Phaser.Scene {
       const seed = i * 73.17;
       const x = (seed * 19.31) % VIEW_WIDTH;
       const drift = Math.sin(time * 0.003 + i) * 12;
-      const y = ((time * speed + seed * 11) % (PLAY_HEIGHT + 180)) - 110;
+      const lineSpeed = speed * (0.68 + ((i * 17) % 9) * 0.12);
+      const y = PLAY_HEIGHT + 110 - ((time * lineSpeed + seed * 11) % (PLAY_HEIGHT + 180));
       const width = i % 9 === 0 ? 4 : i % 5 === 0 ? 3 : i % 3 === 0 ? 2 : 1;
       const heavyLine = width >= 3;
       const length = (34 + ((i * 31) % 142)) * (heavyLine ? 1.18 : 1);
@@ -4559,6 +4574,7 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveTween = null;
     this.gabiDiveActive = false;
     this.gabiDiveUntil = 0;
+    this.gabiDiveAngleDirection = 0;
     this.pendingDiveLedge = null;
     this.stopDiveWindSfx();
     this.clearDiveWindLines();
@@ -4767,6 +4783,7 @@ class PlayScene extends Phaser.Scene {
 
   setGabiFlip(flipX) {
     this.player.setFlipX(flipX);
+    this.syncGabiDiveAngleToFacing();
   }
 
   setGabiAnimation(name) {
