@@ -68,6 +68,7 @@ const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9
 const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
+const SCRIPTED_DIVE_LOCK_DELAY_MS = 1400;
 const DARKNESS_DEPTH = 30;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -209,7 +210,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-scripted-haystack-dive";
+const ASSET_VERSION = "20260612-delayed-haystack-dive";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -4299,11 +4300,13 @@ class PlayScene extends Phaser.Scene {
   startScriptedHaystackDive() {
     const haystack = this.getPrimaryHaystack();
     if (!haystack || !this.player?.body) return;
-    this.scriptedHaystackDive = { haystack };
+    this.scriptedHaystackDive = {
+      haystack,
+      lockAt: this.time.now + SCRIPTED_DIVE_LOCK_DELAY_MS
+    };
     this.usingWingJump = false;
     this.resetGlideState();
     this.player.setAccelerationX(0);
-    this.player.setMaxVelocity(SCRIPTED_DIVE_MAX_SPEED_X, SCRIPTED_DIVE_MAX_SPEED_Y);
   }
 
   stopScriptedHaystackDive() {
@@ -4322,6 +4325,7 @@ class PlayScene extends Phaser.Scene {
       this.stopScriptedHaystackDive();
       return false;
     }
+    if (time < this.scriptedHaystackDive.lockAt) return false;
 
     const dx = haystack.x - this.player.x;
     const direction = dx === 0 ? (this.player.flipX ? -1 : 1) : Math.sign(dx);
@@ -4335,6 +4339,7 @@ class PlayScene extends Phaser.Scene {
     );
 
     this.player.setAccelerationX(0);
+    this.player.setMaxVelocity(SCRIPTED_DIVE_MAX_SPEED_X, SCRIPTED_DIVE_MAX_SPEED_Y);
     this.player.setVelocity(horizontalSpeed * direction, downwardSpeed);
     this.setGabiFlip(direction < 0);
     this.gabiDiveActive = true;
