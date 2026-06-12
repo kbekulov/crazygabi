@@ -7261,7 +7261,7 @@ class PlayScene extends Phaser.Scene {
 
   defeatEnemy(enemy) {
     if (!enemy?.active || enemy.getData("dying")) return;
-    this.playLevelSfx(KILL_SFX_KEY, 0.56);
+    this.playLevelSfx(KILL_SFX_KEY, 0.39);
     this.tryDropHeart(enemy.x, enemy.y);
     enemy.setData("dying", true);
     enemy.setVelocity(0, 0);
