@@ -7,7 +7,8 @@ const MAX_LIVES = 9;
 const GABI_FRAME_WIDTH = 238;
 const GABI_FRAME_HEIGHT = 238;
 const GABI_SCALE = 0.34;
-const GABI_DIVE_SCALE = ((GABI_FRAME_HEIGHT * GABI_SCALE) / 775) * 0.8;
+const GABI_GLIDE_SCALE = GABI_SCALE * 1.05;
+const GABI_DIVE_SCALE = ((GABI_FRAME_HEIGHT * GABI_SCALE) / 775) * 0.76;
 const GABI_DIVE_EDGE_DISTANCE = 42;
 const GABI_DIVE_MIN_DURATION = 260;
 const GABI_DIVE_ANGLE = 15;
@@ -201,7 +202,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-gabi-dive-scale";
+const ASSET_VERSION = "20260612-gabi-glide-dive-scale";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const DIFFICULTY_EASY = "easy";
@@ -4307,7 +4308,7 @@ class PlayScene extends Phaser.Scene {
       this.player.setScale(GABI_DIVE_SCALE);
       return;
     }
-    this.player.setScale(GABI_SCALE);
+    this.player.setScale(name === "glide" ? GABI_GLIDE_SCALE : GABI_SCALE);
     this.player.setAngle(0);
     const animationKey = name === "wing-jump"
       ? "gabi-wing-jump"
