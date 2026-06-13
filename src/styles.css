@@ -591,9 +591,11 @@ button:active {
 
 .game-version {
   position: absolute;
-  top: calc(100% + 14px);
-  left: 50%;
-  transform: translateX(-50%);
+  right: 14px;
+  bottom: 12px;
+  z-index: 1;
+  padding: 4px 7px;
+  left: auto;
   color: rgba(244, 220, 176, 0.9);
   font-size: clamp(0.72rem, 1.45vw, 0.95rem);
   font-weight: 900;
@@ -627,6 +629,13 @@ button:active {
   overflow: hidden;
 }
 
+.main-menu-promo-wrap {
+  position: relative;
+  min-height: 420px;
+  background: #050505;
+  border-right: 3px solid rgba(244, 220, 176, 0.58);
+}
+
 .main-menu-promo {
   display: block;
   width: 100%;
@@ -634,7 +643,6 @@ button:active {
   min-height: 420px;
   object-fit: contain;
   background: #050505;
-  border-right: 3px solid rgba(244, 220, 176, 0.58);
 }
 
 .main-menu-actions,
@@ -743,6 +751,10 @@ button:active {
 
   .main-menu-promo {
     max-height: 54vh;
+    min-height: 0;
+  }
+
+  .main-menu-promo-wrap {
     min-height: 0;
     border-right: 0;
     border-bottom: 3px solid rgba(244, 220, 176, 0.58);
@@ -1552,8 +1564,12 @@ button:active {
     grid-template-columns: 1fr;
   }
 
-  .main-menu-promo {
+  .main-menu-promo,
+  .main-menu-promo-wrap {
     height: min(26dvh, 34vw, 150px);
+  }
+
+  .main-menu-promo-wrap {
     border-right: 0;
     border-bottom: 3px solid rgba(244, 220, 176, 0.58);
   }

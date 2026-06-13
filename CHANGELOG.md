@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.50.2
+
+- Moved the version label onto the main menu image without shifting the menu card.
+
 ## v0.50.1
 
 - Kept the main menu card centered while showing the version below it.

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.50.1";
+const GAME_VERSION = "v0.50.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
