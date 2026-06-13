@@ -874,6 +874,59 @@ button:active {
   align-items: center;
 }
 
+.settings-toggle-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(244, 220, 176, 0.24);
+  text-align: left;
+}
+
+.settings-toggle-row:last-child {
+  border-bottom: 0;
+}
+
+.settings-toggle-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.settings-toggle-copy strong {
+  color: #fff200;
+  font-size: clamp(0.9rem, 2vw, 1.08rem);
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.settings-toggle-copy span {
+  color: rgba(244, 220, 176, 0.86);
+  font-size: clamp(0.7rem, 1.55vw, 0.88rem);
+  line-height: 1.25;
+  text-shadow: 1px 1px 0 #000;
+}
+
+.settings-toggle {
+  min-width: 76px;
+  padding: 0.55rem 0.7rem;
+  color: #f4dcb0;
+  background: rgba(244, 220, 176, 0.08);
+  border: 2px solid rgba(244, 220, 176, 0.52);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.65);
+  text-shadow: 2px 2px 0 #000;
+}
+
+.settings-toggle.is-active {
+  color: #17130a;
+  background: #56d46d;
+  border-color: #56d46d;
+  box-shadow: 0 5px 0 #237a32;
+  text-shadow: none;
+}
+
 .story-intro {
   position: absolute;
   z-index: 4;

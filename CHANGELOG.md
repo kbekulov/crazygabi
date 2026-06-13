@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.51.0
+
+- Added a main menu Settings screen.
+- Added saved toggles for Music and Sound Effects.
+
 ## v0.50.2
 
 - Moved the version label onto the main menu image without shifting the menu card.

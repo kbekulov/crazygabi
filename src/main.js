@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.50.2";
+const GAME_VERSION = "v0.51.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -251,8 +251,13 @@ const ENEMY_NAMES = [
 const ASSET_VERSION = "20260612-bird-attack-zoom";
 const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
+const AUDIO_SETTINGS_COOKIE = "crazy-gabi-audio-settings";
 const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
+const DEFAULT_AUDIO_SETTINGS = {
+  music: true,
+  sfx: true
+};
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
@@ -1040,6 +1045,7 @@ const state = {
   autoStartLevel: false,
   pendingLevelPrompt: null,
   questProgress: createQuestProgress(),
+  audioSettings: { ...DEFAULT_AUDIO_SETTINGS },
   difficulty: DIFFICULTY_HARD
 };
 
@@ -1085,6 +1091,7 @@ const hud = {
   menuNewGame: document.querySelector("#menu-new-game"),
   menuSelectLevel: document.querySelector("#menu-select-level"),
   menuMusicBox: document.querySelector("#menu-music-box"),
+  menuSettings: document.querySelector("#menu-settings"),
   menuCredits: document.querySelector("#menu-credits"),
   difficultyEasy: document.querySelector("#difficulty-easy"),
   difficultyHard: document.querySelector("#difficulty-hard"),
@@ -1281,6 +1288,49 @@ function getDifficultySetting() {
   return normalizeDifficulty(getCookieValue(DIFFICULTY_COOKIE));
 }
 
+function getAudioSettings() {
+  try {
+    const saved = JSON.parse(getCookieValue(AUDIO_SETTINGS_COOKIE) || "{}");
+    return {
+      music: saved.music !== false,
+      sfx: saved.sfx !== false
+    };
+  } catch (_error) {
+    return { ...DEFAULT_AUDIO_SETTINGS };
+  }
+}
+
+function saveAudioSettings() {
+  document.cookie = [
+    `${AUDIO_SETTINGS_COOKIE}=${encodeURIComponent(JSON.stringify(state.audioSettings))}`,
+    "max-age=31536000",
+    "path=/",
+    "SameSite=Lax"
+  ].join("; ");
+}
+
+function isMusicEnabled() {
+  return state.audioSettings?.music !== false;
+}
+
+function isSfxEnabled() {
+  return state.audioSettings?.sfx !== false;
+}
+
+function setAudioSetting(key, enabled) {
+  if (!Object.hasOwn(DEFAULT_AUDIO_SETTINGS, key)) return;
+  state.audioSettings = {
+    ...DEFAULT_AUDIO_SETTINGS,
+    ...(state.audioSettings || {}),
+    [key]: Boolean(enabled)
+  };
+  saveAudioSettings();
+  updateAudioSettingsPanel();
+  const scene = game.scene.getScene("PlayScene");
+  if (!scene?.scene?.isActive()) return;
+  scene.applyAudioSettings();
+}
+
 function setDifficultySetting(value) {
   state.difficulty = normalizeDifficulty(value);
   document.cookie = [
@@ -1309,6 +1359,7 @@ function awardScore(points) {
 }
 
 state.difficulty = getDifficultySetting();
+state.audioSettings = getAudioSettings();
 updateDifficultyToggle();
 
 function isMobileTouchDevice() {
@@ -4843,6 +4894,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   startDiveWindSfx() {
+    if (!isSfxEnabled()) return;
     if (this.diveWindSfx?.isPlaying || !this.cache.audio.exists(DIVE_FALL_WIND_SFX_KEY)) return;
     try {
       this.resumeAudioContext();
@@ -7441,6 +7493,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   startMusic() {
+    if (!isMusicEnabled()) {
+      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.stopAmbientMusic({ destroy: false });
+      return;
+    }
     const soundtrack = this.level.soundtrack || "bgm";
     const volume = this.getSoundtrackVolume(soundtrack, 0.35);
     try {
@@ -7468,6 +7525,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   startAmbientMusic() {
+    if (!isMusicEnabled()) {
+      this.stopAmbientMusic({ destroy: false });
+      return;
+    }
     const soundtrack = this.level?.ambientSoundtrack;
     if (!soundtrack) {
       this.stopAmbientMusic({ destroy: true });
@@ -7500,6 +7561,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   playLevelSfx(key, volume = 0.6) {
+    if (!isSfxEnabled()) return;
     if (!key || !this.cache.audio.exists(key)) return;
     try {
       this.resumeAudioContext();
@@ -7510,6 +7572,11 @@ class PlayScene extends Phaser.Scene {
   }
 
   startMenuMusic() {
+    if (!isMusicEnabled()) {
+      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.stopAmbientMusic({ destroy: true });
+      return;
+    }
     try {
       this.resumeAudioContext();
       if (this.bgm?.isPlaying && this.bgm.key === "bgm-menu") {
@@ -7531,6 +7598,7 @@ class PlayScene extends Phaser.Scene {
 
   playMusicBoxTrack(track) {
     if (!track) return;
+    if (!isMusicEnabled()) return;
     const volume = this.getSoundtrackVolume(track.key, 0.32);
     const play = () => {
       this.resumeAudioContext();
@@ -7561,6 +7629,20 @@ class PlayScene extends Phaser.Scene {
     this.load.start();
   }
 
+  applyAudioSettings() {
+    if (!isSfxEnabled()) this.stopDiveWindSfx();
+    if (!isMusicEnabled()) {
+      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.stopAmbientMusic({ destroy: false });
+      return;
+    }
+    if (this.levelReady && state.running && !state.won) {
+      this.startMusic();
+    } else if (!this.levelReady && (!hud.mainMenu.hidden || !hud.menuPanel.hidden)) {
+      this.startMenuMusic();
+    }
+  }
+
   registerAudioLifecycle() {
     this.unregisterAudioLifecycle();
 
@@ -7575,7 +7657,7 @@ class PlayScene extends Phaser.Scene {
       this.resumeAudioContext();
       if (this.levelReady && state.running && !state.won) {
         this.startMusic();
-      } else if (!this.levelReady && !hud.mainMenu.hidden) {
+      } else if (!this.levelReady && (!hud.mainMenu.hidden || !hud.menuPanel.hidden)) {
         this.startMenuMusic();
       }
     };
@@ -8113,6 +8195,7 @@ hud.gameOverMenu.addEventListener("click", () => {
 
 hud.menuSelectLevel.addEventListener("click", () => showLevelSelectPanel());
 hud.menuMusicBox.addEventListener("click", () => showMusicBoxPanel());
+hud.menuSettings.addEventListener("click", () => showSettingsPanel());
 hud.menuCredits.addEventListener("click", () => showCreditsPanel());
 hud.difficultyEasy.addEventListener("click", () => setDifficultySetting(DIFFICULTY_EASY));
 hud.difficultyHard.addEventListener("click", () => setDifficultySetting(DIFFICULTY_HARD));
@@ -8194,6 +8277,7 @@ function showMusicBoxPanel() {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = "Play";
+    button.disabled = !isMusicEnabled();
     button.addEventListener("click", () => {
       const scene = game.scene.getScene("PlayScene");
       if (!scene.scene.isActive()) return;
@@ -8202,6 +8286,53 @@ function showMusicBoxPanel() {
     row.append(label, button);
     hud.menuPanelContent.appendChild(row);
   });
+}
+
+function createSettingsToggle(key, label, description) {
+  const row = document.createElement("div");
+  row.className = "settings-toggle-row";
+  row.dataset.setting = key;
+
+  const copy = document.createElement("div");
+  copy.className = "settings-toggle-copy";
+  const title = document.createElement("strong");
+  title.textContent = label;
+  const detail = document.createElement("span");
+  detail.textContent = description;
+  copy.append(title, detail);
+
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "settings-toggle";
+  button.addEventListener("click", () => {
+    setAudioSetting(key, !state.audioSettings[key]);
+  });
+
+  row.append(copy, button);
+  return row;
+}
+
+function updateAudioSettingsPanel() {
+  hud.menuPanelContent
+    ?.querySelectorAll(".settings-toggle-row")
+    .forEach((row) => {
+      const key = row.dataset.setting;
+      const enabled = state.audioSettings?.[key] !== false;
+      const button = row.querySelector(".settings-toggle");
+      if (!button) return;
+      button.classList.toggle("is-active", enabled);
+      button.setAttribute("aria-pressed", String(enabled));
+      button.textContent = enabled ? "On" : "Off";
+    });
+}
+
+function showSettingsPanel() {
+  showMenuPanel("Settings", "Choose which audio layers should play. Your preferences are saved in this browser.", "settings");
+  hud.menuPanelContent.append(
+    createSettingsToggle("music", "Music", "Menu themes, level soundtracks, music box tracks, and ambient loops."),
+    createSettingsToggle("sfx", "Sound Effects", "Pickups, attacks, dialogue sounds, impacts, and environmental effects.")
+  );
+  updateAudioSettingsPanel();
 }
 
 function showCreditsPanel() {
