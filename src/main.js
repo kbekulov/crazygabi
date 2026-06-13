@@ -1,4 +1,5 @@
 const TILE = 32;
+const GAME_VERSION = "v0.50.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -1076,7 +1077,10 @@ const hud = {
   equippedName: document.querySelector("#equipped-name"),
   itemActionKey: document.querySelector("#item-action-key"),
   birdCooldown: document.querySelector("#bird-cooldown"),
+  gameRoot: document.querySelector("#game"),
+  speechLayer: document.querySelector("#speech-layer"),
   mainMenu: document.querySelector("#main-menu"),
+  gameVersion: document.querySelector("#game-version"),
   bestScore: document.querySelector("#best-score"),
   menuNewGame: document.querySelector("#menu-new-game"),
   menuSelectLevel: document.querySelector("#menu-select-level"),
@@ -1096,6 +1100,8 @@ const hud = {
 
 hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSION}`;
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
+document.title = `Crazy Gabi ${GAME_VERSION}`;
+if (hud.gameVersion) hud.gameVersion.textContent = GAME_VERSION;
 updateBestScore();
 
 function setLoadingVisible(visible) {
@@ -1356,13 +1362,67 @@ function setItemPickupVisible(visible, details = {}) {
   hud.itemPickupInstruction.textContent = details.instruction || "";
 }
 
-function createSpeechText(scene, x, y, text, style = {}) {
-  const label = scene.add.text(x, y, text, style);
-  if (typeof label.setResolution === "function") {
-    const resolution = Phaser.Math.Clamp(window.devicePixelRatio || 2, 2, 3);
-    label.setResolution(resolution);
-  }
-  return label;
+function createWorldSpeechBubble(scene, anchor, text, options = {}) {
+  if (!hud.speechLayer || !text) return null;
+  const element = document.createElement("div");
+  element.className = "world-speech-bubble";
+  element.textContent = text;
+  element.style.setProperty("--speech-width", `${options.width ?? 160}px`);
+  element.style.setProperty("--speech-min-height", `${options.minHeight ?? 28}px`);
+  element.style.setProperty("--speech-font-size", `${options.fontSize ?? 13}px`);
+  element.style.setProperty("--speech-opacity", String(options.backgroundOpacity ?? 0.9));
+  hud.speechLayer.appendChild(element);
+
+  const bubble = {
+    element,
+    alpha: 1,
+    visible: options.visible ?? true,
+    offsetY: options.offsetY ?? -60,
+    anchor,
+    setPosition(x, y) {
+      this.anchor = { x, y: y - this.offsetY };
+      this.update();
+      return this;
+    },
+    setVisible(visible) {
+      this.visible = Boolean(visible);
+      element.classList.toggle("is-hidden", !this.visible);
+      return this;
+    },
+    update() {
+      if (!this.visible || !this.element.isConnected) return;
+      const camera = scene.cameras?.main;
+      if (!camera) return;
+      const point = typeof this.anchor === "function" ? this.anchor() : this.anchor;
+      if (!point) return;
+      const scaleX = hud.speechLayer.clientWidth / VIEW_WIDTH;
+      const scaleY = hud.speechLayer.clientHeight / VIEW_HEIGHT;
+      const screenX = (point.x - camera.worldView.x) * camera.zoom * scaleX;
+      const screenY = (point.y + this.offsetY - camera.worldView.y) * camera.zoom * scaleY;
+      element.style.transform = `translate(${screenX}px, ${screenY}px) translate(-50%, -100%)`;
+    },
+    destroy() {
+      element.remove();
+      if (scene.domSpeechBubbles) {
+        scene.domSpeechBubbles = scene.domSpeechBubbles.filter((entry) => entry !== this);
+      }
+    }
+  };
+
+  Object.defineProperty(bubble, "alpha", {
+    get() {
+      return Number(element.style.opacity || 1);
+    },
+    set(value) {
+      element.style.opacity = String(Phaser.Math.Clamp(value, 0, 1));
+    }
+  });
+
+  scene.domSpeechBubbles = scene.domSpeechBubbles || [];
+  scene.domSpeechBubbles.push(bubble);
+  bubble.setVisible(bubble.visible);
+  bubble.update();
+  return bubble;
 }
 
 function resetGameProgress() {
@@ -1663,6 +1723,7 @@ class PlayScene extends Phaser.Scene {
     }
     this.levelReady = false;
     this.createMenuBackdrop();
+    this.clearDomSpeechBubbles();
     this.registerAudioLifecycle();
     if (state.autoStartLevel) {
       state.autoStartLevel = false;
@@ -1807,6 +1868,8 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManExitX = 0;
     this.mysteriousManScriptAt = 0;
     this.catFollowPlayerAfterElevator = false;
+    this.clearDomSpeechBubbles();
+    this.domSpeechBubbles = [];
 
     state.totalGems = 0;
     state.levelGems = 0;
@@ -2942,26 +3005,19 @@ class PlayScene extends Phaser.Scene {
   }
 
   createBillboardPrompt(text = "Press [ 0 ] to interact", width = 146) {
-    const bubbleWidth = width;
-    const prompt = this.add.container(this.levelSelectBoard.x, this.levelSelectBoard.y - 112);
-    const label = createSpeechText(this, 0, 0, text, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "9px",
-      color: "#f4f0dc",
-      align: "center",
-      wordWrap: { width: bubbleWidth - 18, useAdvancedWrap: true }
-    });
-    const bubbleHeight = Math.max(30, label.height + 14);
-    const background = this.add.graphics();
-    background.fillStyle(0x050505, 0.88);
-    background.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    background.fillTriangle(-6, -1, 6, -1, 0, 7);
-    label.setOrigin(0.5, 0.5);
-    label.setPosition(0, -bubbleHeight / 2);
-    prompt.add([background, label]);
-    prompt.setDepth(12);
-    prompt.setVisible(false);
-    this.levelSelectPrompt = prompt;
+    this.levelSelectPrompt = createWorldSpeechBubble(
+      this,
+      () => ({ x: this.levelSelectBoard.x, y: this.levelSelectBoard.y }),
+      text,
+      {
+        width,
+        minHeight: 30,
+        fontSize: 12,
+        offsetY: -112,
+        backgroundOpacity: 0.88,
+        visible: false
+      }
+    );
   }
 
   createAnimations() {
@@ -3905,25 +3961,18 @@ class PlayScene extends Phaser.Scene {
   showMysteriousManSpeech(text) {
     if (!this.mysteriousMan || !text) return;
     this.mysteriousManSpeechBubble?.destroy(true);
-    const container = this.add.container(this.mysteriousMan.x, this.mysteriousMan.y - 96);
-    const label = createSpeechText(this, 0, 0, text, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "10px",
-      color: "#f4f0dc",
-      align: "center",
-      wordWrap: { width: 170, useAdvancedWrap: true }
-    });
-    const bubbleWidth = Phaser.Math.Clamp(label.width + 24, 92, 194);
-    const bubbleHeight = label.height + 16;
-    const bubble = this.add.graphics();
-    bubble.fillStyle(0x050505, 0.9);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    label.setOrigin(0.5, 0.5);
-    label.setPosition(0, -bubbleHeight / 2);
-    container.add([bubble, label]);
-    container.setDepth(DARKNESS_DEPTH + 2);
-    this.mysteriousManSpeechBubble = container;
+    this.mysteriousManSpeechBubble = createWorldSpeechBubble(
+      this,
+      () => ({ x: this.mysteriousMan.x, y: this.mysteriousMan.y }),
+      text,
+      {
+        width: text.length > 24 ? 210 : 150,
+        minHeight: 34,
+        fontSize: 13,
+        offsetY: -96,
+        backgroundOpacity: 0.9
+      }
+    );
     this.time.delayedCall(1800, () => {
       if (!this.mysteriousManSpeechBubble) return;
       this.tweens.add({
@@ -3940,7 +3989,7 @@ class PlayScene extends Phaser.Scene {
 
   updateMysteriousManSpeechPosition() {
     if (!this.mysteriousManSpeechBubble || !this.mysteriousMan) return;
-    this.mysteriousManSpeechBubble.setPosition(this.mysteriousMan.x, this.mysteriousMan.y - 96);
+    this.mysteriousManSpeechBubble.update();
   }
 
   createInput() {
@@ -4224,6 +4273,7 @@ class PlayScene extends Phaser.Scene {
     this.updateDiveCameraZoom();
     this.updateAmbientLeaves(time, delta);
     this.updateBirdAttackCooldown(time);
+    this.updateDomSpeechBubbles();
     this.updateGabiSpeechPosition();
     this.updateCatSpeechPosition();
     this.updateMysteriousMan(time, delta);
@@ -5272,25 +5322,18 @@ class PlayScene extends Phaser.Scene {
   showGabiSpeech(text) {
     if (!text) return;
     if (this.speechBubble) this.speechBubble.destroy(true);
-    const bubbleWidth = 174;
-    const bubbleHeight = 42;
-    const container = this.add.container(this.player.x, this.player.y - 62);
-    const bubble = this.add.graphics();
-    bubble.fillStyle(0x050505, 0.86);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
-    const label = createSpeechText(this, 0, -bubbleHeight / 2, text, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "11px",
-      color: "#f4f0dc",
-      align: "center",
-      lineSpacing: 0,
-      wordWrap: { width: bubbleWidth - 20, useAdvancedWrap: true }
-    });
-    label.setOrigin(0.5, 0.5);
-    container.add([bubble, label]);
-    container.setDepth(DARKNESS_DEPTH + 2);
-    this.speechBubble = container;
+    this.speechBubble = createWorldSpeechBubble(
+      this,
+      () => ({ x: this.player.x, y: this.player.y }),
+      text,
+      {
+        width: 190,
+        minHeight: 42,
+        fontSize: 13,
+        offsetY: -62,
+        backgroundOpacity: 0.86
+      }
+    );
     this.updateGabiSpeechPosition();
     this.time.delayedCall(4200, () => {
       if (!this.speechBubble) return;
@@ -5327,25 +5370,18 @@ class PlayScene extends Phaser.Scene {
   showOldLadySpeech() {
     if (!this.oldLady || !this.oldLadySpeechText) return;
     if (this.oldLadySpeechBubble) this.oldLadySpeechBubble.destroy(true);
-    const bubbleWidth = 218;
-    const bubbleHeight = 54;
-    const container = this.add.container(this.oldLady.x, this.oldLady.y - 46);
-    const bubble = this.add.graphics();
-    bubble.fillStyle(0x050505, 0.9);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.fillTriangle(-7, -1, 7, -1, 0, 7);
-    const label = createSpeechText(this, 0, -bubbleHeight / 2, this.oldLadySpeechText, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "10px",
-      color: "#f4f0dc",
-      align: "center",
-      lineSpacing: 0,
-      wordWrap: { width: bubbleWidth - 18, useAdvancedWrap: true }
-    });
-    label.setOrigin(0.5, 0.5);
-    container.add([bubble, label]);
-    container.setDepth(DARKNESS_DEPTH + 2);
-    this.oldLadySpeechBubble = container;
+    this.oldLadySpeechBubble = createWorldSpeechBubble(
+      this,
+      () => ({ x: this.oldLady.x, y: this.oldLady.y }),
+      this.oldLadySpeechText,
+      {
+        width: 238,
+        minHeight: 56,
+        fontSize: 13,
+        offsetY: -46,
+        backgroundOpacity: 0.9
+      }
+    );
     this.time.delayedCall(7200, () => {
       if (!this.oldLadySpeechBubble) return;
       this.tweens.add({
@@ -5362,7 +5398,7 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiSpeechPosition() {
     if (!this.speechBubble || !this.player) return;
-    this.speechBubble.setPosition(this.player.x, this.player.y - 62);
+    this.speechBubble.update();
   }
 
   maybeShowCatMeow() {
@@ -5377,23 +5413,18 @@ class PlayScene extends Phaser.Scene {
   showCatSpeech(text) {
     if (!this.cat || !text) return;
     if (this.catSpeechBubble) return;
-    const bubbleWidth = 72;
-    const bubbleHeight = 28;
-    const container = this.add.container(this.cat.x, this.cat.y - 34);
-    const bubble = this.add.graphics();
-    bubble.fillStyle(0x050505, 0.9);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = createSpeechText(this, 0, -bubbleHeight / 2, text, {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "10px",
-      color: "#f4f0dc",
-      align: "center"
-    });
-    label.setOrigin(0.5, 0.5);
-    container.add([bubble, label]);
-    container.setDepth(DARKNESS_DEPTH + 2);
-    this.catSpeechBubble = container;
+    this.catSpeechBubble = createWorldSpeechBubble(
+      this,
+      () => ({ x: this.cat.x, y: this.cat.y }),
+      text,
+      {
+        width: 76,
+        minHeight: 28,
+        fontSize: 12,
+        offsetY: -34,
+        backgroundOpacity: 0.9
+      }
+    );
     this.time.delayedCall(1300, () => {
       if (!this.catSpeechBubble) return;
       this.tweens.add({
@@ -5410,7 +5441,7 @@ class PlayScene extends Phaser.Scene {
 
   updateCatSpeechPosition() {
     if (!this.catSpeechBubble || !this.cat) return;
-    this.catSpeechBubble.setPosition(this.cat.x, this.cat.y - 34);
+    this.catSpeechBubble.update();
   }
 
   isPlayerNearLevelSelectBoard() {
@@ -5742,7 +5773,7 @@ class PlayScene extends Phaser.Scene {
     const elevator = this.finalElevator;
     const sign = elevator?.sign;
     if (this.elevatorSignBubble && sign) {
-      this.elevatorSignBubble.setPosition(sign.x, sign.y - 82);
+      this.elevatorSignBubble.update();
     }
     if (!sign || this.elevatorSignPromptShown || state.hasKey || !state.running || state.won) return;
     const passedSign = this.player.x > sign.x + 14;
@@ -5756,23 +5787,18 @@ class PlayScene extends Phaser.Scene {
     if (!sign) return;
     this.elevatorSignPromptShown = true;
     this.elevatorSignBubble?.destroy(true);
-    const bubbleWidth = 92;
-    const bubbleHeight = 28;
-    const container = this.add.container(sign.x, sign.y - 82);
-    const bubble = this.add.graphics();
-    bubble.fillStyle(0x050505, 0.9);
-    bubble.fillRoundedRect(-bubbleWidth / 2, -bubbleHeight, bubbleWidth, bubbleHeight, 5);
-    bubble.fillTriangle(-6, -1, 6, -1, 0, 7);
-    const label = createSpeechText(this, 0, -bubbleHeight / 2, "KEY PLEASE", {
-      fontFamily: "\"Courier New\", monospace",
-      fontSize: "10px",
-      color: "#f4f0dc",
-      align: "center"
-    });
-    label.setOrigin(0.5, 0.5);
-    container.add([bubble, label]);
-    container.setDepth(DARKNESS_DEPTH + 2);
-    this.elevatorSignBubble = container;
+    this.elevatorSignBubble = createWorldSpeechBubble(
+      this,
+      () => ({ x: sign.x, y: sign.y }),
+      "KEY PLEASE",
+      {
+        width: 98,
+        minHeight: 28,
+        fontSize: 12,
+        offsetY: -82,
+        backgroundOpacity: 0.9
+      }
+    );
     this.time.delayedCall(2600, () => {
       if (!this.elevatorSignBubble) return;
       this.tweens.add({
@@ -7596,6 +7622,17 @@ class PlayScene extends Phaser.Scene {
     this.handlePageVisible = null;
   }
 
+  updateDomSpeechBubbles() {
+    this.domSpeechBubbles?.forEach((bubble) => bubble?.update?.());
+  }
+
+  clearDomSpeechBubbles() {
+    const bubbles = [...(this.domSpeechBubbles || [])];
+    bubbles.forEach((bubble) => bubble?.destroy?.());
+    this.domSpeechBubbles = [];
+    hud.speechLayer?.replaceChildren();
+  }
+
   cancelLevelRuntime() {
     this.clearIntroWatchdogs();
     this.levelLoadId = (this.levelLoadId || 0) + 1;
@@ -7612,6 +7649,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
     this.elevatorSignBubble = null;
+    this.clearDomSpeechBubbles();
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
     this.clearFinalElevatorCredits();

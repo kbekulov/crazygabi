@@ -74,6 +74,57 @@ button:active {
   image-rendering: pixelated;
 }
 
+.speech-layer {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: "Courier New", ui-monospace, monospace;
+  image-rendering: auto;
+}
+
+.world-speech-bubble {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  min-height: var(--speech-min-height, 28px);
+  width: var(--speech-width, 160px);
+  padding: 7px 10px 8px;
+  color: #f4f0dc;
+  background: rgba(5, 5, 5, var(--speech-opacity, 0.9));
+  border-radius: 5px;
+  font-size: var(--speech-font-size, 13px);
+  font-weight: 900;
+  line-height: 1.16;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000;
+  white-space: normal;
+  transform: translate(-9999px, -9999px);
+  will-change: transform, opacity;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.world-speech-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid rgba(5, 5, 5, var(--speech-opacity, 0.9));
+}
+
+.world-speech-bubble.is-hidden {
+  display: none;
+}
+
 #hud {
   position: absolute;
   z-index: 2;
@@ -531,6 +582,14 @@ button:active {
   padding: clamp(18px, 4vw, 42px);
   text-align: center;
   background: rgba(0, 0, 0, 0.28);
+}
+
+.game-version {
+  margin-top: 14px;
+  color: rgba(244, 220, 176, 0.9);
+  font-size: clamp(0.72rem, 1.45vw, 0.95rem);
+  font-weight: 900;
+  text-shadow: 2px 2px 0 #000;
 }
 
 .main-menu[hidden],
