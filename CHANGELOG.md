@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.50.1
+
+- Kept the main menu card centered while showing the version below it.
+
 ## v0.50.0 - Current baseline
 
 - Added version tracking to the browser title and main menu.

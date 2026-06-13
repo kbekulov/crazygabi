@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crazy Gabi v0.50.0</title>
+    <title>Crazy Gabi v0.50.1</title>
     <link rel="stylesheet" href="./src/styles.css?v=20260613-version-speech" />
   </head>
   <body>
@@ -60,28 +60,30 @@
           <p id="loading-text">Preparing assets...</p>
         </div>
         <div id="main-menu" class="main-menu">
-          <div class="main-menu-card">
-            <img class="main-menu-promo" src="./public/assets/menu/menu_promo_2.png?v=20260603-ruins-1" alt="" />
-            <div class="main-menu-actions">
-              <div class="main-menu-best-score">
-                <span>Your Best Score</span>
-                <strong id="best-score">000000</strong>
-              </div>
-              <div class="main-menu-difficulty" aria-label="Difficulty">
-                <span>Difficulty</span>
-                <div class="difficulty-toggle" role="group" aria-label="Difficulty">
-                  <button id="difficulty-easy" type="button" data-difficulty="easy">Easy</button>
-                  <button id="difficulty-hard" type="button" data-difficulty="hard">Hard</button>
+          <div class="main-menu-layout">
+            <div class="main-menu-card">
+              <img class="main-menu-promo" src="./public/assets/menu/menu_promo_2.png?v=20260603-ruins-1" alt="" />
+              <div class="main-menu-actions">
+                <div class="main-menu-best-score">
+                  <span>Your Best Score</span>
+                  <strong id="best-score">000000</strong>
                 </div>
+                <div class="main-menu-difficulty" aria-label="Difficulty">
+                  <span>Difficulty</span>
+                  <div class="difficulty-toggle" role="group" aria-label="Difficulty">
+                    <button id="difficulty-easy" type="button" data-difficulty="easy">Easy</button>
+                    <button id="difficulty-hard" type="button" data-difficulty="hard">Hard</button>
+                  </div>
+                </div>
+                <button id="menu-new-game" type="button">New Game</button>
+                <button id="menu-select-level" type="button">Select Level</button>
+                <button id="menu-music-box" type="button">Music Box</button>
+                <button id="menu-credits" type="button">Credits</button>
+                <p class="main-menu-subtitle">For the best experience, play with sound.</p>
               </div>
-              <button id="menu-new-game" type="button">New Game</button>
-              <button id="menu-select-level" type="button">Select Level</button>
-              <button id="menu-music-box" type="button">Music Box</button>
-              <button id="menu-credits" type="button">Credits</button>
-              <p class="main-menu-subtitle">For the best experience, play with sound.</p>
             </div>
+            <div id="game-version" class="game-version">v0.50.1</div>
           </div>
-          <div id="game-version" class="game-version">v0.50.0</div>
         </div>
         <div id="menu-panel" class="menu-panel" hidden>
           <div class="menu-panel-card">

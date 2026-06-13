@@ -584,8 +584,16 @@ button:active {
   background: rgba(0, 0, 0, 0.28);
 }
 
+.main-menu-layout {
+  position: relative;
+  width: min(760px, 88%);
+}
+
 .game-version {
-  margin-top: 14px;
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 50%;
+  transform: translateX(-50%);
   color: rgba(244, 220, 176, 0.9);
   font-size: clamp(0.72rem, 1.45vw, 0.95rem);
   font-weight: 900;
@@ -613,7 +621,7 @@ button:active {
   grid-template-columns: minmax(230px, 0.78fr) minmax(220px, 0.72fr);
   align-items: stretch;
   gap: 0;
-  width: min(760px, 88%);
+  width: 100%;
   max-height: min(620px, 88vh);
   padding: 0;
   overflow: hidden;
@@ -725,9 +733,12 @@ button:active {
 }
 
 @media (max-width: 680px) {
+  .main-menu-layout {
+    width: min(390px, 90%);
+  }
+
   .main-menu-card {
     grid-template-columns: 1fr;
-    width: min(390px, 90%);
   }
 
   .main-menu-promo {
@@ -1533,9 +1544,12 @@ button:active {
 }
 
 @media (hover: none) and (pointer: coarse) and (orientation: portrait), (max-width: 680px) and (orientation: portrait) {
+  .main-menu-layout {
+    width: min(390px, 94%);
+  }
+
   .main-menu-card {
     grid-template-columns: 1fr;
-    width: min(390px, 94%);
   }
 
   .main-menu-promo {
@@ -1556,7 +1570,7 @@ button:active {
 }
 
 @media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 520px), (max-width: 900px) and (orientation: landscape) and (max-height: 520px) {
-  .main-menu-card {
+  .main-menu-layout {
     width: min(690px, 96%);
   }
 
