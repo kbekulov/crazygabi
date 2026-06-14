@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.52.2";
+const GAME_VERSION = "v0.53.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -145,8 +145,6 @@ const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
 const COLOSSUS_DEPTH = -9.55;
 const COLOSSUS_STEP_SHAKE_DURATION = 180;
 const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
-const COLOSSUS_JOINT_COLOR = 0x86898d;
-const COLOSSUS_JOINT_STROKE = 0xb7babd;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -253,8 +251,14 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260612-bird-attack-zoom";
-const STORY_ASSET_VERSION = "20260608-level5-manga-v2";
+const ASSET_VERSION = "20260614-spine-colossus-12";
+const STORY_ASSET_VERSION = ASSET_VERSION;
+
+function getSpineRuntime() {
+  if (typeof spine !== "undefined") return spine;
+  if (globalThis.spine) return globalThis.spine;
+  return null;
+}
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const AUDIO_SETTINGS_COOKIE = "crazy-gabi-audio-settings";
 const DIFFICULTY_EASY = "easy";
@@ -550,12 +554,17 @@ const LEVELS = [
     birdSfx: MAGPIE_CALL_SFX_KEY,
     ambientBirds: true,
     distantColossus: {
-      x: 865,
-      groundY: 464,
-      scale: 0.86,
+      type: "spine",
+      dataKey: "colossus-placeholder-data",
+      atlasKey: "colossus-placeholder-atlas",
+      skeleton: "./public/assets/boss/colossus/colossus_placeholder.json",
+      atlas: "./public/assets/boss/colossus/colossus_placeholder.atlas",
+      x: 720,
+      groundY: 214,
+      scale: 0.72,
       driftSpeed: -4.8,
       cycleMs: 5200,
-      alpha: 0.52,
+      alpha: 0.62,
       shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
       shakeIntensity: COLOSSUS_STEP_SHAKE_INTENSITY
     },
@@ -1825,7 +1834,8 @@ class PlayScene extends Phaser.Scene {
       }
       if (!this.isActiveLevelLoad(loadId)) return;
       this.createLevelRuntime();
-    } catch (_error) {
+    } catch (error) {
+      console.error("Level load failed", error);
       if (!this.isActiveLevelLoad(loadId)) return;
       updateLoadingProgress(1, "Could not load level.");
       this.cancelLevelRuntime();
@@ -2087,6 +2097,20 @@ class PlayScene extends Phaser.Scene {
         this.load.audio(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
       };
+      const spineAsset = (config) => {
+        if (!config || config.type !== "spine") return;
+        if (typeof this.load.spineJson !== "function" || typeof this.load.spineAtlas !== "function") return;
+        const dataKey = config.dataKey || "colossus-placeholder-data";
+        const atlasKey = config.atlasKey || "colossus-placeholder-atlas";
+        if (!this.cache.json.exists(dataKey)) {
+          this.load.spineJson(dataKey, `${config.skeleton}?v=${ASSET_VERSION}`);
+          queued += 1;
+        }
+        if (!this.cache.text.exists(atlasKey)) {
+          this.load.spineAtlas(atlasKey, `${config.atlas}?v=${ASSET_VERSION}`);
+          queued += 1;
+        }
+      };
 
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
@@ -2118,6 +2142,7 @@ class PlayScene extends Phaser.Scene {
       if (level.ambientLeaves) {
         sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
       }
+      spineAsset(level.distantColossus);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -2489,102 +2514,110 @@ class PlayScene extends Phaser.Scene {
     const config = this.level.distantColossus;
     if (!config) return;
 
-    const container = this.add.container(config.x ?? VIEW_WIDTH + 180, config.groundY ?? PLAY_HEIGHT - 78);
-    container.setScrollFactor(0);
-    container.setDepth(config.depth ?? COLOSSUS_DEPTH);
-    container.setScale(config.scale ?? 1);
-    container.setAlpha(config.alpha ?? 0.55);
+    if (config.type !== "spine" || typeof this.add.spine !== "function") return;
 
-    const parts = {};
-    const addPart = (name, width, height, color, originX = 0.5, originY = 0, alpha = 1) => {
-      const part = this.add.rectangle(0, 0, width, height, color, alpha);
-      part.setOrigin(originX, originY);
-      part.setStrokeStyle(1, 0x9a9a9a, 0.28);
-      container.add(part);
-      parts[name] = part;
-      return part;
-    };
+    const spineRuntime = getSpineRuntime();
+    const boundsProvider = spineRuntime?.AABBRectangleBoundsProvider
+      ? new spineRuntime.AABBRectangleBoundsProvider(-170, -430, 340, 430)
+      : undefined;
+    const object = this.add.spine(
+      config.x ?? VIEW_WIDTH + 180,
+      config.groundY ?? PLAY_HEIGHT - 78,
+      config.dataKey || "colossus-placeholder-data",
+      config.atlasKey || "colossus-placeholder-atlas",
+      boundsProvider
+    );
+    object.setScrollFactor(0);
+    object.setDepth(config.depth ?? COLOSSUS_DEPTH);
+    object.setScale(config.scale ?? 1);
+    object.setAlpha(config.alpha ?? 0.55);
 
-    addPart("rightUpperArm", 28, 1, 0x5c6064, 0.5, 0.5);
-    addPart("rightLowerArm", 24, 1, 0x4a4d50, 0.5, 0.5);
-    addPart("rightHand", 28, 22, 0x3a3d40, 0.5, 0.2);
-    addPart("rightUpperLeg", 34, 1, 0x5d6063, 0.5, 0.5);
-    addPart("rightLowerLeg", 30, 1, 0x494d51, 0.5, 0.5);
-    addPart("rightFoot", 58, 18, 0x343638, 0.24, 0.5);
-    addPart("torso", 78, 146, 0x686b6f, 0.5, 1);
-    addPart("pelvis", 78, 42, 0x55585c, 0.5, 0.5);
-    addPart("neck", 24, 1, 0x505357, 0.5, 0.5);
-    addPart("head", 60, 68, 0x777a7d, 0.5, 1);
-    addPart("leftUpperLeg", 34, 1, 0x73767a, 0.5, 0.5);
-    addPart("leftLowerLeg", 30, 1, 0x5d6165, 0.5, 0.5);
-    addPart("leftFoot", 58, 18, 0x45484b, 0.24, 0.5);
-    addPart("leftUpperArm", 28, 1, 0x74777a, 0.5, 0.5);
-    addPart("leftLowerArm", 24, 1, 0x5c6064, 0.5, 0.5);
-    addPart("leftHand", 28, 22, 0x4b4e51, 0.5, 0.2);
-
-    const addJoint = (name, radius = 13, alpha = 0.92) => {
-      const joint = this.add.circle(0, 0, radius, COLOSSUS_JOINT_COLOR, alpha);
-      joint.setStrokeStyle(1, COLOSSUS_JOINT_STROKE, 0.32);
-      container.add(joint);
-      parts[name] = joint;
-      return joint;
-    };
-
-    addJoint("neckBaseJoint", 12);
-    addJoint("neckTopJoint", 11);
-    ["left", "right"].forEach((side) => {
-      addJoint(`${side}ShoulderJoint`, 14);
-      addJoint(`${side}ElbowJoint`, 12);
-      addJoint(`${side}WristJoint`, 10);
-      addJoint(`${side}HipJoint`, 15);
-      addJoint(`${side}KneeJoint`, 13);
-      addJoint(`${side}AnkleJoint`, 11);
-    });
+    const boneNames = [
+      "pelvis",
+      "torso",
+      "neck",
+      "head",
+      "left-shoulder",
+      "left-forearm",
+      "left-hand",
+      "right-shoulder",
+      "right-forearm",
+      "right-hand",
+      "left-thigh",
+      "left-shin",
+      "left-foot",
+      "right-thigh",
+      "right-shin",
+      "right-foot"
+    ];
+    const bones = Object.fromEntries(
+      boneNames.map((name) => [name, object.skeleton.findBone(name)]).filter(([, bone]) => Boolean(bone))
+    );
 
     this.distantColossus = {
       config,
-      container,
-      parts,
+      object,
+      bones,
       screenX: config.x ?? VIEW_WIDTH + 180,
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
       phaseOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
     };
+    object.beforeUpdateWorldTransforms = () => this.poseSpineColossus();
     this.updateDistantColossus(this.time.now, 0);
   }
 
-  getColossusJoint(x, y, angle, length) {
-    return {
-      x: x + Math.sin(angle) * length,
-      y: y + Math.cos(angle) * length
-    };
+  setSpineBonePose(bone, { x, y, rotation, scaleX, scaleY }) {
+    if (!bone?.pose) return;
+    if (Number.isFinite(x)) bone.pose.x = x;
+    if (Number.isFinite(y)) bone.pose.y = y;
+    if (Number.isFinite(rotation)) bone.pose.rotation = rotation;
+    if (Number.isFinite(scaleX)) bone.pose.scaleX = scaleX;
+    if (Number.isFinite(scaleY)) bone.pose.scaleY = scaleY;
   }
 
-  setColossusPart(part, x, y, angle = 0) {
-    part.setPosition(x, y);
-    part.setRotation(angle);
-  }
+  poseSpineColossus() {
+    const rig = this.distantColossus;
+    if (!rig?.bones) return;
 
-  setColossusSegment(part, start, end, width) {
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    part.setPosition(start.x + dx * 0.5, start.y + dy * 0.5);
-    part.setRotation(Math.atan2(dx, dy));
-    part.setDisplaySize(width, length + 3);
-  }
+    const phase = rig.phase || 0;
+    const breathe = Math.sin(phase * 2) * 0.025;
+    const torsoLean = Math.sin(phase + 0.35) * 2.6;
+    const leftStep = Math.sin(phase);
+    const rightStep = Math.sin(phase + Math.PI);
+    const leftLift = Math.max(0, leftStep);
+    const rightLift = Math.max(0, rightStep);
+    const armSwing = Math.sin(phase + Math.PI) * 13;
+    const headCounter = Math.sin(phase + 0.6) * 2.5;
 
-  setColossusJoint(part, x, y) {
-    part.setPosition(x, y);
+    this.setSpineBonePose(rig.bones.pelvis, { rotation: Math.sin(phase) * 2.4, y: -170 + Math.abs(Math.sin(phase)) * 4 });
+    this.setSpineBonePose(rig.bones.torso, { rotation: torsoLean, scaleX: 1 + breathe, scaleY: 1 - breathe * 0.7 });
+    this.setSpineBonePose(rig.bones.neck, { rotation: -90 - torsoLean * 0.35 });
+    this.setSpineBonePose(rig.bones.head, { rotation: -headCounter - torsoLean * 0.25 });
+
+    this.setSpineBonePose(rig.bones["left-thigh"], { rotation: -90 - leftStep * 17 });
+    this.setSpineBonePose(rig.bones["left-shin"], { rotation: -8 - leftLift * 28 + Math.max(0, -leftStep) * 6 });
+    this.setSpineBonePose(rig.bones["left-foot"], { rotation: -Math.sin(phase - 0.4) * 9 });
+    this.setSpineBonePose(rig.bones["right-thigh"], { rotation: -90 - rightStep * 17 });
+    this.setSpineBonePose(rig.bones["right-shin"], { rotation: 8 - rightLift * 28 + Math.max(0, -rightStep) * 6 });
+    this.setSpineBonePose(rig.bones["right-foot"], { rotation: -Math.sin(phase + Math.PI - 0.4) * 9 });
+
+    this.setSpineBonePose(rig.bones["left-shoulder"], { rotation: -90 - armSwing });
+    this.setSpineBonePose(rig.bones["left-forearm"], { rotation: -12 + Math.sin(phase + 0.45) * 9 });
+    this.setSpineBonePose(rig.bones["left-hand"], { rotation: Math.sin(phase + 0.9) * 7 });
+    this.setSpineBonePose(rig.bones["right-shoulder"], { rotation: -90 + armSwing });
+    this.setSpineBonePose(rig.bones["right-forearm"], { rotation: 12 - Math.sin(phase + 0.45) * 9 });
+    this.setSpineBonePose(rig.bones["right-hand"], { rotation: -Math.sin(phase + 0.9) * 7 });
   }
 
   updateDistantColossus(time = 0, delta = 0) {
     const rig = this.distantColossus;
-    if (!rig?.container?.active) return;
+    if (!rig?.object?.active) return;
 
     const config = rig.config;
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
+    rig.phase = phase;
     const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
     rig.screenX += Number.isFinite(drift) ? drift : 0;
     if (rig.screenX < -260) rig.screenX = VIEW_WIDTH + 260;
@@ -2592,72 +2625,14 @@ class PlayScene extends Phaser.Scene {
 
     const bob = Math.abs(Math.sin(phase)) * 5;
     const sway = Math.sin(phase * 0.5) * 4;
-    rig.container.setPosition(rig.screenX + sway, rig.baseGroundY + bob);
-
-    const parts = rig.parts;
-    const hipY = -186;
-    const torsoBottomY = hipY + 8;
-    const torsoTopY = torsoBottomY - 146;
-    const shoulderY = torsoTopY + 22;
-    const neckX = Math.sin(phase) * 2;
-    const neckBase = { x: neckX, y: torsoTopY + 2 };
-    const neckTop = { x: neckX + Math.sin(phase + 0.4) * 2, y: neckBase.y - 34 };
-    const torsoLean = Math.sin(phase + 0.35) * 0.035;
-    this.setColossusPart(parts.torso, 0, torsoBottomY, torsoLean);
-    this.setColossusPart(parts.pelvis, 0, hipY + 10, Math.sin(phase) * 0.06);
-    this.setColossusSegment(parts.neck, neckBase, neckTop, 24);
-    this.setColossusPart(parts.head, neckTop.x + Math.sin(phase + 0.6) * 3, neckTop.y, torsoLean * -0.35);
-    this.setColossusJoint(parts.neckBaseJoint, neckBase.x, neckBase.y);
-    this.setColossusJoint(parts.neckTopJoint, neckTop.x, neckTop.y);
-
-    this.updateColossusLeg("left", -22, hipY + 10, phase, 1);
-    this.updateColossusLeg("right", 22, hipY + 10, phase + Math.PI, -1);
-    this.updateColossusArm("left", -43, shoulderY, phase + Math.PI, -1);
-    this.updateColossusArm("right", 43, shoulderY, phase, 1);
+    rig.object.setPosition(rig.screenX + sway, rig.baseGroundY + bob);
+    this.poseSpineColossus();
 
     const stepIndex = Math.floor((time + rig.phaseOffset * 100) / (rig.cycleMs / 2));
     if (stepIndex !== rig.lastStepIndex) {
       rig.lastStepIndex = stepIndex;
       this.triggerColossusFootstepShake();
     }
-  }
-
-  updateColossusLeg(side, hipX, hipY, phase, facingSign) {
-    const parts = this.distantColossus.parts;
-    const lift = Math.max(0, Math.sin(phase));
-    const upperLength = 96;
-    const lowerLength = 102;
-    const upperAngle = Math.sin(phase) * 0.3 + facingSign * 0.04;
-    const lowerAngle = upperAngle - (0.13 + lift * 0.32) * facingSign;
-    const hip = { x: hipX, y: hipY };
-    const knee = this.getColossusJoint(hipX, hipY, upperAngle, upperLength);
-    const ankle = this.getColossusJoint(knee.x, knee.y, lowerAngle, lowerLength);
-    const footAngle = Math.sin(phase - 0.4) * 0.16;
-
-    this.setColossusSegment(parts[`${side}UpperLeg`], hip, knee, 34);
-    this.setColossusSegment(parts[`${side}LowerLeg`], knee, ankle, 30);
-    this.setColossusPart(parts[`${side}Foot`], ankle.x + facingSign * 24, ankle.y + 4, footAngle);
-    this.setColossusJoint(parts[`${side}HipJoint`], hipX, hipY);
-    this.setColossusJoint(parts[`${side}KneeJoint`], knee.x, knee.y);
-    this.setColossusJoint(parts[`${side}AnkleJoint`], ankle.x, ankle.y);
-  }
-
-  updateColossusArm(side, shoulderX, shoulderY, phase, facingSign) {
-    const parts = this.distantColossus.parts;
-    const upperLength = 78;
-    const lowerLength = 74;
-    const upperAngle = Math.sin(phase) * 0.25 - facingSign * 0.05;
-    const lowerAngle = upperAngle + Math.sin(phase + 0.45) * 0.16;
-    const shoulder = { x: shoulderX, y: shoulderY };
-    const elbow = this.getColossusJoint(shoulderX, shoulderY, upperAngle, upperLength);
-    const wrist = this.getColossusJoint(elbow.x, elbow.y, lowerAngle, lowerLength);
-
-    this.setColossusSegment(parts[`${side}UpperArm`], shoulder, elbow, 28);
-    this.setColossusSegment(parts[`${side}LowerArm`], elbow, wrist, 24);
-    this.setColossusPart(parts[`${side}Hand`], wrist.x, wrist.y + 4, lowerAngle * 0.5);
-    this.setColossusJoint(parts[`${side}ShoulderJoint`], shoulderX, shoulderY);
-    this.setColossusJoint(parts[`${side}ElbowJoint`], elbow.x, elbow.y);
-    this.setColossusJoint(parts[`${side}WristJoint`], wrist.x, wrist.y);
   }
 
   triggerColossusFootstepShake() {
@@ -7943,7 +7918,7 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
-    this.distantColossus?.container?.destroy?.(true);
+    this.distantColossus?.object?.destroy?.();
     this.distantColossus = null;
     this.clearDiveIndicatorBirds();
     this.clearDiveFieldLeaves();
@@ -8356,6 +8331,11 @@ const game = new Phaser.Game({
       gravity: { y: 1150 },
       debug: false
     }
+  },
+  plugins: {
+    scene: [
+      { key: "SpinePlugin", plugin: getSpineRuntime()?.SpinePlugin, mapping: "spine" }
+    ].filter((plugin) => Boolean(plugin.plugin))
   },
   scene: [PlayScene]
 });

@@ -1,0 +1,7 @@
+colossus_white.png
+size: 1,1
+format: RGBA8888
+filter: Nearest,Nearest
+repeat: none
+white
+  bounds: 0,0,1,1

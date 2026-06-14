@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.53.0
+
+- Replaced the Level 5 rectangle colossus prototype with a Spine-backed skeletal placeholder.
+- Added placeholder Spine skeleton, atlas, and texture assets for future colossus body-part art.
+- Vendored the Spine Phaser runtime and license notice so the boss prototype does not depend on a CDN during play.
+
 ## v0.52.2
 
 - Rebuilt the Level 5 colossus limbs as anchored joint-to-joint segments.
