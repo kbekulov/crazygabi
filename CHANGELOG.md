@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.4
+
+- Rescaled and re-grounded the Level 5 PNG colossus rig so the full body reads in the distant background.
+- Simplified the colossus body layering into far limbs, core body, and near limbs.
+- Flipped the entire colossus rig by movement direction instead of mirroring individual body parts.
+
 ## v0.55.3
 
 - Rebuilt the Level 5 colossus as a PNG body-part rig instead of the placeholder Spine rig.
