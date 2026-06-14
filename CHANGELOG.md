@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.52.2
+
+- Rebuilt the Level 5 colossus limbs as anchored joint-to-joint segments.
+
 ## v0.52.1
 
 - Connected the Level 5 colossus prototype with visible limb joints and a proper neck/head link.
