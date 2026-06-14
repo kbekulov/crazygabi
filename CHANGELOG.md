@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.54.0
+
+- Added a double-tap left/right dash mechanic for Gabi using the new dash sprite and the random double-jump sound pool.
+- Strengthened the Level 5 warm haze gradient above the distant colossus.
+
 ## v0.53.6
 
 - Added a warm bottom-up haze gradient above the Level 5 colossus and below the park front parallax layer.

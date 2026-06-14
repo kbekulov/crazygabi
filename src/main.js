@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.6";
+const GAME_VERSION = "v0.54.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -43,6 +43,14 @@ const GABI_POINT_FRAME_HEIGHT = 238;
 const GABI_POINT_DURATION = 520;
 const GABI_AIR_DIVE_FRAME_WIDTH = 1034;
 const GABI_AIR_DIVE_FRAME_HEIGHT = 775;
+const GABI_DASH_FRAME_WIDTH = 238;
+const GABI_DASH_FRAME_HEIGHT = 238;
+const GABI_DASH_DOUBLE_TAP_MS = 260;
+const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5;
+const GABI_DASH_SPEED = 780;
+const GABI_DASH_DURATION_MS = Math.round((GABI_DASH_DISTANCE / GABI_DASH_SPEED) * 1000);
+const GABI_DASH_COOLDOWN_MS = 1000;
+const GABI_DASH_FIRST_FRAME_MS = 80;
 const MR_MAGPIE_FRAME_WIDTH = 238;
 const MR_MAGPIE_FRAME_HEIGHT = 238;
 const MR_MAGPIE_SCALE = 0.34;
@@ -252,7 +260,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-haze-gradient";
+const ASSET_VERSION = "20260614-dash-mechanic";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -586,7 +594,9 @@ const LEVELS = [
     frontParallax: "parallax-park-frontlayer",
     colossusHaze: {
       color: "#f0d2b8",
-      bottomAlpha: 0.56,
+      bottomAlpha: 1,
+      midAlphaFactor: 0.6,
+      upperAlphaFactor: 0.14,
       depth: COLOSSUS_HAZE_DEPTH
     },
     platformTexture: "platform-strip",
@@ -2123,6 +2133,7 @@ class PlayScene extends Phaser.Scene {
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-air-dive-sheet", "./public/assets/character/main_char_air_dive.png", GABI_AIR_DIVE_FRAME_WIDTH, GABI_AIR_DIVE_FRAME_HEIGHT);
+      sheet("gabi-dash-sheet", "./public/assets/character/main_char_sprite_dash.png", GABI_DASH_FRAME_WIDTH, GABI_DASH_FRAME_HEIGHT);
       if (level.actionAbility === "command-birds") {
         sheet("gabi-point-sheet", "./public/assets/character/main_char_sprite_point.png", GABI_POINT_FRAME_WIDTH, GABI_POINT_FRAME_HEIGHT);
       }
@@ -2540,9 +2551,11 @@ class PlayScene extends Phaser.Scene {
     const gradient = ctx.createLinearGradient(0, VIEW_HEIGHT, 0, 0);
     const color = config.color || "#f0d2b8";
     const bottomAlpha = Phaser.Math.Clamp(config.bottomAlpha ?? 0.56, 0, 1);
+    const midAlphaFactor = Phaser.Math.Clamp(config.midAlphaFactor ?? 0.36, 0, 1);
+    const upperAlphaFactor = Phaser.Math.Clamp(config.upperAlphaFactor ?? 0.08, 0, 1);
     gradient.addColorStop(0, this.hexToRgba(color, bottomAlpha));
-    gradient.addColorStop(0.36, this.hexToRgba(color, bottomAlpha * 0.36));
-    gradient.addColorStop(0.74, this.hexToRgba(color, bottomAlpha * 0.08));
+    gradient.addColorStop(0.36, this.hexToRgba(color, bottomAlpha * midAlphaFactor));
+    gradient.addColorStop(0.74, this.hexToRgba(color, bottomAlpha * upperAlphaFactor));
     gradient.addColorStop(1, this.hexToRgba(color, 0));
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3423,6 +3436,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     }
+    if (this.textures.exists("gabi-dash-sheet") && !this.anims.exists("gabi-dash")) {
+      this.anims.create({
+        key: "gabi-dash",
+        frames: this.anims.generateFrameNumbers("gabi-dash-sheet", { frames: [2, 3] }),
+        duration: GABI_DASH_FIRST_FRAME_MS * 2,
+        repeat: 0
+      });
+    }
     if (this.textures.exists("gabi-point-sheet") && !this.anims.exists("gabi-point")) {
       this.anims.create({
         key: "gabi-point",
@@ -4116,6 +4137,10 @@ class PlayScene extends Phaser.Scene {
     this.player.setScale(GABI_SCALE);
     this.player.setDepth(4);
     this.currentGabiAnimation = null;
+    this.lastDashTapDirection = 0;
+    this.lastDashTapAt = -Infinity;
+    this.lastDashAt = -Infinity;
+    this.gabiDash = null;
     this.setGabiAnimation("idle");
   }
 
@@ -4549,6 +4574,7 @@ class PlayScene extends Phaser.Scene {
     this.lastBirdAttackAt = -Infinity;
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
+    this.resetGabiDashState();
     this.resetGlideState();
     if (!state.hasKey) this.resetKeyReveal();
     this.acorns.children.iterate((acorn) => this.resetAcorn(acorn));
@@ -4651,6 +4677,8 @@ class PlayScene extends Phaser.Scene {
     const mobileDirection = this.getMobileMoveDirection();
     const left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
     const right = this.cursors.right.isDown || this.keysInput.right.isDown || mobileDirection > 0;
+    const leftPressed = Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.keysInput.left);
+    const rightPressed = Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.keysInput.right);
     const jump =
       Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
       Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
@@ -4665,6 +4693,14 @@ class PlayScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
       this.setGabiAnimation("idle");
       if (action) this.handleItemPickupOk(time);
+      return;
+    }
+
+    if (leftPressed) this.handleGabiDashTap(-1, time);
+    if (rightPressed) this.handleGabiDashTap(1, time);
+    if (this.updateGabiDashState(time)) {
+      if (this.player.y > this.levelHeight + 56) this.loseLife();
+      this.updateDiveCameraZoom();
       return;
     }
 
@@ -5576,6 +5612,12 @@ class PlayScene extends Phaser.Scene {
       this.player.play("gabi-dive", true);
       return;
     }
+    if (name === "dash" && this.anims.exists("gabi-dash")) {
+      this.player.setScale(GABI_SCALE);
+      this.player.setAngle(0);
+      this.player.play("gabi-dash", true);
+      return;
+    }
     this.player.setScale(name === "glide" ? GABI_GLIDE_SCALE : GABI_SCALE);
     this.player.setAngle(0);
     const animationKey = name === "wing-jump"
@@ -5588,6 +5630,10 @@ class PlayScene extends Phaser.Scene {
 
   updateGabiAnimation(isMoving, onFloor) {
     if (this.gabiActionUntil && this.time.now < this.gabiActionUntil) return;
+    if (this.gabiDash?.active) {
+      this.setGabiAnimation("dash");
+      return;
+    }
     const shouldHoldDive =
       (this.gabiDiveActive || this.scriptedHaystackDive) &&
       !this.usingWingJump &&
@@ -5605,6 +5651,81 @@ class PlayScene extends Phaser.Scene {
     } else {
       this.setGabiAnimation("idle");
     }
+  }
+
+  canStartGabiDash(time = 0) {
+    if (!this.player?.body || !state.running || state.won) return false;
+    if (this.isItemPromptActive()) return false;
+    if (this.gabiDash?.active) return false;
+    if (this.gabiDiveActive || this.scriptedHaystackDive || this.isGliding) return false;
+    if (this.finalElevatorActive && this.isPlayerInsideFinalElevatorCabin()) return false;
+    if (this.gabiActionUntil && time < this.gabiActionUntil) return false;
+    return time - (this.lastDashAt || -Infinity) >= GABI_DASH_COOLDOWN_MS;
+  }
+
+  handleGabiDashTap(direction, time = 0) {
+    if (!direction) return;
+    const isDoubleTap =
+      this.lastDashTapDirection === direction &&
+      time - (this.lastDashTapAt || -Infinity) <= GABI_DASH_DOUBLE_TAP_MS;
+    this.lastDashTapDirection = direction;
+    this.lastDashTapAt = time;
+    if (isDoubleTap && this.canStartGabiDash(time)) this.startGabiDash(direction, time);
+  }
+
+  startGabiDash(direction, time = 0) {
+    if (!this.player?.body) return;
+    const dashDirection = direction < 0 ? -1 : 1;
+    this.gabiDash = {
+      active: true,
+      direction: dashDirection,
+      startedAt: time,
+      endsAt: time + GABI_DASH_DURATION_MS
+    };
+    this.lastDashAt = time;
+    this.usingWingJump = false;
+    this.resetGlideState();
+    this.resetGabiDiveState();
+    this.setGabiFlip(dashDirection < 0);
+    this.player.setAccelerationX(0);
+    this.player.setMaxVelocity(GABI_DASH_SPEED, 620);
+    this.player.setVelocityX(dashDirection * GABI_DASH_SPEED);
+    this.currentGabiAnimation = null;
+    this.setGabiAnimation("dash");
+    this.playLevelSfx(Phaser.Utils.Array.GetRandom(DOUBLE_JUMP_SFX_KEYS), 0.42);
+  }
+
+  updateGabiDashState(time = 0) {
+    if (!this.gabiDash?.active || !this.player?.body) return false;
+    if (time >= this.gabiDash.endsAt) {
+      this.finishGabiDash();
+      return false;
+    }
+    this.player.setAccelerationX(0);
+    this.player.setMaxVelocity(GABI_DASH_SPEED, 620);
+    this.player.setVelocityX(this.gabiDash.direction * GABI_DASH_SPEED);
+    this.setGabiAnimation("dash");
+    return true;
+  }
+
+  finishGabiDash() {
+    if (!this.gabiDash) return;
+    this.gabiDash = null;
+    if (this.player?.body) {
+      const currentVelocityX = this.player.body.velocity.x;
+      const exitDirection = currentVelocityX < 0 ? -1 : currentVelocityX > 0 ? 1 : 0;
+      this.player.setMaxVelocity(260, 620);
+      this.player.setVelocityX(exitDirection * Math.min(Math.abs(currentVelocityX), 260));
+      this.player.setAccelerationX(0);
+    }
+    this.currentGabiAnimation = null;
+  }
+
+  resetGabiDashState() {
+    this.gabiDash = null;
+    this.lastDashTapDirection = 0;
+    this.lastDashTapAt = -Infinity;
+    if (this.player?.body) this.player.setMaxVelocity(260, 620);
   }
 
   resetGlideState() {
@@ -5660,6 +5781,7 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.stopScriptedHaystackDive();
     this.resetPlayerMotion();
+    this.resetGabiDashState();
     this.resetGlideState();
     this.resetGabiDiveState();
     this.gabiActionRestoreTimer?.remove?.(false);
