@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.52.1
+
+- Connected the Level 5 colossus prototype with visible limb joints and a proper neck/head link.
+
 ## v0.52.0
 
 - Added a procedural distant colossus prototype to Level 5.

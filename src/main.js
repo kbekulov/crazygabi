@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.52.0";
+const GAME_VERSION = "v0.52.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -145,6 +145,8 @@ const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
 const COLOSSUS_DEPTH = -9.55;
 const COLOSSUS_STEP_SHAKE_DURATION = 180;
 const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
+const COLOSSUS_JOINT_COLOR = 0x86898d;
+const COLOSSUS_JOINT_STROKE = 0xb7babd;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -2511,14 +2513,33 @@ class PlayScene extends Phaser.Scene {
     addPart("rightFoot", 58, 18, 0x343638, 0.24, 0.5);
     addPart("torso", 78, 146, 0x686b6f, 0.5, 1);
     addPart("pelvis", 78, 42, 0x55585c, 0.5, 0.5);
-    addPart("neck", 24, 28, 0x505357, 0.5, 0.5);
-    addPart("head", 60, 68, 0x777a7d, 0.5, 0.52);
+    addPart("neck", 24, 30, 0x505357, 0.5, 1);
+    addPart("head", 60, 68, 0x777a7d, 0.5, 1);
     addPart("leftUpperLeg", 34, 96, 0x73767a);
     addPart("leftLowerLeg", 30, 102, 0x5d6165);
     addPart("leftFoot", 58, 18, 0x45484b, 0.24, 0.5);
     addPart("leftUpperArm", 28, 78, 0x74777a);
     addPart("leftLowerArm", 24, 74, 0x5c6064);
     addPart("leftHand", 28, 22, 0x4b4e51, 0.5, 0.2);
+
+    const addJoint = (name, radius = 13, alpha = 0.92) => {
+      const joint = this.add.circle(0, 0, radius, COLOSSUS_JOINT_COLOR, alpha);
+      joint.setStrokeStyle(1, COLOSSUS_JOINT_STROKE, 0.32);
+      container.add(joint);
+      parts[name] = joint;
+      return joint;
+    };
+
+    addJoint("neckBaseJoint", 12);
+    addJoint("neckTopJoint", 11);
+    ["left", "right"].forEach((side) => {
+      addJoint(`${side}ShoulderJoint`, 14);
+      addJoint(`${side}ElbowJoint`, 12);
+      addJoint(`${side}WristJoint`, 10);
+      addJoint(`${side}HipJoint`, 15);
+      addJoint(`${side}KneeJoint`, 13);
+      addJoint(`${side}AnkleJoint`, 11);
+    });
 
     this.distantColossus = {
       config,
@@ -2545,6 +2566,10 @@ class PlayScene extends Phaser.Scene {
     part.setRotation(angle);
   }
 
+  setColossusJoint(part, x, y) {
+    part.setPosition(x, y);
+  }
+
   updateDistantColossus(time = 0, delta = 0) {
     const rig = this.distantColossus;
     if (!rig?.container?.active) return;
@@ -2562,12 +2587,20 @@ class PlayScene extends Phaser.Scene {
 
     const parts = rig.parts;
     const hipY = -186;
-    const shoulderY = -318;
+    const torsoBottomY = hipY + 8;
+    const torsoTopY = torsoBottomY - 146;
+    const shoulderY = torsoTopY + 22;
+    const neckX = Math.sin(phase) * 2;
+    const neckBottomY = torsoTopY + 4;
+    const neckTopY = neckBottomY - 30;
+    const headBottomY = neckTopY + 4;
     const torsoLean = Math.sin(phase + 0.35) * 0.035;
-    this.setColossusPart(parts.torso, 0, hipY + 8, torsoLean);
+    this.setColossusPart(parts.torso, 0, torsoBottomY, torsoLean);
     this.setColossusPart(parts.pelvis, 0, hipY + 10, Math.sin(phase) * 0.06);
-    this.setColossusPart(parts.neck, Math.sin(phase) * 2, shoulderY - 76, torsoLean * 0.5);
-    this.setColossusPart(parts.head, Math.sin(phase + 0.6) * 4, shoulderY - 118, torsoLean * -0.65);
+    this.setColossusPart(parts.neck, neckX, neckBottomY, torsoLean * 0.28);
+    this.setColossusPart(parts.head, neckX + Math.sin(phase + 0.6) * 3, headBottomY, torsoLean * -0.35);
+    this.setColossusJoint(parts.neckBaseJoint, neckX, neckBottomY);
+    this.setColossusJoint(parts.neckTopJoint, neckX, neckTopY);
 
     this.updateColossusLeg("left", -22, hipY + 10, phase, 1);
     this.updateColossusLeg("right", 22, hipY + 10, phase + Math.PI, -1);
@@ -2595,6 +2628,9 @@ class PlayScene extends Phaser.Scene {
     this.setColossusPart(parts[`${side}UpperLeg`], hipX, hipY, upperAngle);
     this.setColossusPart(parts[`${side}LowerLeg`], knee.x, knee.y, lowerAngle);
     this.setColossusPart(parts[`${side}Foot`], ankle.x + facingSign * 4, ankle.y + 4, footAngle);
+    this.setColossusJoint(parts[`${side}HipJoint`], hipX, hipY);
+    this.setColossusJoint(parts[`${side}KneeJoint`], knee.x, knee.y);
+    this.setColossusJoint(parts[`${side}AnkleJoint`], ankle.x, ankle.y);
   }
 
   updateColossusArm(side, shoulderX, shoulderY, phase, facingSign) {
@@ -2609,6 +2645,9 @@ class PlayScene extends Phaser.Scene {
     this.setColossusPart(parts[`${side}UpperArm`], shoulderX, shoulderY, upperAngle);
     this.setColossusPart(parts[`${side}LowerArm`], elbow.x, elbow.y, lowerAngle);
     this.setColossusPart(parts[`${side}Hand`], wrist.x, wrist.y + 4, lowerAngle * 0.5);
+    this.setColossusJoint(parts[`${side}ShoulderJoint`], shoulderX, shoulderY);
+    this.setColossusJoint(parts[`${side}ElbowJoint`], elbow.x, elbow.y);
+    this.setColossusJoint(parts[`${side}WristJoint`], wrist.x, wrist.y);
   }
 
   triggerColossusFootstepShake() {
