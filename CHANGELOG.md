@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.53.3
+
+- Added the Level 5 park foreground parallax layer so the distant colossus can render between background and front trees.
+
+## v0.53.2
+
+- Rebuilt the placeholder colossus skeleton into an upright body layout so the labeled head, torso, pelvis, arms, and legs read in the correct places.
+
 ## v0.53.1
 
 - Added readable labels to the placeholder colossus body parts so the Spine rig can be judged and debugged more easily.

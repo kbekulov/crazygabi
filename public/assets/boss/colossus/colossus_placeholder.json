@@ -1,31 +1,31 @@
 {
   "skeleton": {
-    "hash": "placeholder",
+    "hash": "placeholder-upright",
     "spine": "4.3.7",
-    "x": -140,
-    "y": -430,
-    "width": 280,
-    "height": 430,
+    "x": -170,
+    "y": -330,
+    "width": 340,
+    "height": 390,
     "images": "./"
   },
   "bones": [
     { "name": "root" },
-    { "name": "pelvis", "parent": "root", "x": 0, "y": -170 },
-    { "name": "torso", "parent": "pelvis", "x": 0, "y": -36 },
-    { "name": "neck", "parent": "torso", "x": 0, "y": -146, "length": 34, "rotation": -90 },
-    { "name": "head", "parent": "neck", "x": 34, "y": 0 },
-    { "name": "left-shoulder", "parent": "torso", "x": -44, "y": -126, "length": 78, "rotation": 92 },
-    { "name": "left-forearm", "parent": "left-shoulder", "x": 78, "y": 0, "length": 74, "rotation": -12 },
-    { "name": "left-hand", "parent": "left-forearm", "x": 74, "y": 0 },
-    { "name": "right-shoulder", "parent": "torso", "x": 44, "y": -126, "length": 78, "rotation": 88 },
-    { "name": "right-forearm", "parent": "right-shoulder", "x": 78, "y": 0, "length": 74, "rotation": 12 },
-    { "name": "right-hand", "parent": "right-forearm", "x": 74, "y": 0 },
-    { "name": "left-thigh", "parent": "pelvis", "x": -24, "y": 18, "length": 96, "rotation": 88 },
-    { "name": "left-shin", "parent": "left-thigh", "x": 96, "y": 0, "length": 102, "rotation": -8 },
-    { "name": "left-foot", "parent": "left-shin", "x": 102, "y": 0 },
-    { "name": "right-thigh", "parent": "pelvis", "x": 24, "y": 18, "length": 96, "rotation": 92 },
-    { "name": "right-shin", "parent": "right-thigh", "x": 96, "y": 0, "length": 102, "rotation": 8 },
-    { "name": "right-foot", "parent": "right-shin", "x": 102, "y": 0 }
+    { "name": "pelvis", "parent": "root", "x": 0, "y": 0 },
+    { "name": "torso", "parent": "pelvis", "x": 0, "y": -92 },
+    { "name": "neck", "parent": "torso", "x": 0, "y": -88 },
+    { "name": "head", "parent": "neck", "x": 0, "y": -42 },
+    { "name": "left-shoulder", "parent": "torso", "x": -52, "y": -62, "length": 82, "rotation": 138 },
+    { "name": "left-forearm", "parent": "left-shoulder", "x": 82, "y": 0, "length": 76, "rotation": -18 },
+    { "name": "left-hand", "parent": "left-forearm", "x": 76, "y": 0 },
+    { "name": "right-shoulder", "parent": "torso", "x": 52, "y": -62, "length": 82, "rotation": 42 },
+    { "name": "right-forearm", "parent": "right-shoulder", "x": 82, "y": 0, "length": 76, "rotation": 18 },
+    { "name": "right-hand", "parent": "right-forearm", "x": 76, "y": 0 },
+    { "name": "left-thigh", "parent": "pelvis", "x": -30, "y": 24, "length": 106, "rotation": 78 },
+    { "name": "left-shin", "parent": "left-thigh", "x": 106, "y": 0, "length": 108, "rotation": 6 },
+    { "name": "left-foot", "parent": "left-shin", "x": 108, "y": 0 },
+    { "name": "right-thigh", "parent": "pelvis", "x": 30, "y": 24, "length": 106, "rotation": 102 },
+    { "name": "right-shin", "parent": "right-thigh", "x": 106, "y": 0, "length": 108, "rotation": -6 },
+    { "name": "right-foot", "parent": "right-shin", "x": 108, "y": 0 }
   ],
   "slots": [
     { "name": "right-upper-arm", "bone": "right-shoulder", "attachment": "right-upper-arm", "color": "777b80d9" },
@@ -50,52 +50,52 @@
       "name": "default",
       "attachments": {
         "pelvis": {
-          "pelvis": { "type": "region", "path": "white", "width": 82, "height": 44, "y": 4 }
+          "pelvis": { "type": "region", "path": "white", "width": 92, "height": 46, "y": 0 }
         },
         "torso": {
-          "torso": { "type": "region", "path": "white", "width": 84, "height": 150, "y": -74 }
+          "torso": { "type": "region", "path": "white", "width": 96, "height": 150, "y": -8 }
         },
         "neck": {
-          "neck": { "type": "region", "path": "white", "width": 24, "height": 34, "x": 17 }
+          "neck": { "type": "region", "path": "white", "width": 24, "height": 34, "y": -8 }
         },
         "head": {
-          "head": { "type": "region", "path": "white", "width": 64, "height": 72, "x": 0, "y": -36 }
+          "head": { "type": "region", "path": "white", "width": 70, "height": 76, "y": -4 }
         },
         "left-upper-arm": {
-          "left-upper-arm": { "type": "region", "path": "white", "width": 78, "height": 28, "x": 39 }
+          "left-upper-arm": { "type": "region", "path": "white", "width": 82, "height": 28, "x": 41 }
         },
         "left-lower-arm": {
-          "left-lower-arm": { "type": "region", "path": "white", "width": 74, "height": 24, "x": 37 }
+          "left-lower-arm": { "type": "region", "path": "white", "width": 76, "height": 24, "x": 38 }
         },
         "left-hand": {
-          "left-hand": { "type": "region", "path": "white", "width": 30, "height": 24, "x": 12 }
+          "left-hand": { "type": "region", "path": "white", "width": 32, "height": 24, "x": 13 }
         },
         "right-upper-arm": {
-          "right-upper-arm": { "type": "region", "path": "white", "width": 78, "height": 28, "x": 39 }
+          "right-upper-arm": { "type": "region", "path": "white", "width": 82, "height": 28, "x": 41 }
         },
         "right-lower-arm": {
-          "right-lower-arm": { "type": "region", "path": "white", "width": 74, "height": 24, "x": 37 }
+          "right-lower-arm": { "type": "region", "path": "white", "width": 76, "height": 24, "x": 38 }
         },
         "right-hand": {
-          "right-hand": { "type": "region", "path": "white", "width": 30, "height": 24, "x": 12 }
+          "right-hand": { "type": "region", "path": "white", "width": 32, "height": 24, "x": 13 }
         },
         "left-upper-leg": {
-          "left-upper-leg": { "type": "region", "path": "white", "width": 96, "height": 36, "x": 48 }
+          "left-upper-leg": { "type": "region", "path": "white", "width": 106, "height": 36, "x": 53 }
         },
         "left-lower-leg": {
-          "left-lower-leg": { "type": "region", "path": "white", "width": 102, "height": 32, "x": 51 }
+          "left-lower-leg": { "type": "region", "path": "white", "width": 108, "height": 32, "x": 54 }
         },
         "left-foot": {
-          "left-foot": { "type": "region", "path": "white", "width": 62, "height": 18, "x": 22 }
+          "left-foot": { "type": "region", "path": "white", "width": 66, "height": 18, "x": 24 }
         },
         "right-upper-leg": {
-          "right-upper-leg": { "type": "region", "path": "white", "width": 96, "height": 36, "x": 48 }
+          "right-upper-leg": { "type": "region", "path": "white", "width": 106, "height": 36, "x": 53 }
         },
         "right-lower-leg": {
-          "right-lower-leg": { "type": "region", "path": "white", "width": 102, "height": 32, "x": 51 }
+          "right-lower-leg": { "type": "region", "path": "white", "width": 108, "height": 32, "x": 54 }
         },
         "right-foot": {
-          "right-foot": { "type": "region", "path": "white", "width": 62, "height": 18, "x": 22 }
+          "right-foot": { "type": "region", "path": "white", "width": 66, "height": 18, "x": 24 }
         }
       }
     }

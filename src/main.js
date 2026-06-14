@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.1";
+const GAME_VERSION = "v0.53.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -251,7 +251,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-debug-labels";
+const ASSET_VERSION = "20260614-park-frontlayer";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -582,6 +582,7 @@ const LEVELS = [
     catFollowPlayer: true,
     doorYOffset: -30,
     parallax: "parallax-park",
+    frontParallax: "parallax-park-frontlayer",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     ambientLeaves: {
@@ -2149,6 +2150,9 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.parallax === "parallax-park") image("parallax-park", "./public/assets/environment/paralax_park.png");
+      if (level.frontParallax === "parallax-park-frontlayer") {
+        image("parallax-park-frontlayer", "./public/assets/environment/paralax_park_frontlayer.png");
+      }
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
       if (level.haystacks?.length) image("haystack", "./public/assets/environment/haystack.png");
       if (level.showStartingHouse || level.constructionBillboard) {
@@ -2492,21 +2496,27 @@ class PlayScene extends Phaser.Scene {
 
   createBackdrop() {
     const textureKey = this.level.parallax || "parallax-city";
-    const source = this.textures.get(textureKey).getSourceImage();
-    const sourceHeight = source.height;
-    const scale = PLAY_HEIGHT / sourceHeight;
-    const tileWidth = Math.ceil(VIEW_WIDTH / scale);
-    this.parallaxLayers = [
-      {
-        sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, textureKey),
-        speed: 0.18
-      }
-    ];
-    this.parallaxLayers.forEach(({ sprite }, index) => {
+    const makeParallaxLayer = (key, speed, depth) => {
+      const source = this.textures.get(key).getSourceImage();
+      const sourceHeight = source.height;
+      const scale = PLAY_HEIGHT / sourceHeight;
+      const tileWidth = Math.ceil(VIEW_WIDTH / scale);
+      return {
+        sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, key),
+        speed,
+        scale,
+        depth
+      };
+    };
+    this.parallaxLayers = [makeParallaxLayer(textureKey, 0.18, -10)];
+    if (this.level.frontParallax && this.textures.exists(this.level.frontParallax)) {
+      this.parallaxLayers.push(makeParallaxLayer(this.level.frontParallax, 0.18, -9.4));
+    }
+    this.parallaxLayers.forEach(({ sprite, scale, depth }) => {
       sprite.setOrigin(0, 0);
       sprite.setScale(scale);
       sprite.setScrollFactor(0);
-      sprite.setDepth(-10 + index);
+      sprite.setDepth(depth);
     });
   }
 
@@ -2554,21 +2564,21 @@ class PlayScene extends Phaser.Scene {
       boneNames.map((name) => [name, object.skeleton.findBone(name)]).filter(([, bone]) => Boolean(bone))
     );
     const labels = [
-      ["head", "HEAD", 0, 0],
-      ["neck", "NECK", 0, 0],
-      ["torso", "TORSO", 0, -44],
+      ["head", "HEAD", 0, -4],
+      ["neck", "NECK", 0, -8],
+      ["torso", "TORSO", 0, -8],
       ["pelvis", "PELVIS", 0, 5],
-      ["left-shoulder", "L ARM", -30, 36],
-      ["left-forearm", "L FORE", -30, 24],
+      ["left-shoulder", "L ARM", -34, 22],
+      ["left-forearm", "L FORE", -30, 16],
       ["left-hand", "L HAND", -8, 4],
-      ["right-shoulder", "R ARM", 30, 36],
-      ["right-forearm", "R FORE", 30, 24],
+      ["right-shoulder", "R ARM", 34, 22],
+      ["right-forearm", "R FORE", 30, 16],
       ["right-hand", "R HAND", 8, 4],
-      ["left-thigh", "L THIGH", -32, 42],
-      ["left-shin", "L SHIN", -28, 42],
+      ["left-thigh", "L THIGH", -30, 20],
+      ["left-shin", "L SHIN", -28, 18],
       ["left-foot", "L FOOT", -4, 6],
-      ["right-thigh", "R THIGH", 32, 42],
-      ["right-shin", "R SHIN", 28, 42],
+      ["right-thigh", "R THIGH", 30, 20],
+      ["right-shin", "R SHIN", 28, 18],
       ["right-foot", "R FOOT", 4, 6]
     ]
       .map(([boneName, label, offsetX, offsetY]) => {
@@ -2635,33 +2645,31 @@ class PlayScene extends Phaser.Scene {
     if (!rig?.bones) return;
 
     const phase = rig.phase || 0;
-    const breathe = Math.sin(phase * 2) * 0.025;
-    const torsoLean = Math.sin(phase + 0.35) * 2.6;
+    const breathe = Math.sin(phase * 2) * 0.018;
+    const torsoLean = Math.sin(phase + 0.35) * 1.8;
     const leftStep = Math.sin(phase);
     const rightStep = Math.sin(phase + Math.PI);
-    const leftLift = Math.max(0, leftStep);
-    const rightLift = Math.max(0, rightStep);
-    const armSwing = Math.sin(phase + Math.PI) * 13;
-    const headCounter = Math.sin(phase + 0.6) * 2.5;
+    const armSwing = Math.sin(phase + Math.PI) * 8;
+    const headCounter = Math.sin(phase + 0.6) * 1.8;
 
-    this.setSpineBonePose(rig.bones.pelvis, { rotation: Math.sin(phase) * 2.4, y: -170 + Math.abs(Math.sin(phase)) * 4 });
+    this.setSpineBonePose(rig.bones.pelvis, { rotation: Math.sin(phase) * 1.2, y: Math.abs(Math.sin(phase)) * 3 });
     this.setSpineBonePose(rig.bones.torso, { rotation: torsoLean, scaleX: 1 + breathe, scaleY: 1 - breathe * 0.7 });
-    this.setSpineBonePose(rig.bones.neck, { rotation: -90 - torsoLean * 0.35 });
+    this.setSpineBonePose(rig.bones.neck, { rotation: -torsoLean * 0.25 });
     this.setSpineBonePose(rig.bones.head, { rotation: -headCounter - torsoLean * 0.25 });
 
-    this.setSpineBonePose(rig.bones["left-thigh"], { rotation: -90 - leftStep * 17 });
-    this.setSpineBonePose(rig.bones["left-shin"], { rotation: -8 - leftLift * 28 + Math.max(0, -leftStep) * 6 });
-    this.setSpineBonePose(rig.bones["left-foot"], { rotation: -Math.sin(phase - 0.4) * 9 });
-    this.setSpineBonePose(rig.bones["right-thigh"], { rotation: -90 - rightStep * 17 });
-    this.setSpineBonePose(rig.bones["right-shin"], { rotation: 8 - rightLift * 28 + Math.max(0, -rightStep) * 6 });
-    this.setSpineBonePose(rig.bones["right-foot"], { rotation: -Math.sin(phase + Math.PI - 0.4) * 9 });
+    this.setSpineBonePose(rig.bones["left-thigh"], { rotation: 78 + leftStep * 8 });
+    this.setSpineBonePose(rig.bones["left-shin"], { rotation: 6 - leftStep * 7 });
+    this.setSpineBonePose(rig.bones["left-foot"], { rotation: -Math.sin(phase - 0.4) * 5 });
+    this.setSpineBonePose(rig.bones["right-thigh"], { rotation: 102 + rightStep * 8 });
+    this.setSpineBonePose(rig.bones["right-shin"], { rotation: -6 - rightStep * 7 });
+    this.setSpineBonePose(rig.bones["right-foot"], { rotation: -Math.sin(phase + Math.PI - 0.4) * 5 });
 
-    this.setSpineBonePose(rig.bones["left-shoulder"], { rotation: -90 - armSwing });
-    this.setSpineBonePose(rig.bones["left-forearm"], { rotation: -12 + Math.sin(phase + 0.45) * 9 });
-    this.setSpineBonePose(rig.bones["left-hand"], { rotation: Math.sin(phase + 0.9) * 7 });
-    this.setSpineBonePose(rig.bones["right-shoulder"], { rotation: -90 + armSwing });
-    this.setSpineBonePose(rig.bones["right-forearm"], { rotation: 12 - Math.sin(phase + 0.45) * 9 });
-    this.setSpineBonePose(rig.bones["right-hand"], { rotation: -Math.sin(phase + 0.9) * 7 });
+    this.setSpineBonePose(rig.bones["left-shoulder"], { rotation: 138 + armSwing });
+    this.setSpineBonePose(rig.bones["left-forearm"], { rotation: -18 + Math.sin(phase + 0.45) * 5 });
+    this.setSpineBonePose(rig.bones["left-hand"], { rotation: Math.sin(phase + 0.9) * 4 });
+    this.setSpineBonePose(rig.bones["right-shoulder"], { rotation: 42 - armSwing });
+    this.setSpineBonePose(rig.bones["right-forearm"], { rotation: 18 - Math.sin(phase + 0.45) * 5 });
+    this.setSpineBonePose(rig.bones["right-hand"], { rotation: -Math.sin(phase + 0.9) * 4 });
   }
 
   updateDistantColossus(time = 0, delta = 0) {
