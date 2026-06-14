@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.1";
+const GAME_VERSION = "v0.55.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -156,6 +156,7 @@ const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
 const COLOSSUS_DEPTH = -9.55;
 const COLOSSUS_STEP_SHAKE_DURATION = 180;
 const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
+const COLOSSUS_HOWL_VOLUME = 1.08;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -262,7 +263,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-camera-independent";
+const ASSET_VERSION = "20260614-colossus-gabi-seeker";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -289,7 +290,7 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" },
   { key: "bgm-lv5", label: "Level 5 Theme", src: "./public/assets/sound/bgm_lv5.mp3" },
-  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.1 }
+  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.32 }
 ];
 const LOADING_RUNNERS = [
   {
@@ -576,6 +577,10 @@ const LEVELS = [
       groundY: 214,
       scale: 0.72,
       driftSpeed: -4.8,
+      seekGabi: true,
+      seekSpeed: 42,
+      seekStopDistance: 84,
+      seekScreenMargin: 155,
       cycleMs: 5200,
       alpha: 0.62,
       shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
@@ -2696,6 +2701,16 @@ class PlayScene extends Phaser.Scene {
     return (rig.screenX ?? 0) + sway;
   }
 
+  getDistantColossusTargetX(rig) {
+    const config = rig?.config || {};
+    const margin = config.seekScreenMargin ?? 150;
+    const camera = this.cameras?.main;
+    if (!config.seekGabi || !this.player || !camera) return null;
+
+    const playerScreenX = this.player.x - camera.scrollX;
+    return Phaser.Math.Clamp(playerScreenX, margin, VIEW_WIDTH - margin);
+  }
+
   updateSpineColossusLabels() {
     const rig = this.distantColossus;
     if (!rig?.labels?.length || !rig.object?.skeleton) return;
@@ -2762,8 +2777,22 @@ class PlayScene extends Phaser.Scene {
     const config = rig.config;
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
     rig.phase = phase;
-    const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
-    rig.screenX += Number.isFinite(drift) ? drift : 0;
+    if (!this.bossRevealActive) {
+      const dt = delta / 1000;
+      const targetX = this.getDistantColossusTargetX(rig);
+      if (Number.isFinite(targetX)) {
+        const stopDistance = config.seekStopDistance ?? 80;
+        const speed = (config.seekSpeed ?? 36) * dt;
+        const distance = targetX - rig.screenX;
+        const remaining = Math.max(0, Math.abs(distance) - stopDistance);
+        if (remaining > 0 && Number.isFinite(speed)) {
+          rig.screenX += Math.sign(distance) * Math.min(remaining, speed);
+        }
+      } else {
+        const drift = (config.driftSpeed ?? -4.8) * dt;
+        rig.screenX += Number.isFinite(drift) ? drift : 0;
+      }
+    }
 
     const bob = Math.abs(Math.sin(phase)) * 5;
     const sway = Math.sin(phase * 0.5) * 4;
@@ -2845,7 +2874,7 @@ class PlayScene extends Phaser.Scene {
       onUpdate: keepCentered,
       onComplete: () => {
         keepCentered();
-        this.playLevelSfx(COLOSSUS_HOWL_SFX_KEY, 0.72);
+        this.playLevelSfx(COLOSSUS_HOWL_SFX_KEY, COLOSSUS_HOWL_VOLUME);
         const hold = this.time.delayedCall(950, () => {
           const zoomOut = this.tweens.add({
             targets: proxy,

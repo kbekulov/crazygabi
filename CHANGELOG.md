@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.2
+
+- Reworked the Level 5 colossus into a Gabi-seeking horizon actor with capped movement instead of camera-derived drift.
+- Increased the Level 5 boss music and colossus howl volumes.
+
 ## v0.55.1
 
 - Removed camera scroll from the Level 5 distant colossus movement so Gabi running no longer speeds up or reverses its drift.
