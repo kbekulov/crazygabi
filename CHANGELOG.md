@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.53.1
+
+- Added readable labels to the placeholder colossus body parts so the Spine rig can be judged and debugged more easily.
+
 ## v0.53.0
 
 - Replaced the Level 5 rectangle colossus prototype with a Spine-backed skeletal placeholder.

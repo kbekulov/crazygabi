@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.0";
+const GAME_VERSION = "v0.53.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -251,7 +251,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-spine-colossus-12";
+const ASSET_VERSION = "20260614-colossus-debug-labels";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2553,11 +2553,46 @@ class PlayScene extends Phaser.Scene {
     const bones = Object.fromEntries(
       boneNames.map((name) => [name, object.skeleton.findBone(name)]).filter(([, bone]) => Boolean(bone))
     );
+    const labels = [
+      ["head", "HEAD", 0, 0],
+      ["neck", "NECK", 0, 0],
+      ["torso", "TORSO", 0, -44],
+      ["pelvis", "PELVIS", 0, 5],
+      ["left-shoulder", "L ARM", -30, 36],
+      ["left-forearm", "L FORE", -30, 24],
+      ["left-hand", "L HAND", -8, 4],
+      ["right-shoulder", "R ARM", 30, 36],
+      ["right-forearm", "R FORE", 30, 24],
+      ["right-hand", "R HAND", 8, 4],
+      ["left-thigh", "L THIGH", -32, 42],
+      ["left-shin", "L SHIN", -28, 42],
+      ["left-foot", "L FOOT", -4, 6],
+      ["right-thigh", "R THIGH", 32, 42],
+      ["right-shin", "R SHIN", 28, 42],
+      ["right-foot", "R FOOT", 4, 6]
+    ]
+      .map(([boneName, label, offsetX, offsetY]) => {
+        const text = this.add.text(0, 0, label, {
+          fontFamily: '"Courier New", monospace',
+          fontSize: "9px",
+          fontStyle: "bold",
+          color: "#f2e5c4",
+          align: "center",
+          stroke: "#050505",
+          strokeThickness: 2
+        });
+        text.setOrigin(0.5);
+        text.setScrollFactor(0);
+        text.setDepth((config.depth ?? COLOSSUS_DEPTH) + 0.03);
+        text.setAlpha(Math.min(0.9, (config.alpha ?? 0.55) + 0.24));
+        return { boneName, offsetX, offsetY, text };
+      });
 
     this.distantColossus = {
       config,
       object,
       bones,
+      labels,
       screenX: config.x ?? VIEW_WIDTH + 180,
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
@@ -2566,6 +2601,24 @@ class PlayScene extends Phaser.Scene {
     };
     object.beforeUpdateWorldTransforms = () => this.poseSpineColossus();
     this.updateDistantColossus(this.time.now, 0);
+  }
+
+  updateSpineColossusLabels() {
+    const rig = this.distantColossus;
+    if (!rig?.labels?.length || !rig.object?.skeleton) return;
+
+    rig.object.skeleton.updateWorldTransform?.(2);
+    const scale = rig.object.scaleX || 1;
+    rig.labels.forEach(({ boneName, offsetX, offsetY, text }) => {
+      const bone = rig.bones[boneName];
+      const pose = bone?.appliedPose;
+      if (!pose || !text?.active) return;
+      text.setPosition(
+        rig.object.x + (pose.worldX + offsetX) * scale,
+        rig.object.y + (pose.worldY + offsetY) * scale
+      );
+      text.setVisible(rig.object.visible);
+    });
   }
 
   setSpineBonePose(bone, { x, y, rotation, scaleX, scaleY }) {
@@ -2627,6 +2680,7 @@ class PlayScene extends Phaser.Scene {
     const sway = Math.sin(phase * 0.5) * 4;
     rig.object.setPosition(rig.screenX + sway, rig.baseGroundY + bob);
     this.poseSpineColossus();
+    this.updateSpineColossusLabels();
 
     const stepIndex = Math.floor((time + rig.phaseOffset * 100) / (rig.cycleMs / 2));
     if (stepIndex !== rig.lastStepIndex) {
@@ -7918,6 +7972,7 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.distantColossus?.labels?.forEach((label) => label.text?.destroy?.());
     this.distantColossus?.object?.destroy?.();
     this.distantColossus = null;
     this.clearDiveIndicatorBirds();
