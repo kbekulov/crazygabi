@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.55.0
+
+- Added a Level 5 midpoint colossus reveal with a zoom-in, howl sound, and boss music transition.
+- Reworked the distant colossus position to stay locked to parallax texture space while Gabi moves.
+- Added quiet colossus footstep sounds to the existing footstep screen shake.
+- Kept the cat visually below Gabi.
+
 ## v0.54.3
 
 - Re-aligned the Level 5 distant colossus with the scaled parallax layer so its movement stays consistent against background details while Gabi moves.

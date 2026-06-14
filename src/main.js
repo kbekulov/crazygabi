@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.54.3";
+const GAME_VERSION = "v0.55.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -148,6 +148,8 @@ const MISC_PICKUP_SFX_KEY = "misc-pickup";
 const KILL_SFX_KEY = "kill-1";
 const BIRD_ZOOM_IN_SFX_KEY = "bird-zoom-in";
 const BIRD_ZOOM_OUT_SFX_KEY = "bird-zoom-out";
+const COLOSSUS_HOWL_SFX_KEY = "colossus-howl";
+const COLOSSUS_FOOTSTEP_SFX_KEY = "colossus-footstep";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
@@ -260,7 +262,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-parallax-scale";
+const ASSET_VERSION = "20260614-colossus-boss-reveal";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -554,6 +556,8 @@ const LEVELS = [
     rows: createLevelFive(),
     timeLimit: 180,
     soundtrack: "bgm-lv5",
+    bossSoundtrack: "bgm-lv5-boss",
+    bossRevealAt: 0.5,
     ambientSoundtrack: "wind-1",
     ambientVolume: 0.18,
     enemySprite: "robot-lv1",
@@ -1954,6 +1958,10 @@ class PlayScene extends Phaser.Scene {
     this.diveFieldLeaves = [];
     this.gabiActionUntil = 0;
     this.gabiActionRestoreTimer = null;
+    this.bossRevealTriggered = false;
+    this.bossRevealActive = false;
+    this.bossRevealTweens = [];
+    this.bossRevealTimers = [];
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -2200,9 +2208,14 @@ class PlayScene extends Phaser.Scene {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
       });
       if (level.soundtrack) audio(level.soundtrack, this.getSoundtrackPath(level.soundtrack));
+      if (level.bossSoundtrack) audio(level.bossSoundtrack, this.getSoundtrackPath(level.bossSoundtrack));
       if (level.ambientSoundtrack) audio(level.ambientSoundtrack, this.getSoundtrackPath(level.ambientSoundtrack));
       if (level.environmentalQuake?.sfx) audio(level.environmentalQuake.sfx, this.getSfxPath(level.environmentalQuake.sfx));
       if (level.finalElevator) audio(EARTHQUAKE_SFX_KEY, this.getSfxPath(EARTHQUAKE_SFX_KEY));
+      if (level.distantColossus) {
+        audio(COLOSSUS_HOWL_SFX_KEY, this.getSfxPath(COLOSSUS_HOWL_SFX_KEY));
+        audio(COLOSSUS_FOOTSTEP_SFX_KEY, this.getSfxPath(COLOSSUS_FOOTSTEP_SFX_KEY));
+      }
       if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
       if (level.haystacks?.length) {
         audio(HAYSTACK_LAND_SFX_KEY, this.getSfxPath(HAYSTACK_LAND_SFX_KEY));
@@ -2356,7 +2369,9 @@ class PlayScene extends Phaser.Scene {
       [MISC_PICKUP_SFX_KEY]: "./public/assets/sound/sfx/misc_pickup.mp3",
       [KILL_SFX_KEY]: "./public/assets/sound/sfx/kill_1.mp3",
       [BIRD_ZOOM_IN_SFX_KEY]: "./public/assets/sound/sfx/zoom_in.mp3",
-      [BIRD_ZOOM_OUT_SFX_KEY]: "./public/assets/sound/sfx/zoom_out.mp3"
+      [BIRD_ZOOM_OUT_SFX_KEY]: "./public/assets/sound/sfx/zoom_out.mp3",
+      [COLOSSUS_HOWL_SFX_KEY]: "./public/assets/sound/sfx/colossus_howl.mp3",
+      [COLOSSUS_FOOTSTEP_SFX_KEY]: "./public/assets/sound/sfx/colossus_footstep.mp3"
     }[key];
   }
 
@@ -2522,6 +2537,8 @@ class PlayScene extends Phaser.Scene {
         sprite: this.add.tileSprite(0, 0, tileWidth, sourceHeight, key),
         speed,
         scale,
+        sourceWidth: source.width,
+        tileWidth,
         depth
       };
     };
@@ -2660,13 +2677,14 @@ class PlayScene extends Phaser.Scene {
         return { boneName, offsetX, offsetY, text };
       });
 
+    const projection = this.getDistantColossusParallaxProjection();
     this.distantColossus = {
       config,
       object,
       bones,
       labels,
-      parallaxX: config.x ?? VIEW_WIDTH + 180,
-      parallaxProjection: this.getDistantColossusParallaxProjection(),
+      parallaxX: (config.x ?? VIEW_WIDTH + 180) / (projection.scale || 1),
+      parallaxProjection: projection,
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
@@ -2681,15 +2699,16 @@ class PlayScene extends Phaser.Scene {
     const layer = this.parallaxLayers?.find(({ sprite }) => sprite?.texture?.key === key);
     return {
       speed: layer?.speed ?? 0.18,
-      scale: layer?.scale ?? 1
+      scale: layer?.scale ?? 1,
+      tileWidth: layer?.tileWidth ?? VIEW_WIDTH
     };
   }
 
   projectDistantColossusX(rig, sway = 0) {
     const cameraScrollX = this.cameras?.main?.scrollX || 0;
-    const projection = rig.parallaxProjection || { speed: 0.18, scale: 1 };
-    const parallaxScreenOffset = cameraScrollX * projection.speed * projection.scale;
-    return rig.parallaxX - parallaxScreenOffset + sway;
+    const projection = rig.parallaxProjection || { speed: 0.18, scale: 1, tileWidth: VIEW_WIDTH };
+    const parallaxTextureOffset = cameraScrollX * projection.speed;
+    return (rig.parallaxX - parallaxTextureOffset) * projection.scale + sway;
   }
 
   updateSpineColossusLabels() {
@@ -2759,18 +2778,20 @@ class PlayScene extends Phaser.Scene {
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
     rig.phase = phase;
     const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
-    rig.parallaxX += Number.isFinite(drift) ? drift : 0;
+    const projection = rig.parallaxProjection || { scale: 1 };
+    rig.parallaxX += Number.isFinite(drift) ? drift / (projection.scale || 1) : 0;
 
     const bob = Math.abs(Math.sin(phase)) * 5;
     const sway = Math.sin(phase * 0.5) * 4;
     const wrapPadding = 320;
+    const wrapDistance = (VIEW_WIDTH + wrapPadding * 2) / (projection.scale || 1);
     let projectedX = this.projectDistantColossusX(rig, sway);
     while (projectedX < -wrapPadding) {
-      rig.parallaxX += VIEW_WIDTH + wrapPadding * 2;
+      rig.parallaxX += wrapDistance;
       projectedX = this.projectDistantColossusX(rig, sway);
     }
     while (projectedX > VIEW_WIDTH + wrapPadding) {
-      rig.parallaxX -= VIEW_WIDTH + wrapPadding * 2;
+      rig.parallaxX -= wrapDistance;
       projectedX = this.projectDistantColossusX(rig, sway);
     }
     rig.object.setPosition(projectedX, rig.baseGroundY + bob);
@@ -2792,6 +2813,94 @@ class PlayScene extends Phaser.Scene {
       config.shakeDuration ?? COLOSSUS_STEP_SHAKE_DURATION,
       config.shakeIntensity ?? COLOSSUS_STEP_SHAKE_INTENSITY
     );
+    this.playLevelSfx(COLOSSUS_FOOTSTEP_SFX_KEY, 0.3);
+  }
+
+  updateBossReveal() {
+    if (this.bossRevealTriggered || this.bossRevealActive || !state.running || state.won) return;
+    if (!this.level.bossSoundtrack || !this.level.bossRevealAt || !this.player) return;
+    const triggerX = this.levelWidth * this.level.bossRevealAt;
+    if (this.player.x < triggerX) return;
+    this.startBossReveal();
+  }
+
+  startBossReveal() {
+    if (this.bossRevealTriggered || this.bossRevealActive) return;
+    this.bossRevealTriggered = true;
+    this.bossRevealActive = true;
+    this.cancelBirdAttackCameraZoom({ restoreCamera: false });
+    this.cancelDiveCameraZoom({ restoreCamera: false });
+    this.player?.setAccelerationX(0);
+    this.player?.setVelocityX(0);
+    this.setGabiAnimation("idle");
+
+    const camera = this.cameras?.main;
+    const rig = this.distantColossus;
+    if (!camera || !rig?.object?.active) {
+      this.startBossSoundtrack();
+      this.bossRevealActive = false;
+      return;
+    }
+
+    const focus = {
+      x: camera.scrollX + rig.object.x,
+      y: camera.scrollY + rig.object.y - 84
+    };
+    const proxy = { zoom: camera.zoom || 1 };
+    camera.stopFollow();
+
+    const keepCentered = () => {
+      camera.setZoom(proxy.zoom);
+      camera.centerOn(Math.round(focus.x), Math.round(focus.y));
+    };
+    const zoomIn = this.tweens.add({
+      targets: proxy,
+      zoom: 4,
+      duration: 760,
+      ease: "Sine.easeInOut",
+      onUpdate: keepCentered,
+      onComplete: () => {
+        keepCentered();
+        this.playLevelSfx(COLOSSUS_HOWL_SFX_KEY, 0.72);
+        const hold = this.time.delayedCall(950, () => {
+          const zoomOut = this.tweens.add({
+            targets: proxy,
+            zoom: 1,
+            duration: 680,
+            ease: "Sine.easeInOut",
+            onUpdate: keepCentered,
+            onComplete: () => {
+              camera.setZoom(1);
+              camera.roundPixels = true;
+              camera.startFollow(this.player, true, 0.12, 0.12);
+              camera.setDeadzone(170, 110);
+              this.startBossSoundtrack();
+              this.bossRevealActive = false;
+              this.bossRevealTweens = this.bossRevealTweens.filter((tween) => tween !== zoomOut);
+            }
+          });
+          this.bossRevealTweens.push(zoomOut);
+          this.bossRevealTimers = this.bossRevealTimers.filter((timer) => timer !== hold);
+        });
+        this.bossRevealTimers.push(hold);
+        this.bossRevealTweens = this.bossRevealTweens.filter((tween) => tween !== zoomIn);
+      }
+    });
+    this.bossRevealTweens.push(zoomIn);
+  }
+
+  cancelBossRevealCamera({ restoreCamera = true } = {}) {
+    this.bossRevealTweens?.forEach((tween) => tween?.remove?.());
+    this.bossRevealTimers?.forEach((timer) => timer?.remove?.(false));
+    this.bossRevealTweens = [];
+    this.bossRevealTimers = [];
+    this.bossRevealActive = false;
+    if (restoreCamera && this.cameras?.main && this.player) {
+      this.cameras.main.setZoom(1);
+      this.cameras.main.roundPixels = true;
+      this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
+      this.cameras.main.setDeadzone(170, 110);
+    }
   }
 
   createLightRays() {
@@ -4154,7 +4263,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.level.catNpc) return;
     this.cat = this.physics.add.sprite(this.spawnPoint.x + 220, this.spawnPoint.y, "grey-cat", 8);
     this.cat.setScale(CAT_SCALE);
-    this.cat.setDepth(5);
+    this.cat.setDepth(3.8);
     this.cat.setDragX(950);
     this.cat.setMaxVelocity(340, 650);
     this.cat.setCollideWorldBounds(true);
@@ -4653,6 +4762,7 @@ class PlayScene extends Phaser.Scene {
     this.updateThrownItems();
     this.updateParallax();
     this.updateDistantColossus(time, delta);
+    this.updateBossReveal(time);
     this.updateLightRays(time);
     this.updateWater(delta);
     this.updateLanternOverlay();
@@ -4672,6 +4782,12 @@ class PlayScene extends Phaser.Scene {
     this.updateBillboardPrompt();
     if (!state.running || state.won) return;
     this.updateFinishZone();
+    if (this.bossRevealActive) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocityX(0);
+      this.setGabiAnimation("idle");
+      return;
+    }
     if (this.updateScriptedHaystackDive(time, delta)) {
       if (this.player.y > this.levelHeight + 56) this.loseLife();
       this.updateDiveWindLines(time);
@@ -6811,6 +6927,7 @@ class PlayScene extends Phaser.Scene {
     this.cat.body.moves = false;
     this.cat.setVelocity(0, 0);
     this.cat.setAcceleration(0, 0);
+    this.cat.setDepth(3.8);
     this.cat.setFlipX(true);
     this.catWaiting = true;
     this.catWasOnFloor = true;
@@ -7997,6 +8114,33 @@ class PlayScene extends Phaser.Scene {
     }
   }
 
+  startBossSoundtrack() {
+    const soundtrack = this.level?.bossSoundtrack;
+    if (!soundtrack) return;
+    if (!isMusicEnabled()) {
+      if (this.bgm?.isPlaying) this.bgm.stop();
+      return;
+    }
+    const volume = this.getSoundtrackVolume(soundtrack, 0.35);
+    try {
+      this.resumeAudioContext();
+      if (this.bgm?.isPlaying && this.bgm.key === soundtrack) {
+        this.bgm.setVolume(volume);
+        return;
+      }
+      if (this.bgm?.isPlaying) this.bgm.stop();
+      if (this.bgm && this.bgm.key !== soundtrack) {
+        this.bgm.destroy();
+        this.bgm = null;
+      }
+      this.bgm = this.bgm || this.sound.add(soundtrack, { loop: true, volume });
+      this.bgm.setVolume(volume);
+      this.bgm.play();
+    } catch (_error) {
+      this.bgm = null;
+    }
+  }
+
   startAmbientMusic() {
     if (!isMusicEnabled()) {
       this.stopAmbientMusic({ destroy: false });
@@ -8207,6 +8351,7 @@ class PlayScene extends Phaser.Scene {
     this.clearDomSpeechBubbles();
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
+    this.cancelBossRevealCamera({ restoreCamera: false });
     this.clearFinalElevatorCredits();
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
