@@ -209,6 +209,32 @@ button:active {
   opacity: 0.72;
 }
 
+.boss-health {
+  --boss-health-x: 50%;
+  --boss-health-y: 72px;
+  position: absolute;
+  left: var(--boss-health-x);
+  top: var(--boss-health-y);
+  width: clamp(150px, 18vw, 230px);
+  height: clamp(9px, 1.05vw, 13px);
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(18, 8, 8, 0.94);
+  background: rgba(24, 5, 5, 0.78);
+  box-shadow: 0 0 0 1px rgba(244, 220, 176, 0.18), 0 0 14px rgba(0, 0, 0, 0.76);
+}
+
+.boss-health[hidden] {
+  display: none;
+}
+
+.boss-health span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, #ff5959 0%, #b70c0c 56%, #5d0202 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 219, 188, 0.42);
+}
+
 .bird-cooldown {
   --bird-cooldown-progress: 0;
   --bird-cooldown-hidden: 100%;

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.5";
+const GAME_VERSION = "v0.55.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -28,7 +28,7 @@ const BIRD_NORMAL_DELAY = [5200, 9800];
 const BIRD_ELEVATOR_DELAY = [850, 1800];
 const BIRD_FLOCK_MIN_Y = 60;
 const BIRD_FLOCK_BASE_MARGIN = 210;
-const BIRD_DEPTH = -9.6;
+const BIRD_DEPTH = -9.44;
 const BIRD_ATTACK_DEPTH = 9.4;
 const BIRD_ATTACK_COOLDOWN = 10000;
 const BIRD_ATTACK_SPEED_MULTIPLIER = 6;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-dive-guard";
+const ASSET_VERSION = "20260614-colossus-rig-health";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -589,8 +589,8 @@ const LEVELS = [
         foot: "./public/assets/boss/colossus/foot.png"
       },
       x: 720,
-      groundY: 382,
-      scale: 0.68,
+      groundY: 320,
+      scale: 0.48,
       driftSpeed: -4.8,
       seekGabi: true,
       seekSpeed: 54,
@@ -1144,6 +1144,8 @@ const hud = {
   coinIcon: document.querySelector("#coin-icon"),
   keyIcon: document.querySelector("#key-icon"),
   questList: document.querySelector("#quest-list"),
+  bossHealth: document.querySelector("#boss-health"),
+  bossHealthFill: document.querySelector("#boss-health-fill"),
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedName: document.querySelector("#equipped-name"),
   itemActionKey: document.querySelector("#item-action-key"),
@@ -1251,6 +1253,22 @@ function updateBirdCooldownHud(progress = 0) {
   const value = Phaser.Math.Clamp(progress || 0, 0, 1);
   hud.birdCooldown.style.setProperty("--bird-cooldown-progress", value.toFixed(3));
   hud.birdCooldown.style.setProperty("--bird-cooldown-hidden", `${(value * 100).toFixed(1)}%`);
+}
+
+function setBossHealthVisible(visible) {
+  if (!hud.bossHealth) return;
+  hud.bossHealth.hidden = !visible;
+}
+
+function updateBossHealthHud({ x = VIEW_WIDTH / 2, y = 72, value = 1 } = {}) {
+  if (!hud.bossHealth) return;
+  const clampedX = Phaser.Math.Clamp(x, 120, VIEW_WIDTH - 120);
+  const clampedY = Phaser.Math.Clamp(y, 36, 112);
+  hud.bossHealth.style.setProperty("--boss-health-x", `${clampedX}px`);
+  hud.bossHealth.style.setProperty("--boss-health-y", `${clampedY}px`);
+  if (hud.bossHealthFill) {
+    hud.bossHealthFill.style.width = `${Phaser.Math.Clamp(value, 0, 1) * 100}%`;
+  }
 }
 
 function getActiveLevel() {
@@ -1982,6 +2000,7 @@ class PlayScene extends Phaser.Scene {
     this.bossRevealActive = false;
     this.bossRevealTweens = [];
     this.bossRevealTimers = [];
+    this.bossHealthVisible = false;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -1993,6 +2012,7 @@ class PlayScene extends Phaser.Scene {
     this.catFollowPlayerAfterElevator = false;
     this.clearDomSpeechBubbles();
     this.domSpeechBubbles = [];
+    setBossHealthVisible(false);
 
     state.totalGems = 0;
     state.levelGems = 0;
@@ -2555,6 +2575,7 @@ class PlayScene extends Phaser.Scene {
 
   createBackdrop() {
     const textureKey = this.level.parallax || "parallax-city";
+    this.frontParallaxLayer = null;
     const makeParallaxLayer = (key, speed, depth) => {
       const source = this.textures.get(key).getSourceImage();
       const sourceHeight = source.height;
@@ -2572,7 +2593,8 @@ class PlayScene extends Phaser.Scene {
     this.parallaxLayers = [makeParallaxLayer(textureKey, 0.18, -10)];
     if (this.level.colossusHaze) this.createColossusHazeGradient(this.level.colossusHaze);
     if (this.level.frontParallax && this.textures.exists(this.level.frontParallax)) {
-      this.parallaxLayers.push(makeParallaxLayer(this.level.frontParallax, 0.18, -9.4));
+      this.frontParallaxLayer = makeParallaxLayer(this.level.frontParallax, 0.18, -9.4);
+      this.parallaxLayers.push(this.frontParallaxLayer);
     }
     this.parallaxLayers.forEach(({ sprite, scale, depth }) => {
       sprite.setOrigin(0, 0);
@@ -2744,23 +2766,23 @@ class PlayScene extends Phaser.Scene {
     };
 
     const parts = {
-      farLeg: addPart("farLeg", "colossus-upperLeg", -42, -184, { angle: -2, alpha: 0.72 }),
-      farShin: addPart("farShin", "colossus-lowerLeg", -42, -84, { angle: 2, alpha: 0.72 }),
-      farFoot: addPart("farFoot", "colossus-foot", -62, -8, { angle: -78, alpha: 0.72 }),
-      farArm: addPart("farArm", "colossus-upperArm", -98, -350, { angle: -26, alpha: 0.72 }),
-      farForearm: addPart("farForearm", "colossus-lowerArm", -134, -258, { angle: 36, alpha: 0.72 }),
-      farHand: addPart("farHand", "colossus-openHand", -164, -182, { angle: 38, alpha: 0.72 }),
-      torso: addPart("torso", "colossus-torso", 0, -344, { alpha: 0.95 }),
-      pelvis: addPart("pelvis", "colossus-pelvis", 0, -222, { alpha: 0.92 }),
-      head: addPart("head", "colossus-head", 0, -494, { alpha: 0.96 }),
-      crown: addPart("crown", "colossus-crown", 8, -550, { angle: -5, alpha: 0.86 }),
-      nearLeg: addPart("nearLeg", "colossus-upperLeg", 38, -184, { angle: 4 }),
-      nearShin: addPart("nearShin", "colossus-lowerLeg", 38, -84, { angle: -4 }),
-      nearFoot: addPart("nearFoot", "colossus-foot", 60, -8, { angle: 78 }),
-      nearArm: addPart("nearArm", "colossus-upperArm", 96, -350, { angle: 30 }),
-      nearForearm: addPart("nearForearm", "colossus-lowerArm", 134, -258, { angle: -38 }),
-      nearHand: addPart("nearHand", "colossus-closedHand", 164, -182, { angle: -40 }),
-      suitcase: addPart("suitcase", "colossus-suitcase", 184, -128, { angle: -4, alpha: 0.9 })
+      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { originY: 0.12 }),
+      farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { originY: 0.1 }),
+      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { originY: 0.18 }),
+      farArm: addPart("farArm", "colossus-upperArm", 66, -406, { originY: 0.12 }),
+      farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { originY: 0.1 }),
+      farHand: addPart("farHand", "colossus-openHand", 98, -194, { originY: 0.16 }),
+      torso: addPart("torso", "colossus-torso", 0, -362),
+      pelvis: addPart("pelvis", "colossus-pelvis", 0, -248),
+      head: addPart("head", "colossus-head", 0, -510),
+      crown: addPart("crown", "colossus-crown", 8, -570, { angle: -5 }),
+      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { originY: 0.12 }),
+      nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { originY: 0.1 }),
+      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { originY: 0.18 }),
+      nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { originY: 0.12 }),
+      nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { originY: 0.1 }),
+      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { originY: 0.16 }),
+      suitcase: addPart("suitcase", "colossus-suitcase", -142, -142, { angle: -4 })
     };
 
     this.distantColossus = {
@@ -2871,8 +2893,8 @@ class PlayScene extends Phaser.Scene {
     if (!parts) return;
 
     const phase = rig.phase || 0;
-    const leftStep = Math.sin(phase);
-    const rightStep = Math.sin(phase + Math.PI);
+    const nearStep = Math.sin(phase);
+    const farStep = Math.sin(phase + Math.PI);
     const torsoLean = Math.sin(phase + 0.3) * 1.6;
     const armSwing = Math.sin(phase + Math.PI) * 9;
     const bob = Math.abs(Math.sin(phase)) * 3;
@@ -2887,25 +2909,89 @@ class PlayScene extends Phaser.Scene {
       }
     };
 
+    const jointEnd = (x, y, length, angle) => {
+      const radians = (angle * Math.PI) / 180;
+      return {
+        x: x + Math.sin(radians) * length,
+        y: y + Math.cos(radians) * length
+      };
+    };
+    const placeLimb = ({ upper, lower, end, x, y, upperAngle, lowerAngle, upperLength, lowerLength, endOffsetX = 0, endOffsetY = 0, endAngle = 0 }) => {
+      set(upper, { x, y, angle: upperAngle });
+      const elbow = jointEnd(x, y, upperLength, upperAngle);
+      set(lower, { x: elbow.x, y: elbow.y, angle: lowerAngle });
+      const wrist = jointEnd(elbow.x, elbow.y, lowerLength, lowerAngle);
+      set(end, { x: wrist.x + endOffsetX, y: wrist.y + endOffsetY, angle: endAngle });
+      return wrist;
+    };
+
     set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoLean });
     set(parts.pelvis, { x: 0, y: -222 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
     set(parts.head, { x: Math.sin(phase + 0.55) * 2.2, y: -494 - bob, angle: -torsoLean * 0.45 });
     set(parts.crown, { x: 8 + Math.sin(phase + 0.55) * 2.2, y: -550 - bob, angle: -5 - torsoLean * 0.45 });
 
-    set(parts.farLeg, { x: -42 + rightStep * 6, y: -184 + Math.abs(rightStep) * 3, angle: -2 + rightStep * 9 });
-    set(parts.farShin, { x: -42 + rightStep * 11, y: -84 + Math.max(0, rightStep) * 8, angle: 2 - rightStep * 12 });
-    set(parts.farFoot, { x: -62 + rightStep * 16, y: -8 + Math.max(0, rightStep) * 4, angle: -78 + rightStep * 6 });
-    set(parts.nearLeg, { x: 38 + leftStep * 8, y: -184 + Math.abs(leftStep) * 4, angle: 4 + leftStep * 12 });
-    set(parts.nearShin, { x: 38 + leftStep * 14, y: -84 + Math.max(0, leftStep) * 10, angle: -4 - leftStep * 15 });
-    set(parts.nearFoot, { x: 60 + leftStep * 20, y: -8 + Math.max(0, leftStep) * 5, angle: 78 + leftStep * 8 });
+    const farFoot = placeLimb({
+      upper: parts.farLeg,
+      lower: parts.farShin,
+      end: parts.farFoot,
+      x: 34 + farStep * 5,
+      y: -250 + Math.abs(farStep) * 3,
+      upperAngle: -4 + farStep * 8,
+      lowerAngle: 5 - farStep * 10,
+      upperLength: 92,
+      lowerLength: 94,
+      endOffsetX: 10,
+      endOffsetY: 8,
+      endAngle: 78 + farStep * 5
+    });
+    const nearFoot = placeLimb({
+      upper: parts.nearLeg,
+      lower: parts.nearShin,
+      end: parts.nearFoot,
+      x: -34 + nearStep * 7,
+      y: -250 + Math.abs(nearStep) * 4,
+      upperAngle: 4 + nearStep * 10,
+      lowerAngle: -5 - nearStep * 12,
+      upperLength: 92,
+      lowerLength: 94,
+      endOffsetX: -10,
+      endOffsetY: 8,
+      endAngle: -78 + nearStep * 5
+    });
 
-    set(parts.farArm, { x: -98, y: -350 - bob, angle: -26 + armSwing * 0.68 });
-    set(parts.farForearm, { x: -134 + armSwing * 0.42, y: -258 - bob, angle: 36 - armSwing * 0.34 });
-    set(parts.farHand, { x: -164 + armSwing * 0.56, y: -182 - bob, angle: 38 - armSwing * 0.24 });
-    set(parts.nearArm, { x: 96, y: -350 - bob, angle: 30 - armSwing });
-    set(parts.nearForearm, { x: 134 - armSwing * 0.65, y: -258 - bob, angle: -38 + armSwing * 0.48 });
-    set(parts.nearHand, { x: 164 - armSwing * 0.85, y: -182 - bob, angle: -40 + armSwing * 0.32 });
-    set(parts.suitcase, { x: 184 - armSwing * 0.85, y: -128 + Math.sin(phase + 0.9) * 4, angle: -4 + Math.sin(phase) * 2 });
+    placeLimb({
+      upper: parts.farArm,
+      lower: parts.farForearm,
+      end: parts.farHand,
+      x: 68,
+      y: -392 - bob,
+      upperAngle: 20 + armSwing * 0.55,
+      lowerAngle: 28 - armSwing * 0.26,
+      upperLength: 92,
+      lowerLength: 92,
+      endOffsetX: 8,
+      endOffsetY: 4,
+      endAngle: 28 - armSwing * 0.18
+    });
+    const nearHand = placeLimb({
+      upper: parts.nearArm,
+      lower: parts.nearForearm,
+      end: parts.nearHand,
+      x: -72,
+      y: -392 - bob,
+      upperAngle: -20 - armSwing * 0.7,
+      lowerAngle: -30 + armSwing * 0.34,
+      upperLength: 92,
+      lowerLength: 92,
+      endOffsetX: -8,
+      endOffsetY: 4,
+      endAngle: -32 + armSwing * 0.2
+    });
+    set(parts.suitcase, {
+      x: nearHand.x - 30,
+      y: Math.max(nearFoot.y - 10, nearHand.y + 38 + Math.sin(phase + 0.9) * 4),
+      angle: -5 + Math.sin(phase) * 2
+    });
   }
 
   updateDistantColossus(time = 0, delta = 0) {
@@ -2994,6 +3080,7 @@ class PlayScene extends Phaser.Scene {
     if (this.bossRevealTriggered || this.bossRevealActive) return;
     this.bossRevealTriggered = true;
     this.bossRevealActive = true;
+    this.fadeFrontParallaxForBossReveal(false);
     this.cancelBirdAttackCameraZoom({ restoreCamera: false });
     this.cancelDiveCameraZoom({ restoreCamera: false });
     this.player?.setAccelerationX(0);
@@ -3005,6 +3092,8 @@ class PlayScene extends Phaser.Scene {
     if (!camera || !rig?.object?.active) {
       this.startBossSoundtrack();
       this.bossRevealActive = false;
+      this.showBossHealthBar();
+      this.fadeFrontParallaxForBossReveal(true);
       return;
     }
 
@@ -3041,6 +3130,8 @@ class PlayScene extends Phaser.Scene {
               camera.startFollow(this.player, true, 0.12, 0.12);
               camera.setDeadzone(170, 110);
               this.startBossSoundtrack();
+              this.showBossHealthBar();
+              this.fadeFrontParallaxForBossReveal(true);
               this.bossRevealActive = false;
               this.bossRevealTweens = this.bossRevealTweens.filter((tween) => tween !== zoomOut);
             }
@@ -3055,9 +3146,44 @@ class PlayScene extends Phaser.Scene {
     this.bossRevealTweens.push(zoomIn);
   }
 
+  fadeFrontParallaxForBossReveal(visible = true) {
+    const sprite = this.frontParallaxLayer?.sprite;
+    if (!sprite?.active) return;
+    this.frontParallaxFadeTween?.remove?.();
+    this.frontParallaxFadeTween = this.tweens.add({
+      targets: sprite,
+      alpha: visible ? 1 : 0,
+      duration: visible ? 560 : 420,
+      ease: "Sine.easeInOut",
+      onComplete: () => {
+        this.frontParallaxFadeTween = null;
+      }
+    });
+  }
+
+  showBossHealthBar() {
+    this.bossHealthVisible = true;
+    setBossHealthVisible(true);
+    this.updateBossHealthBar();
+  }
+
+  updateBossHealthBar() {
+    if (!this.bossHealthVisible || !this.distantColossus?.object?.active) return;
+    const rig = this.distantColossus;
+    const head = rig.parts?.head;
+    const scaleX = rig.object.scaleX || 1;
+    const scaleY = rig.object.scaleY || 1;
+    const headX = rig.object.x + ((head?.x ?? 0) * scaleX);
+    const headY = rig.object.y + ((head?.y ?? -500) * scaleY) - 22;
+    updateBossHealthHud({ x: headX, y: headY, value: 1 });
+  }
+
   cancelBossRevealCamera({ restoreCamera = true } = {}) {
     this.bossRevealTweens?.forEach((tween) => tween?.remove?.());
     this.bossRevealTimers?.forEach((timer) => timer?.remove?.(false));
+    this.frontParallaxFadeTween?.remove?.();
+    this.frontParallaxFadeTween = null;
+    if (this.frontParallaxLayer?.sprite?.active) this.frontParallaxLayer.sprite.setAlpha(1);
     this.bossRevealTweens = [];
     this.bossRevealTimers = [];
     this.bossRevealActive = false;
@@ -4929,6 +5055,7 @@ class PlayScene extends Phaser.Scene {
     this.updateParallax();
     this.updateDistantColossus(time, delta);
     this.updateBossReveal(time);
+    this.updateBossHealthBar();
     this.updateLightRays(time);
     this.updateWater(delta);
     this.updateLanternOverlay();

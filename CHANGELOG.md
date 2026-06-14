@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.6
+
+- Reworked the Level 5 colossus PNG rig so arms and legs use connected joint anchors.
+- Reduced the colossus render scale and kept all colossus body parts opaque.
+- Faded the park front parallax during the colossus howl reveal.
+- Added a persistent clamped boss health bar after the howl reveal.
+- Kept ambient birds above the colossus layer while still allowing them behind the front parallax.
+
 ## v0.55.5
 
 - Reframed the Level 5 colossus so it is opaque and tall enough to reach the top of the screen.
