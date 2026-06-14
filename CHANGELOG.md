@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.53.4
+
+- Fixed the placeholder colossus rig's vertical skeleton layout so its labeled body parts no longer render upside down.
+
 ## v0.53.3
 
 - Added the Level 5 park foreground parallax layer so the distant colossus can render between background and front trees.

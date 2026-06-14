@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.3";
+const GAME_VERSION = "v0.53.4";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -251,7 +251,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-park-frontlayer";
+const ASSET_VERSION = "20260614-colossus-y-axis-fix";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2657,18 +2657,18 @@ class PlayScene extends Phaser.Scene {
     this.setSpineBonePose(rig.bones.neck, { rotation: -torsoLean * 0.25 });
     this.setSpineBonePose(rig.bones.head, { rotation: -headCounter - torsoLean * 0.25 });
 
-    this.setSpineBonePose(rig.bones["left-thigh"], { rotation: 78 + leftStep * 8 });
-    this.setSpineBonePose(rig.bones["left-shin"], { rotation: 6 - leftStep * 7 });
+    this.setSpineBonePose(rig.bones["left-thigh"], { rotation: -78 - leftStep * 8 });
+    this.setSpineBonePose(rig.bones["left-shin"], { rotation: -6 + leftStep * 7 });
     this.setSpineBonePose(rig.bones["left-foot"], { rotation: -Math.sin(phase - 0.4) * 5 });
-    this.setSpineBonePose(rig.bones["right-thigh"], { rotation: 102 + rightStep * 8 });
-    this.setSpineBonePose(rig.bones["right-shin"], { rotation: -6 - rightStep * 7 });
+    this.setSpineBonePose(rig.bones["right-thigh"], { rotation: -102 - rightStep * 8 });
+    this.setSpineBonePose(rig.bones["right-shin"], { rotation: 6 + rightStep * 7 });
     this.setSpineBonePose(rig.bones["right-foot"], { rotation: -Math.sin(phase + Math.PI - 0.4) * 5 });
 
-    this.setSpineBonePose(rig.bones["left-shoulder"], { rotation: 138 + armSwing });
-    this.setSpineBonePose(rig.bones["left-forearm"], { rotation: -18 + Math.sin(phase + 0.45) * 5 });
+    this.setSpineBonePose(rig.bones["left-shoulder"], { rotation: -138 - armSwing });
+    this.setSpineBonePose(rig.bones["left-forearm"], { rotation: 18 - Math.sin(phase + 0.45) * 5 });
     this.setSpineBonePose(rig.bones["left-hand"], { rotation: Math.sin(phase + 0.9) * 4 });
-    this.setSpineBonePose(rig.bones["right-shoulder"], { rotation: 42 - armSwing });
-    this.setSpineBonePose(rig.bones["right-forearm"], { rotation: 18 - Math.sin(phase + 0.45) * 5 });
+    this.setSpineBonePose(rig.bones["right-shoulder"], { rotation: -42 + armSwing });
+    this.setSpineBonePose(rig.bones["right-forearm"], { rotation: -18 + Math.sin(phase + 0.45) * 5 });
     this.setSpineBonePose(rig.bones["right-hand"], { rotation: -Math.sin(phase + 0.9) * 4 });
   }
 
