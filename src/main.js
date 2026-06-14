@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.54.0";
+const GAME_VERSION = "v0.54.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -46,7 +46,7 @@ const GABI_AIR_DIVE_FRAME_HEIGHT = 775;
 const GABI_DASH_FRAME_WIDTH = 238;
 const GABI_DASH_FRAME_HEIGHT = 238;
 const GABI_DASH_DOUBLE_TAP_MS = 260;
-const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5;
+const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5 * 0.8;
 const GABI_DASH_SPEED = 780;
 const GABI_DASH_DURATION_MS = Math.round((GABI_DASH_DISTANCE / GABI_DASH_SPEED) * 1000);
 const GABI_DASH_COOLDOWN_MS = 1000;
@@ -260,7 +260,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-dash-mechanic";
+const ASSET_VERSION = "20260614-shorter-dash-puff";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -5692,6 +5692,7 @@ class PlayScene extends Phaser.Scene {
     this.player.setVelocityX(dashDirection * GABI_DASH_SPEED);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("dash");
+    this.createDashDustPuff(dashDirection);
     this.playLevelSfx(Phaser.Utils.Array.GetRandom(DOUBLE_JUMP_SFX_KEYS), 0.42);
   }
 
@@ -5726,6 +5727,42 @@ class PlayScene extends Phaser.Scene {
     this.lastDashTapDirection = 0;
     this.lastDashTapAt = -Infinity;
     if (this.player?.body) this.player.setMaxVelocity(260, 620);
+  }
+
+  createDashDustPuff(direction = 1) {
+    if (!this.player?.body) return;
+    const footX = this.player.x - direction * 24;
+    const footY = this.player.body.bottom - 8;
+    const particles = Array.from({ length: 7 }, (_, index) => {
+      const puff = this.add.ellipse(
+        footX + Phaser.Math.Between(-4, 4),
+        footY + Phaser.Math.Between(-5, 3),
+        Phaser.Math.Between(5, 12),
+        Phaser.Math.Between(3, 7),
+        0xffffff,
+        Phaser.Math.FloatBetween(0.38, 0.72)
+      );
+      puff.setDepth(ITEM_DEPTH - 0.15 + index * 0.001);
+      puff.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+      return puff;
+    });
+
+    particles.forEach((puff, index) => {
+      const driftX = -direction * Phaser.Math.Between(18, 46);
+      const driftY = Phaser.Math.Between(-16, 8);
+      this.tweens.add({
+        targets: puff,
+        x: puff.x + driftX,
+        y: puff.y + driftY,
+        alpha: 0,
+        scaleX: Phaser.Math.FloatBetween(1.4, 2.2),
+        scaleY: Phaser.Math.FloatBetween(1.0, 1.6),
+        duration: Phaser.Math.Between(180, 300),
+        delay: index * 8,
+        ease: "Quad.easeOut",
+        onComplete: () => puff.destroy()
+      });
+    });
   }
 
   resetGlideState() {

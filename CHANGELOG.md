@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.54.1
+
+- Reduced Gabi's dash distance and added a small white dust puff at her feet when the dash begins.
+
 ## v0.54.0
 
 - Added a double-tap left/right dash mechanic for Gabi using the new dash sprite and the random double-jump sound pool.
