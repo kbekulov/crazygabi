@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.54.2";
+const GAME_VERSION = "v0.54.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -260,7 +260,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-independent-drift";
+const ASSET_VERSION = "20260614-colossus-parallax-scale";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2666,6 +2666,7 @@ class PlayScene extends Phaser.Scene {
       bones,
       labels,
       parallaxX: config.x ?? VIEW_WIDTH + 180,
+      parallaxProjection: this.getDistantColossusParallaxProjection(),
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
@@ -2675,8 +2676,20 @@ class PlayScene extends Phaser.Scene {
     this.updateDistantColossus(this.time.now, 0);
   }
 
+  getDistantColossusParallaxProjection() {
+    const key = this.level.frontParallax || this.level.parallax;
+    const layer = this.parallaxLayers?.find(({ sprite }) => sprite?.texture?.key === key);
+    return {
+      speed: layer?.speed ?? 0.18,
+      scale: layer?.scale ?? 1
+    };
+  }
+
   projectDistantColossusX(rig, sway = 0) {
-    return rig.parallaxX + sway;
+    const cameraScrollX = this.cameras?.main?.scrollX || 0;
+    const projection = rig.parallaxProjection || { speed: 0.18, scale: 1 };
+    const parallaxScreenOffset = cameraScrollX * projection.speed * projection.scale;
+    return rig.parallaxX - parallaxScreenOffset + sway;
   }
 
   updateSpineColossusLabels() {
