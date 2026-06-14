@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.52.0
+
+- Added a procedural distant colossus prototype to Level 5.
+- Added anchor-based limb animation and footstep camera tremors for the boss.
+
 ## v0.51.0
 
 - Added a main menu Settings screen.

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.51.0";
+const GAME_VERSION = "v0.52.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -142,6 +142,9 @@ const BIRD_ZOOM_OUT_SFX_KEY = "bird-zoom-out";
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
 const MAGPIE_AMBIENT_SFX_CHANCE = 0.125;
+const COLOSSUS_DEPTH = -9.55;
+const COLOSSUS_STEP_SHAKE_DURATION = 180;
+const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -544,6 +547,16 @@ const LEVELS = [
     birdScale: 1.2,
     birdSfx: MAGPIE_CALL_SFX_KEY,
     ambientBirds: true,
+    distantColossus: {
+      x: 865,
+      groundY: 464,
+      scale: 0.86,
+      driftSpeed: -4.8,
+      cycleMs: 5200,
+      alpha: 0.52,
+      shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
+      shakeIntensity: COLOSSUS_STEP_SHAKE_INTENSITY
+    },
     storyFrames: [
       { key: "story-level-5-frame-1-v2", src: "./public/assets/story/level-5/frame_1_v2.png" },
       { key: "story-level-5-frame-2-v2", src: "./public/assets/story/level-5/frame_2_v2.png" },
@@ -1837,8 +1850,10 @@ class PlayScene extends Phaser.Scene {
     this.spawnPoint = { x: 96, y: 120 };
     this.levelWidth = this.levelRows[0].length * TILE;
     this.levelHeight = this.levelRows.length * TILE;
+    this.distantColossus = null;
 
     this.createBackdrop();
+    this.createDistantColossus();
     if (this.level.showWater !== false) this.createWaterBelow();
     if (this.level.showStartingHouse) this.createStartingHouse();
     if (this.level.constructionBillboard) this.createConstructionBillboard();
@@ -2466,6 +2481,144 @@ class PlayScene extends Phaser.Scene {
       sprite.setScrollFactor(0);
       sprite.setDepth(-10 + index);
     });
+  }
+
+  createDistantColossus() {
+    const config = this.level.distantColossus;
+    if (!config) return;
+
+    const container = this.add.container(config.x ?? VIEW_WIDTH + 180, config.groundY ?? PLAY_HEIGHT - 78);
+    container.setScrollFactor(0);
+    container.setDepth(config.depth ?? COLOSSUS_DEPTH);
+    container.setScale(config.scale ?? 1);
+    container.setAlpha(config.alpha ?? 0.55);
+
+    const parts = {};
+    const addPart = (name, width, height, color, originX = 0.5, originY = 0, alpha = 1) => {
+      const part = this.add.rectangle(0, 0, width, height, color, alpha);
+      part.setOrigin(originX, originY);
+      part.setStrokeStyle(1, 0x9a9a9a, 0.28);
+      container.add(part);
+      parts[name] = part;
+      return part;
+    };
+
+    addPart("rightUpperArm", 28, 78, 0x5c6064);
+    addPart("rightLowerArm", 24, 74, 0x4a4d50);
+    addPart("rightHand", 28, 22, 0x3a3d40, 0.5, 0.2);
+    addPart("rightUpperLeg", 34, 96, 0x5d6063);
+    addPart("rightLowerLeg", 30, 102, 0x494d51);
+    addPart("rightFoot", 58, 18, 0x343638, 0.24, 0.5);
+    addPart("torso", 78, 146, 0x686b6f, 0.5, 1);
+    addPart("pelvis", 78, 42, 0x55585c, 0.5, 0.5);
+    addPart("neck", 24, 28, 0x505357, 0.5, 0.5);
+    addPart("head", 60, 68, 0x777a7d, 0.5, 0.52);
+    addPart("leftUpperLeg", 34, 96, 0x73767a);
+    addPart("leftLowerLeg", 30, 102, 0x5d6165);
+    addPart("leftFoot", 58, 18, 0x45484b, 0.24, 0.5);
+    addPart("leftUpperArm", 28, 78, 0x74777a);
+    addPart("leftLowerArm", 24, 74, 0x5c6064);
+    addPart("leftHand", 28, 22, 0x4b4e51, 0.5, 0.2);
+
+    this.distantColossus = {
+      config,
+      container,
+      parts,
+      screenX: config.x ?? VIEW_WIDTH + 180,
+      baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
+      cycleMs: config.cycleMs ?? 5200,
+      lastStepIndex: -1,
+      phaseOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
+    };
+    this.updateDistantColossus(this.time.now, 0);
+  }
+
+  getColossusJoint(x, y, angle, length) {
+    return {
+      x: x + Math.sin(angle) * length,
+      y: y + Math.cos(angle) * length
+    };
+  }
+
+  setColossusPart(part, x, y, angle = 0) {
+    part.setPosition(x, y);
+    part.setRotation(angle);
+  }
+
+  updateDistantColossus(time = 0, delta = 0) {
+    const rig = this.distantColossus;
+    if (!rig?.container?.active) return;
+
+    const config = rig.config;
+    const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
+    const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
+    rig.screenX += Number.isFinite(drift) ? drift : 0;
+    if (rig.screenX < -260) rig.screenX = VIEW_WIDTH + 260;
+    if (rig.screenX > VIEW_WIDTH + 280) rig.screenX = -240;
+
+    const bob = Math.abs(Math.sin(phase)) * 5;
+    const sway = Math.sin(phase * 0.5) * 4;
+    rig.container.setPosition(rig.screenX + sway, rig.baseGroundY + bob);
+
+    const parts = rig.parts;
+    const hipY = -186;
+    const shoulderY = -318;
+    const torsoLean = Math.sin(phase + 0.35) * 0.035;
+    this.setColossusPart(parts.torso, 0, hipY + 8, torsoLean);
+    this.setColossusPart(parts.pelvis, 0, hipY + 10, Math.sin(phase) * 0.06);
+    this.setColossusPart(parts.neck, Math.sin(phase) * 2, shoulderY - 76, torsoLean * 0.5);
+    this.setColossusPart(parts.head, Math.sin(phase + 0.6) * 4, shoulderY - 118, torsoLean * -0.65);
+
+    this.updateColossusLeg("left", -22, hipY + 10, phase, 1);
+    this.updateColossusLeg("right", 22, hipY + 10, phase + Math.PI, -1);
+    this.updateColossusArm("left", -43, shoulderY, phase + Math.PI, -1);
+    this.updateColossusArm("right", 43, shoulderY, phase, 1);
+
+    const stepIndex = Math.floor((time + rig.phaseOffset * 100) / (rig.cycleMs / 2));
+    if (stepIndex !== rig.lastStepIndex) {
+      rig.lastStepIndex = stepIndex;
+      this.triggerColossusFootstepShake();
+    }
+  }
+
+  updateColossusLeg(side, hipX, hipY, phase, facingSign) {
+    const parts = this.distantColossus.parts;
+    const lift = Math.max(0, Math.sin(phase));
+    const upperLength = 96;
+    const lowerLength = 102;
+    const upperAngle = Math.sin(phase) * 0.3 + facingSign * 0.04;
+    const lowerAngle = upperAngle - (0.13 + lift * 0.32) * facingSign;
+    const knee = this.getColossusJoint(hipX, hipY, upperAngle, upperLength);
+    const ankle = this.getColossusJoint(knee.x, knee.y, lowerAngle, lowerLength);
+    const footAngle = Math.sin(phase - 0.4) * 0.16;
+
+    this.setColossusPart(parts[`${side}UpperLeg`], hipX, hipY, upperAngle);
+    this.setColossusPart(parts[`${side}LowerLeg`], knee.x, knee.y, lowerAngle);
+    this.setColossusPart(parts[`${side}Foot`], ankle.x + facingSign * 4, ankle.y + 4, footAngle);
+  }
+
+  updateColossusArm(side, shoulderX, shoulderY, phase, facingSign) {
+    const parts = this.distantColossus.parts;
+    const upperLength = 78;
+    const lowerLength = 74;
+    const upperAngle = Math.sin(phase) * 0.25 - facingSign * 0.05;
+    const lowerAngle = upperAngle + Math.sin(phase + 0.45) * 0.16;
+    const elbow = this.getColossusJoint(shoulderX, shoulderY, upperAngle, upperLength);
+    const wrist = this.getColossusJoint(elbow.x, elbow.y, lowerAngle, lowerLength);
+
+    this.setColossusPart(parts[`${side}UpperArm`], shoulderX, shoulderY, upperAngle);
+    this.setColossusPart(parts[`${side}LowerArm`], elbow.x, elbow.y, lowerAngle);
+    this.setColossusPart(parts[`${side}Hand`], wrist.x, wrist.y + 4, lowerAngle * 0.5);
+  }
+
+  triggerColossusFootstepShake() {
+    if (!state.running || state.won || !this.cameras?.main) return;
+    if (this.birdAttackZoomActive || this.diveCameraZoomActive) return;
+    const config = this.distantColossus?.config || {};
+    this.cameras.main.shake(
+      config.shakeDuration ?? COLOSSUS_STEP_SHAKE_DURATION,
+      config.shakeIntensity ?? COLOSSUS_STEP_SHAKE_INTENSITY
+    );
   }
 
   createLightRays() {
@@ -4313,6 +4466,7 @@ class PlayScene extends Phaser.Scene {
     this.updateAcorns(time);
     this.updateThrownItems();
     this.updateParallax();
+    this.updateDistantColossus(time, delta);
     this.updateLightRays(time);
     this.updateWater(delta);
     this.updateLanternOverlay();
@@ -7740,6 +7894,8 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.distantColossus?.container?.destroy?.(true);
+    this.distantColossus = null;
     this.clearDiveIndicatorBirds();
     this.clearDiveFieldLeaves();
     this.stopDiveWindSfx();
