@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.7
+
+- Reworked the Level 5 colossus arm pose so lower arms and hands stay attached beneath the shoulders.
+
 ## v0.55.6
 
 - Reworked the Level 5 colossus PNG rig so arms and legs use connected joint anchors.

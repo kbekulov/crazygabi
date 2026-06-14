@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.6";
+const GAME_VERSION = "v0.55.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-rig-health";
+const ASSET_VERSION = "20260614-colossus-arms";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2959,37 +2959,24 @@ class PlayScene extends Phaser.Scene {
       endAngle: -78 + nearStep * 5
     });
 
-    placeLimb({
-      upper: parts.farArm,
-      lower: parts.farForearm,
-      end: parts.farHand,
-      x: 68,
-      y: -392 - bob,
-      upperAngle: 20 + armSwing * 0.55,
-      lowerAngle: 28 - armSwing * 0.26,
-      upperLength: 92,
-      lowerLength: 92,
-      endOffsetX: 8,
-      endOffsetY: 4,
-      endAngle: 28 - armSwing * 0.18
-    });
-    const nearHand = placeLimb({
-      upper: parts.nearArm,
-      lower: parts.nearForearm,
-      end: parts.nearHand,
-      x: -72,
-      y: -392 - bob,
-      upperAngle: -20 - armSwing * 0.7,
-      lowerAngle: -30 + armSwing * 0.34,
-      upperLength: 92,
-      lowerLength: 92,
-      endOffsetX: -8,
-      endOffsetY: 4,
-      endAngle: -32 + armSwing * 0.2
-    });
+    const farArmSwing = Math.sin(phase + Math.PI) * 5;
+    const nearArmSwing = Math.sin(phase) * 6;
+    const farShoulder = { x: 66, y: -392 - bob };
+    const nearShoulder = { x: -66, y: -392 - bob };
+    const farElbow = { x: farShoulder.x + farArmSwing * 0.22, y: farShoulder.y + 92 };
+    const nearElbow = { x: nearShoulder.x + nearArmSwing * 0.22, y: nearShoulder.y + 92 };
+    const farWrist = { x: farElbow.x + farArmSwing * 0.18, y: farElbow.y + 88 };
+    const nearWrist = { x: nearElbow.x + nearArmSwing * 0.18, y: nearElbow.y + 88 };
+
+    set(parts.farArm, { x: farShoulder.x, y: farShoulder.y, angle: 3 + farArmSwing * 0.18 });
+    set(parts.farForearm, { x: farElbow.x, y: farElbow.y, angle: -2 + farArmSwing * 0.12 });
+    set(parts.farHand, { x: farWrist.x + 4, y: farWrist.y - 2, angle: 4 + farArmSwing * 0.08 });
+    set(parts.nearArm, { x: nearShoulder.x, y: nearShoulder.y, angle: -3 + nearArmSwing * 0.18 });
+    set(parts.nearForearm, { x: nearElbow.x, y: nearElbow.y, angle: 2 + nearArmSwing * 0.12 });
+    set(parts.nearHand, { x: nearWrist.x - 4, y: nearWrist.y - 2, angle: -4 + nearArmSwing * 0.08 });
     set(parts.suitcase, {
-      x: nearHand.x - 30,
-      y: Math.max(nearFoot.y - 10, nearHand.y + 38 + Math.sin(phase + 0.9) * 4),
+      x: nearWrist.x - 32,
+      y: Math.max(nearFoot.y - 10, nearWrist.y + 34 + Math.sin(phase + 0.9) * 4),
       angle: -5 + Math.sin(phase) * 2
     });
   }
