@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.5";
+const GAME_VERSION = "v0.53.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -109,6 +109,7 @@ const ITEM_DEPTH = 8;
 const LIGHT_RAY_FRONT_DEPTH = ITEM_DEPTH + 0.75;
 const LIGHT_SPARKLE_DEPTH = ITEM_DEPTH + 1;
 const LIGHT_RAY_BLINDING_DEPTH = LIGHT_SPARKLE_DEPTH + 0.55;
+const COLOSSUS_HAZE_DEPTH = -9.48;
 const ITEM_SCALE = 0.32;
 const BASKET_SCALE = 0.17;
 const LANTERN_SCALE = 0.23;
@@ -251,7 +252,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-parallax-axis";
+const ASSET_VERSION = "20260614-colossus-haze-gradient";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -583,6 +584,11 @@ const LEVELS = [
     doorYOffset: -30,
     parallax: "parallax-park",
     frontParallax: "parallax-park-frontlayer",
+    colossusHaze: {
+      color: "#f0d2b8",
+      bottomAlpha: 0.56,
+      depth: COLOSSUS_HAZE_DEPTH
+    },
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
     ambientLeaves: {
@@ -2509,6 +2515,7 @@ class PlayScene extends Phaser.Scene {
       };
     };
     this.parallaxLayers = [makeParallaxLayer(textureKey, 0.18, -10)];
+    if (this.level.colossusHaze) this.createColossusHazeGradient(this.level.colossusHaze);
     if (this.level.frontParallax && this.textures.exists(this.level.frontParallax)) {
       this.parallaxLayers.push(makeParallaxLayer(this.level.frontParallax, 0.18, -9.4));
     }
@@ -2518,6 +2525,48 @@ class PlayScene extends Phaser.Scene {
       sprite.setScrollFactor(0);
       sprite.setDepth(depth);
     });
+  }
+
+  createColossusHazeGradient(config = {}) {
+    const textureKey = `colossus-haze-gradient-${state.levelIndex}`;
+    if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = VIEW_HEIGHT;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const gradient = ctx.createLinearGradient(0, VIEW_HEIGHT, 0, 0);
+    const color = config.color || "#f0d2b8";
+    const bottomAlpha = Phaser.Math.Clamp(config.bottomAlpha ?? 0.56, 0, 1);
+    gradient.addColorStop(0, this.hexToRgba(color, bottomAlpha));
+    gradient.addColorStop(0.36, this.hexToRgba(color, bottomAlpha * 0.36));
+    gradient.addColorStop(0.74, this.hexToRgba(color, bottomAlpha * 0.08));
+    gradient.addColorStop(1, this.hexToRgba(color, 0));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    this.textures.addCanvas(textureKey, canvas);
+    const haze = this.add.tileSprite(0, 0, VIEW_WIDTH, VIEW_HEIGHT, textureKey);
+    haze.setOrigin(0, 0);
+    haze.setScrollFactor(0);
+    haze.setDepth(config.depth ?? COLOSSUS_HAZE_DEPTH);
+    haze.setAlpha(config.alpha ?? 1);
+    haze.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+    this.colossusHaze = haze;
+  }
+
+  hexToRgba(hex, alpha = 1) {
+    const value = String(hex).replace("#", "");
+    const normalized = value.length === 3
+      ? value.split("").map((char) => `${char}${char}`).join("")
+      : value.padEnd(6, "0").slice(0, 6);
+    const numeric = Number.parseInt(normalized, 16);
+    const r = (numeric >> 16) & 255;
+    const g = (numeric >> 8) & 255;
+    const b = numeric & 255;
+    return `rgba(${r}, ${g}, ${b}, ${Phaser.Math.Clamp(alpha, 0, 1)})`;
   }
 
   createDistantColossus() {

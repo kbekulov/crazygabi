@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.53.6
+
+- Added a warm bottom-up haze gradient above the Level 5 colossus and below the park front parallax layer.
+
 ## v0.53.5
 
 - Anchored the placeholder colossus to the Level 5 parallax movement axis so it no longer appears stuck to Gabi's camera position.
