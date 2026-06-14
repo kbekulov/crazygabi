@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.54.2
+
+- Decoupled the Level 5 distant colossus drift from Gabi's camera movement so it no longer accelerates when the player runs.
+
 ## v0.54.1
 
 - Reduced Gabi's dash distance and added a small white dust puff at her feet when the dash begins.
