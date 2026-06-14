@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.4";
+const GAME_VERSION = "v0.55.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -95,6 +95,11 @@ const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
 const HAY_BURST_COOLDOWN_MS = 1000;
+const DIVE_JUMP_MIN_HORIZONTAL_SPEED = 70;
+const DIVE_JUMP_FORCED_HORIZONTAL_SPEED = 230;
+const DIVE_JUMP_FORCED_VERTICAL_SPEED = -500;
+const DIVE_WALK_OFF_TRIGGER_DISTANCE = 44;
+const DIVE_WALK_OFF_VERTICAL_TOLERANCE = 34;
 const SCRIPTED_DIVE_MIN_SPEED_X = 160;
 const SCRIPTED_DIVE_MAX_SPEED_X = 430;
 const SCRIPTED_DIVE_MAX_SPEED_Y = 720;
@@ -263,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-rig-scale";
+const ASSET_VERSION = "20260614-colossus-dive-guard";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -584,15 +589,15 @@ const LEVELS = [
         foot: "./public/assets/boss/colossus/foot.png"
       },
       x: 720,
-      groundY: 430,
-      scale: 0.4,
+      groundY: 382,
+      scale: 0.68,
       driftSpeed: -4.8,
       seekGabi: true,
       seekSpeed: 54,
       seekStopDistance: 62,
       seekScreenOffset: 420,
       cycleMs: 5200,
-      alpha: 0.5,
+      alpha: 1,
       shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
       shakeIntensity: COLOSSUS_STEP_SHAKE_INTENSITY
     },
@@ -5004,6 +5009,13 @@ class PlayScene extends Phaser.Scene {
       if (this.gabiDiveActive) this.resetGabiDiveState();
     }
 
+    if (!onFloor && this.tryStartWalkOffDive(left, right, time)) {
+      this.updateDiveWindLines(time);
+      this.updateDiveCameraZoom();
+      this.updateGabiAnimation(false, false);
+      return;
+    }
+
     if (jump && this.isGliding) {
       this.cancelGlideToFall();
     } else if (jump && onFloor) {
@@ -5344,10 +5356,60 @@ class PlayScene extends Phaser.Scene {
 
   shouldUseGabiDiveJump(left = false, right = false) {
     if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
-    const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
-    const diveLedge = this.getPlayerManualDiveLedge(direction) || this.getPlayerManualDiveLedge(-direction);
+    const direction = this.getDiveLaunchDirection(left, right);
+    if (!direction) {
+      this.pendingDiveLedge = null;
+      return false;
+    }
+
+    const diveLedge = this.getPlayerManualDiveLedge(direction);
+    if (!this.isValidDiveLaunchDirection(diveLedge, direction)) {
+      this.pendingDiveLedge = null;
+      return false;
+    }
+
+    const currentSpeed = Math.abs(this.player.body.velocity.x || 0);
+    if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && left !== right) {
+      this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
+    }
+
+    this.setGabiFlip(direction < 0);
     this.pendingDiveLedge = diveLedge || null;
     return Boolean(diveLedge);
+  }
+
+  getDiveLaunchDirection(left = false, right = false) {
+    if (!this.player?.body) return 0;
+    if (left !== right) return left ? -1 : 1;
+    const velocityX = this.player.body.velocity.x || 0;
+    if (Math.abs(velocityX) >= DIVE_JUMP_MIN_HORIZONTAL_SPEED) return velocityX < 0 ? -1 : 1;
+    return 0;
+  }
+
+  isValidDiveLaunchDirection(diveLedge, direction = 1) {
+    if (!diveLedge || !direction || !this.matchesDiveLedgeSide(diveLedge, direction)) return false;
+    if (!diveLedge.scriptedHaystackDive) return true;
+    const haystack = this.getPrimaryHaystack();
+    if (!haystack?.active || !this.player) return true;
+    const targetDirection = Math.sign(haystack.x - this.player.x);
+    return !targetDirection || targetDirection === direction;
+  }
+
+  tryStartWalkOffDive(left = false, right = false, time = 0) {
+    if (!this.anims.exists("gabi-dive") || !this.player?.body || this.gabiDiveActive || this.scriptedHaystackDive) return false;
+    const inputDirection = left !== right ? (left ? -1 : 1) : 0;
+    const velocityX = this.player.body.velocity.x || 0;
+    const direction = inputDirection || (Math.abs(velocityX) >= DIVE_JUMP_MIN_HORIZONTAL_SPEED ? Math.sign(velocityX) : 0);
+    if (!direction) return false;
+
+    const diveLedge = this.getPlayerWalkOffDiveLedge(direction);
+    if (!this.isValidDiveLaunchDirection(diveLedge, direction)) return false;
+
+    this.pendingDiveLedge = diveLedge;
+    this.player.setVelocity(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED, DIVE_JUMP_FORCED_VERTICAL_SPEED);
+    this.setGabiFlip(direction < 0);
+    this.startGabiDive(time);
+    return true;
   }
 
   getPlayerManualDiveLedge(direction = 1) {
@@ -5358,6 +5420,17 @@ class PlayScene extends Phaser.Scene {
       if (ledge.type === "final-elevator-top") return this.isPlayerOnFinalElevatorDiveLedge(direction) ? ledge : null;
       const run = this.getManualDiveLedgeRun(ledge);
       return run && this.isPlayerNearDiveRunEdge(run, direction, ledge) ? ledge : null;
+    }) || null;
+  }
+
+  getPlayerWalkOffDiveLedge(direction = 1) {
+    const ledges = this.level.manualDiveLedges || [];
+    if (!ledges.length || !this.player?.body || !direction) return null;
+    return ledges.find((ledge) => {
+      if (!this.matchesDiveLedgeSide(ledge, direction)) return false;
+      if (ledge.type === "final-elevator-top") return this.isPlayerWalkingOffFinalElevatorDiveLedge(direction);
+      const run = this.getManualDiveLedgeRun(ledge);
+      return run && this.isPlayerJustPastDiveRunEdge(run, direction, ledge);
     }) || null;
   }
 
@@ -5394,6 +5467,18 @@ class PlayScene extends Phaser.Scene {
     return this.isPlayerNearDiveRunEdge(run, direction);
   }
 
+  isPlayerWalkingOffFinalElevatorDiveLedge(direction = 1) {
+    if (!this.finalElevatorCompleted || !this.player?.body) return false;
+    const platformBody = this.finalElevator?.body?.body;
+    if (!platformBody) return false;
+    const run = {
+      startX: platformBody.x,
+      endX: platformBody.x + platformBody.width,
+      topY: platformBody.y
+    };
+    return this.isPlayerJustPastDiveRunEdge(run, direction, { edgeDistance: GABI_DIVE_EDGE_DISTANCE });
+  }
+
   isPlayerNearDiveRunEdge(run, direction = 1, ledge = {}) {
     if (!run || !this.player?.body) return false;
     const body = this.player.body;
@@ -5402,6 +5487,20 @@ class PlayScene extends Phaser.Scene {
       : body.x - run.startX;
     const edgeDistance = ledge.edgeDistance ?? GABI_DIVE_EDGE_DISTANCE;
     return distanceToEdge >= -32 && distanceToEdge <= edgeDistance;
+  }
+
+  isPlayerJustPastDiveRunEdge(run, direction = 1, ledge = {}) {
+    if (!run || !this.player?.body) return false;
+    const body = this.player.body;
+    const bodyBottom = body.y + body.height;
+    const topY = run.topY ?? bodyBottom;
+    const nearPlatformHeight = bodyBottom >= topY - DIVE_WALK_OFF_VERTICAL_TOLERANCE && bodyBottom <= topY + DIVE_WALK_OFF_VERTICAL_TOLERANCE;
+    if (!nearPlatformHeight) return false;
+    const distancePastEdge = direction > 0
+      ? body.x - run.endX
+      : run.startX - (body.x + body.width);
+    const edgeDistance = Math.max(ledge.edgeDistance ?? GABI_DIVE_EDGE_DISTANCE, DIVE_WALK_OFF_TRIGGER_DISTANCE);
+    return distancePastEdge >= -6 && distancePastEdge <= edgeDistance;
   }
 
   startGabiDive(time = 0) {

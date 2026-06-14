@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.5
+
+- Reframed the Level 5 colossus so it is opaque and tall enough to reach the top of the screen.
+- Tightened dive triggers so Gabi must launch toward the haystack with horizontal and vertical motion.
+- Added an automatic dive launch when Gabi walks off an approved dive ledge.
+
 ## v0.55.4
 
 - Rescaled and re-grounded the Level 5 PNG colossus rig so the full body reads in the distant background.
