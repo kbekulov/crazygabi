@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.1
+
+- Removed camera scroll from the Level 5 distant colossus movement so Gabi running no longer speeds up or reverses its drift.
+
 ## v0.55.0
 
 - Added a Level 5 midpoint colossus reveal with a zoom-in, howl sound, and boss music transition.

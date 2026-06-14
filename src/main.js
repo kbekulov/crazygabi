@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.0";
+const GAME_VERSION = "v0.55.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -262,7 +262,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-boss-reveal";
+const ASSET_VERSION = "20260614-colossus-camera-independent";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2677,14 +2677,12 @@ class PlayScene extends Phaser.Scene {
         return { boneName, offsetX, offsetY, text };
       });
 
-    const projection = this.getDistantColossusParallaxProjection();
     this.distantColossus = {
       config,
       object,
       bones,
       labels,
-      parallaxX: (config.x ?? VIEW_WIDTH + 180) / (projection.scale || 1),
-      parallaxProjection: projection,
+      screenX: config.x ?? VIEW_WIDTH + 180,
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
@@ -2694,21 +2692,8 @@ class PlayScene extends Phaser.Scene {
     this.updateDistantColossus(this.time.now, 0);
   }
 
-  getDistantColossusParallaxProjection() {
-    const key = this.level.frontParallax || this.level.parallax;
-    const layer = this.parallaxLayers?.find(({ sprite }) => sprite?.texture?.key === key);
-    return {
-      speed: layer?.speed ?? 0.18,
-      scale: layer?.scale ?? 1,
-      tileWidth: layer?.tileWidth ?? VIEW_WIDTH
-    };
-  }
-
   projectDistantColossusX(rig, sway = 0) {
-    const cameraScrollX = this.cameras?.main?.scrollX || 0;
-    const projection = rig.parallaxProjection || { speed: 0.18, scale: 1, tileWidth: VIEW_WIDTH };
-    const parallaxTextureOffset = cameraScrollX * projection.speed;
-    return (rig.parallaxX - parallaxTextureOffset) * projection.scale + sway;
+    return (rig.screenX ?? 0) + sway;
   }
 
   updateSpineColossusLabels() {
@@ -2778,20 +2763,19 @@ class PlayScene extends Phaser.Scene {
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
     rig.phase = phase;
     const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
-    const projection = rig.parallaxProjection || { scale: 1 };
-    rig.parallaxX += Number.isFinite(drift) ? drift / (projection.scale || 1) : 0;
+    rig.screenX += Number.isFinite(drift) ? drift : 0;
 
     const bob = Math.abs(Math.sin(phase)) * 5;
     const sway = Math.sin(phase * 0.5) * 4;
     const wrapPadding = 320;
-    const wrapDistance = (VIEW_WIDTH + wrapPadding * 2) / (projection.scale || 1);
+    const wrapDistance = VIEW_WIDTH + wrapPadding * 2;
     let projectedX = this.projectDistantColossusX(rig, sway);
     while (projectedX < -wrapPadding) {
-      rig.parallaxX += wrapDistance;
+      rig.screenX += wrapDistance;
       projectedX = this.projectDistantColossusX(rig, sway);
     }
     while (projectedX > VIEW_WIDTH + wrapPadding) {
-      rig.parallaxX -= wrapDistance;
+      rig.screenX -= wrapDistance;
       projectedX = this.projectDistantColossusX(rig, sway);
     }
     rig.object.setPosition(projectedX, rig.baseGroundY + bob);
