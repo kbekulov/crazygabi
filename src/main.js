@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.53.4";
+const GAME_VERSION = "v0.53.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -251,7 +251,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-y-axis-fix";
+const ASSET_VERSION = "20260614-colossus-parallax-axis";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2603,7 +2603,8 @@ class PlayScene extends Phaser.Scene {
       object,
       bones,
       labels,
-      screenX: config.x ?? VIEW_WIDTH + 180,
+      parallaxX: config.x ?? VIEW_WIDTH + 180,
+      parallaxSpeed: config.parallaxSpeed ?? this.getDistantColossusParallaxSpeed(),
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
@@ -2611,6 +2612,16 @@ class PlayScene extends Phaser.Scene {
     };
     object.beforeUpdateWorldTransforms = () => this.poseSpineColossus();
     this.updateDistantColossus(this.time.now, 0);
+  }
+
+  getDistantColossusParallaxSpeed() {
+    const layer = this.parallaxLayers?.find(({ sprite }) => sprite?.texture?.key === (this.level.frontParallax || this.level.parallax));
+    return layer?.speed ?? 0.18;
+  }
+
+  projectDistantColossusX(rig, sway = 0) {
+    const cameraScrollX = this.cameras?.main?.scrollX || 0;
+    return rig.parallaxX - cameraScrollX * (rig.parallaxSpeed ?? 0.18) + sway;
   }
 
   updateSpineColossusLabels() {
@@ -2680,13 +2691,21 @@ class PlayScene extends Phaser.Scene {
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
     rig.phase = phase;
     const drift = (config.driftSpeed ?? -4.8) * (delta / 1000);
-    rig.screenX += Number.isFinite(drift) ? drift : 0;
-    if (rig.screenX < -260) rig.screenX = VIEW_WIDTH + 260;
-    if (rig.screenX > VIEW_WIDTH + 280) rig.screenX = -240;
+    rig.parallaxX += Number.isFinite(drift) ? drift : 0;
 
     const bob = Math.abs(Math.sin(phase)) * 5;
     const sway = Math.sin(phase * 0.5) * 4;
-    rig.object.setPosition(rig.screenX + sway, rig.baseGroundY + bob);
+    const wrapPadding = 320;
+    let projectedX = this.projectDistantColossusX(rig, sway);
+    while (projectedX < -wrapPadding) {
+      rig.parallaxX += VIEW_WIDTH + wrapPadding * 2;
+      projectedX = this.projectDistantColossusX(rig, sway);
+    }
+    while (projectedX > VIEW_WIDTH + wrapPadding) {
+      rig.parallaxX -= VIEW_WIDTH + wrapPadding * 2;
+      projectedX = this.projectDistantColossusX(rig, sway);
+    }
+    rig.object.setPosition(projectedX, rig.baseGroundY + bob);
     this.poseSpineColossus();
     this.updateSpineColossusLabels();
 

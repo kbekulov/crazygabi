@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.53.5
+
+- Anchored the placeholder colossus to the Level 5 parallax movement axis so it no longer appears stuck to Gabi's camera position.
+
 ## v0.53.4
 
 - Fixed the placeholder colossus rig's vertical skeleton layout so its labeled body parts no longer render upside down.
