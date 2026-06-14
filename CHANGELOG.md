@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.3
+
+- Rebuilt the Level 5 colossus as a PNG body-part rig instead of the placeholder Spine rig.
+- Moved the colossus through a parallax-plane coordinate system so its X position is derived from the background layer offset rather than Gabi's camera center.
+- Updated the colossus seek behavior to chase Gabi's world position after converting it into the parallax plane.
+
 ## v0.55.2
 
 - Reworked the Level 5 colossus into a Gabi-seeking horizon actor with capped movement instead of camera-derived drift.

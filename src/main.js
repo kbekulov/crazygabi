@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.2";
+const GAME_VERSION = "v0.55.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -263,7 +263,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-gabi-seeker";
+const ASSET_VERSION = "20260614-colossus-parallax-plane";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -568,19 +568,29 @@ const LEVELS = [
     birdSfx: MAGPIE_CALL_SFX_KEY,
     ambientBirds: true,
     distantColossus: {
-      type: "spine",
-      dataKey: "colossus-placeholder-data",
-      atlasKey: "colossus-placeholder-atlas",
-      skeleton: "./public/assets/boss/colossus/colossus_placeholder.json",
-      atlas: "./public/assets/boss/colossus/colossus_placeholder.atlas",
+      type: "png-rig",
+      parts: {
+        torso: "./public/assets/boss/colossus/torso.png",
+        pelvis: "./public/assets/boss/colossus/pelvis.png",
+        head: "./public/assets/boss/colossus/head.png",
+        crown: "./public/assets/boss/colossus/slanted_crown.png",
+        upperArm: "./public/assets/boss/colossus/upper_arm.png",
+        lowerArm: "./public/assets/boss/colossus/lower_arm.png",
+        openHand: "./public/assets/boss/colossus/open_hand.png",
+        closedHand: "./public/assets/boss/colossus/closed_hand.png",
+        suitcase: "./public/assets/boss/colossus/suitcase.png",
+        upperLeg: "./public/assets/boss/colossus/upper_leg.png",
+        lowerLeg: "./public/assets/boss/colossus/lower_leg.png",
+        foot: "./public/assets/boss/colossus/foot.png"
+      },
       x: 720,
       groundY: 214,
       scale: 0.72,
       driftSpeed: -4.8,
       seekGabi: true,
-      seekSpeed: 42,
-      seekStopDistance: 84,
-      seekScreenMargin: 155,
+      seekSpeed: 54,
+      seekStopDistance: 62,
+      seekScreenOffset: 500,
       cycleMs: 5200,
       alpha: 0.62,
       shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
@@ -2141,6 +2151,12 @@ class PlayScene extends Phaser.Scene {
           queued += 1;
         }
       };
+      const colossusPartAssets = (config) => {
+        if (!config || config.type !== "png-rig") return;
+        Object.entries(config.parts || {}).forEach(([partName, src]) => {
+          image(`colossus-${partName}`, src);
+        });
+      };
 
       sheet("gabi-sheet", "./public/assets/character/main_char_sprite.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-wings-sheet", "./public/assets/character/main_char_sprite_with_double_jump.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
@@ -2174,6 +2190,7 @@ class PlayScene extends Phaser.Scene {
         sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
       }
       spineAsset(level.distantColossus);
+      colossusPartAssets(level.distantColossus);
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -2608,6 +2625,11 @@ class PlayScene extends Phaser.Scene {
     const config = this.level.distantColossus;
     if (!config) return;
 
+    if (config.type === "png-rig") {
+      this.createPngDistantColossus(config);
+      return;
+    }
+
     if (config.type !== "spine" || typeof this.add.spine !== "function") return;
 
     const spineRuntime = getSpineRuntime();
@@ -2697,18 +2719,97 @@ class PlayScene extends Phaser.Scene {
     this.updateDistantColossus(this.time.now, 0);
   }
 
+  createPngDistantColossus(config) {
+    const projection = this.getDistantColossusProjection();
+    const object = this.add.container(config.x ?? VIEW_WIDTH + 180, config.groundY ?? PLAY_HEIGHT - 78);
+    object.setScrollFactor(0);
+    object.setDepth(config.depth ?? COLOSSUS_DEPTH);
+    object.setScale(config.scale ?? 1);
+    object.setAlpha(config.alpha ?? 0.55);
+
+    const addPart = (name, key, x, y, options = {}) => {
+      if (!this.textures.exists(key)) return null;
+      const sprite = this.add.image(x, y, key);
+      sprite.setOrigin(options.originX ?? 0.5, options.originY ?? 0.5);
+      sprite.setScale(options.scaleX ?? 1, options.scaleY ?? 1);
+      sprite.setAngle(options.angle ?? 0);
+      sprite.setAlpha(options.alpha ?? 1);
+      object.add(sprite);
+      return sprite;
+    };
+
+    const parts = {
+      backLeftArm: addPart("backLeftArm", "colossus-upperArm", -86, -342, { angle: 24, alpha: 0.78 }),
+      backLeftForearm: addPart("backLeftForearm", "colossus-lowerArm", -134, -250, { angle: 42, alpha: 0.78 }),
+      backLeftHand: addPart("backLeftHand", "colossus-openHand", -164, -170, { angle: 44, alpha: 0.78 }),
+      backRightArm: addPart("backRightArm", "colossus-upperArm", 88, -342, { angle: -25, scaleX: -1, alpha: 0.78 }),
+      backRightForearm: addPart("backRightForearm", "colossus-lowerArm", 138, -250, { angle: -42, scaleX: -1, alpha: 0.78 }),
+      backRightHand: addPart("backRightHand", "colossus-closedHand", 168, -170, { angle: -42, scaleX: -1, alpha: 0.78 }),
+      backLeftLeg: addPart("backLeftLeg", "colossus-upperLeg", -44, -208, { angle: 6, alpha: 0.8 }),
+      backLeftShin: addPart("backLeftShin", "colossus-lowerLeg", -56, -98, { angle: -8, alpha: 0.8 }),
+      backLeftFoot: addPart("backLeftFoot", "colossus-foot", -72, -16, { angle: -82, alpha: 0.8 }),
+      backRightLeg: addPart("backRightLeg", "colossus-upperLeg", 48, -208, { angle: -6, scaleX: -1, alpha: 0.8 }),
+      backRightShin: addPart("backRightShin", "colossus-lowerLeg", 62, -98, { angle: 8, scaleX: -1, alpha: 0.8 }),
+      backRightFoot: addPart("backRightFoot", "colossus-foot", 80, -16, { angle: 82, scaleX: -1, alpha: 0.8 }),
+      torso: addPart("torso", "colossus-torso", 0, -372, { alpha: 0.95 }),
+      pelvis: addPart("pelvis", "colossus-pelvis", 0, -238, { alpha: 0.92 }),
+      head: addPart("head", "colossus-head", 0, -545, { alpha: 0.96 }),
+      crown: addPart("crown", "colossus-crown", 8, -606, { angle: -5, alpha: 0.86 }),
+      frontLeftLeg: addPart("frontLeftLeg", "colossus-upperLeg", -34, -206, { angle: -5 }),
+      frontLeftShin: addPart("frontLeftShin", "colossus-lowerLeg", -28, -94, { angle: 5 }),
+      frontLeftFoot: addPart("frontLeftFoot", "colossus-foot", -50, -12, { angle: -78 }),
+      frontRightLeg: addPart("frontRightLeg", "colossus-upperLeg", 38, -206, { angle: 5, scaleX: -1 }),
+      frontRightShin: addPart("frontRightShin", "colossus-lowerLeg", 32, -94, { angle: -5, scaleX: -1 }),
+      frontRightFoot: addPart("frontRightFoot", "colossus-foot", 58, -12, { angle: 78, scaleX: -1 }),
+      leftArm: addPart("leftArm", "colossus-upperArm", -110, -382, { angle: -34 }),
+      leftForearm: addPart("leftForearm", "colossus-lowerArm", -154, -278, { angle: 42 }),
+      leftHand: addPart("leftHand", "colossus-openHand", -188, -192, { angle: 44 }),
+      rightArm: addPart("rightArm", "colossus-upperArm", 110, -382, { angle: 34, scaleX: -1 }),
+      rightForearm: addPart("rightForearm", "colossus-lowerArm", 154, -278, { angle: -42, scaleX: -1 }),
+      rightHand: addPart("rightHand", "colossus-closedHand", 188, -192, { angle: -44, scaleX: -1 }),
+      suitcase: addPart("suitcase", "colossus-suitcase", 204, -134, { angle: -4, alpha: 0.9 })
+    };
+
+    this.distantColossus = {
+      config,
+      object,
+      parts,
+      projection,
+      planeX: (config.x ?? VIEW_WIDTH + 180) / (projection.scale || 1),
+      baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
+      cycleMs: config.cycleMs ?? 5200,
+      lastStepIndex: -1,
+      phaseOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
+    };
+    this.updateDistantColossus(this.time.now, 0);
+  }
+
+  getDistantColossusProjection() {
+    const key = this.level.frontParallax || this.level.parallax;
+    const layer = this.parallaxLayers?.find(({ sprite }) => sprite?.texture?.key === key);
+    return {
+      speed: layer?.speed ?? 0.18,
+      scale: layer?.scale ?? 1
+    };
+  }
+
   projectDistantColossusX(rig, sway = 0) {
+    if (Number.isFinite(rig?.planeX)) {
+      const projection = rig.projection || this.getDistantColossusProjection();
+      const cameraScrollX = this.cameras?.main?.scrollX || 0;
+      const parallaxTextureOffset = cameraScrollX * projection.speed;
+      return (rig.planeX - parallaxTextureOffset) * projection.scale + sway;
+    }
     return (rig.screenX ?? 0) + sway;
   }
 
   getDistantColossusTargetX(rig) {
     const config = rig?.config || {};
-    const margin = config.seekScreenMargin ?? 150;
-    const camera = this.cameras?.main;
-    if (!config.seekGabi || !this.player || !camera) return null;
+    if (!config.seekGabi || !this.player) return null;
 
-    const playerScreenX = this.player.x - camera.scrollX;
-    return Phaser.Math.Clamp(playerScreenX, margin, VIEW_WIDTH - margin);
+    const projection = rig.projection || this.getDistantColossusProjection();
+    const offset = (config.seekScreenOffset ?? VIEW_WIDTH * 0.52) / (projection.scale || 1);
+    return this.player.x * projection.speed + offset;
   }
 
   updateSpineColossusLabels() {
@@ -2770,6 +2871,56 @@ class PlayScene extends Phaser.Scene {
     this.setSpineBonePose(rig.bones["right-hand"], { rotation: -Math.sin(phase + 0.9) * 4 });
   }
 
+  posePngColossus() {
+    const rig = this.distantColossus;
+    const parts = rig?.parts;
+    if (!parts) return;
+
+    const phase = rig.phase || 0;
+    const leftStep = Math.sin(phase);
+    const rightStep = Math.sin(phase + Math.PI);
+    const torsoLean = Math.sin(phase + 0.3) * 1.6;
+    const armSwing = Math.sin(phase + Math.PI) * 9;
+    const bob = Math.abs(Math.sin(phase)) * 3;
+
+    const set = (part, props = {}) => {
+      if (!part) return;
+      if (Number.isFinite(props.x)) part.x = props.x;
+      if (Number.isFinite(props.y)) part.y = props.y;
+      if (Number.isFinite(props.angle)) part.setAngle(props.angle);
+      if (Number.isFinite(props.scaleX) || Number.isFinite(props.scaleY)) {
+        part.setScale(props.scaleX ?? part.scaleX, props.scaleY ?? part.scaleY);
+      }
+    };
+
+    set(parts.torso, { x: Math.sin(phase) * 1.8, y: -372 - bob, angle: torsoLean });
+    set(parts.pelvis, { x: 0, y: -238 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
+    set(parts.head, { x: Math.sin(phase + 0.55) * 2.2, y: -545 - bob, angle: -torsoLean * 0.45 });
+    set(parts.crown, { x: 8 + Math.sin(phase + 0.55) * 2.2, y: -606 - bob, angle: -5 - torsoLean * 0.45 });
+
+    set(parts.frontLeftLeg, { x: -34 + leftStep * 10, y: -206 + Math.abs(leftStep) * 4, angle: -5 + leftStep * 14 });
+    set(parts.frontLeftShin, { x: -28 + leftStep * 18, y: -94 + Math.max(0, leftStep) * 12, angle: 5 - leftStep * 18 });
+    set(parts.frontLeftFoot, { x: -50 + leftStep * 25, y: -12 + Math.max(0, leftStep) * 7, angle: -78 + leftStep * 10 });
+    set(parts.frontRightLeg, { x: 38 + rightStep * 10, y: -206 + Math.abs(rightStep) * 4, angle: 5 - rightStep * 14 });
+    set(parts.frontRightShin, { x: 32 + rightStep * 18, y: -94 + Math.max(0, rightStep) * 12, angle: -5 + rightStep * 18 });
+    set(parts.frontRightFoot, { x: 58 + rightStep * 25, y: -12 + Math.max(0, rightStep) * 7, angle: 78 - rightStep * 10 });
+
+    set(parts.backLeftLeg, { x: -44 - rightStep * 7, y: -208 + Math.abs(rightStep) * 2, angle: 6 - rightStep * 9 });
+    set(parts.backLeftShin, { x: -56 - rightStep * 13, y: -98 + Math.max(0, rightStep) * 8, angle: -8 + rightStep * 12 });
+    set(parts.backLeftFoot, { x: -72 - rightStep * 18, y: -16 + Math.max(0, rightStep) * 5, angle: -82 - rightStep * 7 });
+    set(parts.backRightLeg, { x: 48 - leftStep * 7, y: -208 + Math.abs(leftStep) * 2, angle: -6 + leftStep * 9 });
+    set(parts.backRightShin, { x: 62 - leftStep * 13, y: -98 + Math.max(0, leftStep) * 8, angle: 8 - leftStep * 12 });
+    set(parts.backRightFoot, { x: 80 - leftStep * 18, y: -16 + Math.max(0, leftStep) * 5, angle: 82 + leftStep * 7 });
+
+    set(parts.leftArm, { x: -110, y: -382 - bob, angle: -34 - armSwing });
+    set(parts.leftForearm, { x: -154 - armSwing * 0.75, y: -278 - bob, angle: 42 + armSwing * 0.55 });
+    set(parts.leftHand, { x: -188 - armSwing, y: -192 - bob, angle: 44 + armSwing * 0.35 });
+    set(parts.rightArm, { x: 110, y: -382 - bob, angle: 34 - armSwing });
+    set(parts.rightForearm, { x: 154 - armSwing * 0.75, y: -278 - bob, angle: -42 + armSwing * 0.55 });
+    set(parts.rightHand, { x: 188 - armSwing, y: -192 - bob, angle: -44 + armSwing * 0.35 });
+    set(parts.suitcase, { x: 204 - armSwing, y: -134 + Math.sin(phase + 0.9) * 4, angle: -4 + Math.sin(phase) * 2 });
+  }
+
   updateDistantColossus(time = 0, delta = 0) {
     const rig = this.distantColossus;
     if (!rig?.object?.active) return;
@@ -2783,14 +2934,19 @@ class PlayScene extends Phaser.Scene {
       if (Number.isFinite(targetX)) {
         const stopDistance = config.seekStopDistance ?? 80;
         const speed = (config.seekSpeed ?? 36) * dt;
-        const distance = targetX - rig.screenX;
+        const positionKey = Number.isFinite(rig.planeX) ? "planeX" : "screenX";
+        const distance = targetX - rig[positionKey];
         const remaining = Math.max(0, Math.abs(distance) - stopDistance);
         if (remaining > 0 && Number.isFinite(speed)) {
-          rig.screenX += Math.sign(distance) * Math.min(remaining, speed);
+          rig[positionKey] += Math.sign(distance) * Math.min(remaining, speed);
         }
       } else {
         const drift = (config.driftSpeed ?? -4.8) * dt;
-        rig.screenX += Number.isFinite(drift) ? drift : 0;
+        if (Number.isFinite(rig.planeX)) {
+          rig.planeX += Number.isFinite(drift) ? drift : 0;
+        } else {
+          rig.screenX += Number.isFinite(drift) ? drift : 0;
+        }
       }
     }
 
@@ -2799,16 +2955,19 @@ class PlayScene extends Phaser.Scene {
     const wrapPadding = 320;
     const wrapDistance = VIEW_WIDTH + wrapPadding * 2;
     let projectedX = this.projectDistantColossusX(rig, sway);
-    while (projectedX < -wrapPadding) {
-      rig.screenX += wrapDistance;
-      projectedX = this.projectDistantColossusX(rig, sway);
-    }
-    while (projectedX > VIEW_WIDTH + wrapPadding) {
-      rig.screenX -= wrapDistance;
-      projectedX = this.projectDistantColossusX(rig, sway);
+    if (!Number.isFinite(rig.planeX)) {
+      while (projectedX < -wrapPadding) {
+        rig.screenX += wrapDistance;
+        projectedX = this.projectDistantColossusX(rig, sway);
+      }
+      while (projectedX > VIEW_WIDTH + wrapPadding) {
+        rig.screenX -= wrapDistance;
+        projectedX = this.projectDistantColossusX(rig, sway);
+      }
     }
     rig.object.setPosition(projectedX, rig.baseGroundY + bob);
     this.poseSpineColossus();
+    this.posePngColossus();
     this.updateSpineColossusLabels();
 
     const stepIndex = Math.floor((time + rig.phaseOffset * 100) / (rig.cycleMs / 2));
