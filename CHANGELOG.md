@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.8
+
+- Reduced the Level 5 colossus head and crown size and shifted them back over the neck.
+
 ## v0.55.7
 
 - Reworked the Level 5 colossus arm pose so lower arms and hands stay attached beneath the shoulders.

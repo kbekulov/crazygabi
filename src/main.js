@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.7";
+const GAME_VERSION = "v0.55.8";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-arms";
+const ASSET_VERSION = "20260614-colossus-head";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2774,8 +2774,8 @@ class PlayScene extends Phaser.Scene {
       farHand: addPart("farHand", "colossus-openHand", 98, -194, { originY: 0.16 }),
       torso: addPart("torso", "colossus-torso", 0, -362),
       pelvis: addPart("pelvis", "colossus-pelvis", 0, -248),
-      head: addPart("head", "colossus-head", 0, -510),
-      crown: addPart("crown", "colossus-crown", 8, -570, { angle: -5 }),
+      head: addPart("head", "colossus-head", 16, -520, { scaleX: 0.8, scaleY: 0.8 }),
+      crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
       nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { originY: 0.12 }),
       nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { originY: 0.1 }),
       nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { originY: 0.18 }),
@@ -2927,8 +2927,8 @@ class PlayScene extends Phaser.Scene {
 
     set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoLean });
     set(parts.pelvis, { x: 0, y: -222 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
-    set(parts.head, { x: Math.sin(phase + 0.55) * 2.2, y: -494 - bob, angle: -torsoLean * 0.45 });
-    set(parts.crown, { x: 8 + Math.sin(phase + 0.55) * 2.2, y: -550 - bob, angle: -5 - torsoLean * 0.45 });
+    set(parts.head, { x: 16 + Math.sin(phase + 0.55) * 2.2, y: -510 - bob, angle: -torsoLean * 0.45 });
+    set(parts.crown, { x: 24 + Math.sin(phase + 0.55) * 2.2, y: -566 - bob, angle: -5 - torsoLean * 0.45 });
 
     const farFoot = placeLimb({
       upper: parts.farLeg,
