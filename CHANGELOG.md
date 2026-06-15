@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.30
+
+- Reduced kill impact sound volume and raised the Level 5 boss music volume.
+- Added fixed heart pickups across Level 5 boss platforms.
+- Made retracting giant hands briefly carry Gabi upward before shaking her off.
+- Moved enemy spawning from giant hand impacts to BU's thrown suitcase box attack.
+- Added thrown box debris and a chance for stray hearts to emerge from broken boxes.
+
 ## v0.55.29
 
 - Added elevated Level 5 shelter platforms for avoiding BU's hand attacks.
