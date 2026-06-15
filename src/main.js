@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.11";
+const GAME_VERSION = "v0.55.12";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-bones";
+const ASSET_VERSION = "20260615-colossus-vertical-bones";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2798,9 +2798,11 @@ class PlayScene extends Phaser.Scene {
       const sprite = this.add.image(x, y, key);
       if (options.boneOrigin) {
         const bounds = getAlphaBounds(key);
+        const visibleWidth = Math.max(1, bounds.maxX - bounds.minX + 1);
+        const topJointY = bounds.minY + visibleWidth * (options.topJointFactor ?? 0.42);
         sprite.setOrigin(
-          Phaser.Math.Clamp((bounds.minX + (options.boneInsetX ?? 0)) / bounds.width, 0, 1),
-          Phaser.Math.Clamp(((bounds.minY + bounds.maxY) / 2 + (options.boneOffsetY ?? 0)) / bounds.height, 0, 1)
+          Phaser.Math.Clamp(((bounds.minX + bounds.maxX) / 2 + (options.boneOffsetX ?? 0)) / bounds.width, 0, 1),
+          Phaser.Math.Clamp((topJointY + (options.boneOffsetY ?? 0)) / bounds.height, 0, 1)
         );
         sprite.setData("alphaBounds", bounds);
       } else {
@@ -2960,17 +2962,19 @@ class PlayScene extends Phaser.Scene {
     const jointEnd = (x, y, length, angle) => {
       const radians = (angle * Math.PI) / 180;
       return {
-        x: x + Math.cos(radians) * length,
-        y: y + Math.sin(radians) * length
+        x: x + Math.sin(radians) * length,
+        y: y + Math.cos(radians) * length
       };
     };
     const segmentSpan = (part, fallback, trim = 0.86) => {
       if (!part) return fallback;
       const bounds = part.getData?.("alphaBounds");
+      const visibleHeight = bounds ? Math.max(1, bounds.maxY - bounds.minY + 1) : part.height;
       const visibleWidth = bounds ? Math.max(1, bounds.maxX - bounds.minX + 1) : part.width;
-      const originX = Number.isFinite(part.originX) ? part.originX : 0;
-      const originLeftInset = part.width * originX - (bounds?.minX ?? 0);
-      return Math.max(18, (visibleWidth - originLeftInset) * Math.abs(part.scaleX || 1) * trim);
+      const originY = Number.isFinite(part.originY) ? part.originY : 0;
+      const originFromTop = part.height * originY - (bounds?.minY ?? 0);
+      const bottomJointInset = visibleWidth * 0.34;
+      return Math.max(22, (visibleHeight - originFromTop - bottomJointInset) * Math.abs(part.scaleY || 1) * trim);
     };
     const placeLimb = ({
       upper,
@@ -3005,13 +3009,13 @@ class PlayScene extends Phaser.Scene {
       end: parts.farFoot,
       x: 30 + farStep * 4,
       y: -242 + Math.abs(farStep) * 3,
-      upperAngle: 78 + farStep * 8,
-      lowerAngle: 86 - farStep * 8,
-      upperLength: segmentSpan(parts.farLeg, 104, 0.88),
-      lowerLength: segmentSpan(parts.farShin, 104, 0.88),
-      endOffsetX: 4,
+      upperAngle: -5 + farStep * 6,
+      lowerAngle: 4 - farStep * 7,
+      upperLength: segmentSpan(parts.farLeg, 104, 0.96),
+      lowerLength: segmentSpan(parts.farShin, 104, 0.96),
+      endOffsetX: 8,
       endOffsetY: 2,
-      endAngle: 92 + farStep * 4
+      endAngle: 78 + farStep * 4
     });
     const nearFoot = placeLimb({
       upper: parts.nearLeg,
@@ -3019,30 +3023,30 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearFoot,
       x: -30 + nearStep * 5,
       y: -242 + Math.abs(nearStep) * 4,
-      upperAngle: 102 - nearStep * 9,
-      lowerAngle: 94 + nearStep * 9,
-      upperLength: segmentSpan(parts.nearLeg, 104, 0.88),
-      lowerLength: segmentSpan(parts.nearShin, 104, 0.88),
-      endOffsetX: -4,
+      upperAngle: 5 + nearStep * 7,
+      lowerAngle: -4 - nearStep * 8,
+      upperLength: segmentSpan(parts.nearLeg, 104, 0.96),
+      lowerLength: segmentSpan(parts.nearShin, 104, 0.96),
+      endOffsetX: -8,
       endOffsetY: 2,
-      endAngle: 88 - nearStep * 4
+      endAngle: -78 + nearStep * 4
     });
 
-    const farArmSwing = Math.sin(phase + Math.PI) * 11;
-    const nearArmSwing = Math.sin(phase) * 13;
+    const farArmSwing = Math.sin(phase + Math.PI) * 9;
+    const nearArmSwing = Math.sin(phase) * 10;
     placeLimb({
       upper: parts.farArm,
       lower: parts.farForearm,
       end: parts.farHand,
       x: 56,
       y: -392 - bob,
-      upperAngle: 84 + farArmSwing * 0.38,
-      lowerAngle: 92 + farArmSwing * 0.24,
-      upperLength: segmentSpan(parts.farArm, 108, 0.82),
-      lowerLength: segmentSpan(parts.farForearm, 104, 0.82),
-      endOffsetX: 0,
-      endOffsetY: 0,
-      endAngle: 96 + farArmSwing * 0.12
+      upperAngle: 3 + farArmSwing * 0.32,
+      lowerAngle: -2 + farArmSwing * 0.22,
+      upperLength: segmentSpan(parts.farArm, 108, 0.94),
+      lowerLength: segmentSpan(parts.farForearm, 104, 0.94),
+      endOffsetX: 4,
+      endOffsetY: -1,
+      endAngle: 4 + farArmSwing * 0.08
     });
     const nearWrist = placeLimb({
       upper: parts.nearArm,
@@ -3050,18 +3054,18 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearHand,
       x: -56,
       y: -392 - bob,
-      upperAngle: 96 + nearArmSwing * 0.38,
-      lowerAngle: 88 + nearArmSwing * 0.24,
-      upperLength: segmentSpan(parts.nearArm, 108, 0.82),
-      lowerLength: segmentSpan(parts.nearForearm, 104, 0.82),
-      endOffsetX: 0,
-      endOffsetY: 0,
-      endAngle: 84 + nearArmSwing * 0.12
+      upperAngle: -3 + nearArmSwing * 0.32,
+      lowerAngle: 2 + nearArmSwing * 0.22,
+      upperLength: segmentSpan(parts.nearArm, 108, 0.94),
+      lowerLength: segmentSpan(parts.nearForearm, 104, 0.94),
+      endOffsetX: -4,
+      endOffsetY: -1,
+      endAngle: -4 + nearArmSwing * 0.08
     });
     set(parts.suitcase, {
-      x: nearWrist.x + 4,
-      y: Math.max(nearFoot.y - 8, nearWrist.y + 8 + Math.sin(phase + 0.9) * 4),
-      angle: 2 + Math.sin(phase) * 2
+      x: nearWrist.x - 8,
+      y: Math.max(nearFoot.y - 8, nearWrist.y + 12 + Math.sin(phase + 0.9) * 4),
+      angle: -4 + Math.sin(phase) * 2
     });
   }
 

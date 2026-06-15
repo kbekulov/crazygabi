@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.12
+
+- Restored the Level 5 colossus PNG rig to vertical limb joints with alpha-aware top pivots.
+
 ## v0.55.11
 
 - Rebuilt the Level 5 colossus PNG limb math around right-facing bone axes and visible alpha-bound pivots.
