@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.14
+
+- Rebuilt the Level 5 colossus PNG rig with explicit humanoid shoulder, arm, hand, pelvis, and suitcase anchors.
+
 ## v0.55.13
 
 - Exaggerated the Level 5 colossus arm sway to make the PNG limb anchors easier to verify.

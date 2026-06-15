@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.13";
+const GAME_VERSION = "v0.55.14";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-arm-sway";
+const ASSET_VERSION = "20260615-colossus-anchor-map";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2796,7 +2796,12 @@ class PlayScene extends Phaser.Scene {
     const addPart = (name, key, x, y, options = {}) => {
       if (!this.textures.exists(key)) return null;
       const sprite = this.add.image(x, y, key);
-      if (options.boneOrigin) {
+      if (options.anchor) {
+        sprite.setOrigin(
+          Phaser.Math.Clamp(options.anchor.x / sprite.width, 0, 1),
+          Phaser.Math.Clamp(options.anchor.y / sprite.height, 0, 1)
+        );
+      } else if (options.boneOrigin) {
         const bounds = getAlphaBounds(key);
         const visibleWidth = Math.max(1, bounds.maxX - bounds.minX + 1);
         const topJointY = bounds.minY + visibleWidth * (options.topJointFactor ?? 0.42);
@@ -2815,23 +2820,27 @@ class PlayScene extends Phaser.Scene {
       return sprite;
     };
 
+    const armTopAnchor = { x: 30, y: 22 };
+    const forearmTopAnchor = { x: 32, y: 23 };
+    const upperLegTopAnchor = { x: 29, y: 22 };
+    const lowerLegTopAnchor = { x: 25, y: 23 };
     const parts = {
-      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { boneOrigin: true }),
-      farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { boneOrigin: true }),
-      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { boneOrigin: true }),
-      farArm: addPart("farArm", "colossus-upperArm", 66, -406, { boneOrigin: true }),
-      farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { boneOrigin: true }),
-      farHand: addPart("farHand", "colossus-openHand", 98, -194, { boneOrigin: true }),
+      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { anchor: upperLegTopAnchor }),
+      farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { anchor: lowerLegTopAnchor }),
+      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { anchor: { x: 39, y: 20 } }),
+      farArm: addPart("farArm", "colossus-upperArm", 66, -406, { anchor: armTopAnchor }),
+      farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { anchor: forearmTopAnchor }),
+      farHand: addPart("farHand", "colossus-openHand", 98, -194, { anchor: { x: 30, y: 17 } }),
       pelvis: addPart("pelvis", "colossus-pelvis", 0, -264),
       torso: addPart("torso", "colossus-torso", 0, -362),
       head: addPart("head", "colossus-head", 16, -520, { scaleX: 0.8, scaleY: 0.8 }),
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
-      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { boneOrigin: true }),
-      nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { boneOrigin: true }),
-      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { boneOrigin: true }),
-      nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { boneOrigin: true }),
-      nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { boneOrigin: true }),
-      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { boneOrigin: true }),
+      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { anchor: upperLegTopAnchor }),
+      nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { anchor: lowerLegTopAnchor }),
+      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { anchor: { x: 39, y: 20 } }),
+      nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { anchor: armTopAnchor }),
+      nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { anchor: forearmTopAnchor }),
+      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { anchor: { x: 19, y: 14 } }),
       suitcase: addPart("suitcase", "colossus-suitcase", -142, -142, { angle: -4 })
     };
 
@@ -2959,23 +2968,29 @@ class PlayScene extends Phaser.Scene {
       }
     };
 
-    const jointEnd = (x, y, length, angle) => {
+    const rotateOffset = (x, y, angle) => {
       const radians = (angle * Math.PI) / 180;
       return {
-        x: x + Math.sin(radians) * length,
-        y: y + Math.cos(radians) * length
+        x: x * Math.cos(radians) - y * Math.sin(radians),
+        y: x * Math.sin(radians) + y * Math.cos(radians)
       };
     };
-    const segmentSpan = (part, fallback, trim = 0.86) => {
-      if (!part) return fallback;
-      const bounds = part.getData?.("alphaBounds");
-      const visibleHeight = bounds ? Math.max(1, bounds.maxY - bounds.minY + 1) : part.height;
-      const visibleWidth = bounds ? Math.max(1, bounds.maxX - bounds.minX + 1) : part.width;
-      const originY = Number.isFinite(part.originY) ? part.originY : 0;
-      const originFromTop = part.height * originY - (bounds?.minY ?? 0);
-      const bottomJointInset = visibleWidth * 0.34;
-      return Math.max(22, (visibleHeight - originFromTop - bottomJointInset) * Math.abs(part.scaleY || 1) * trim);
+    const anchorWorld = (part, anchor, angle = part?.angle || 0) => {
+      if (!part || !anchor) return { x: part?.x || 0, y: part?.y || 0 };
+      const originX = (part.originX ?? 0.5) * part.width;
+      const originY = (part.originY ?? 0.5) * part.height;
+      const offset = rotateOffset(
+        (anchor.x - originX) * (part.scaleX || 1),
+        (anchor.y - originY) * (part.scaleY || 1),
+        angle
+      );
+      return {
+        x: part.x + offset.x,
+        y: part.y + offset.y
+      };
     };
+    const torsoAnchor = (anchor, angle = 0) => anchorWorld(parts.torso, anchor, angle);
+    const pelvisAnchor = (anchor, angle = 0) => anchorWorld(parts.pelvis, anchor, angle);
     const placeLimb = ({
       upper,
       lower,
@@ -2984,88 +2999,135 @@ class PlayScene extends Phaser.Scene {
       y,
       upperAngle,
       lowerAngle,
-      upperLength = segmentSpan(upper, 96),
-      lowerLength = segmentSpan(lower, 92),
+      upperLowerAnchor,
+      lowerLowerAnchor,
+      endTopAnchor,
       endOffsetX = 0,
       endOffsetY = 0,
       endAngle = 0
     }) => {
       set(upper, { x, y, angle: upperAngle });
-      const elbow = jointEnd(x, y, upperLength, upperAngle);
+      const elbow = anchorWorld(upper, upperLowerAnchor, upperAngle);
       set(lower, { x: elbow.x, y: elbow.y, angle: lowerAngle });
-      const wrist = jointEnd(elbow.x, elbow.y, lowerLength, lowerAngle);
+      const wrist = anchorWorld(lower, lowerLowerAnchor, lowerAngle);
       set(end, { x: wrist.x + endOffsetX, y: wrist.y + endOffsetY, angle: endAngle });
-      return wrist;
+      return anchorWorld(end, endTopAnchor, endAngle);
+    };
+    const closedHandSuitcaseAnchor = (handAngle) => {
+      const handBottom = anchorWorld(parts.nearHand, { x: 19, y: 77 }, handAngle);
+      return {
+        x: handBottom.x - 18,
+        y: handBottom.y + 6
+      };
+    };
+    const armAnchors = {
+      upperLower: { x: 30, y: 143 },
+      lowerLower: { x: 32, y: 140 },
+      openHandTop: { x: 30, y: 17 },
+      closedHandTop: { x: 19, y: 14 }
+    };
+    const legAnchors = {
+      upperLower: { x: 29, y: 143 },
+      lowerLower: { x: 25, y: 140 },
+      footTop: { x: 39, y: 20 }
     };
 
-    set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoLean });
-    set(parts.pelvis, { x: 0, y: -240 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
+    const torsoAngle = torsoLean;
+    const pelvisAngle = -torsoLean * 0.42;
+    set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoAngle });
+    set(parts.pelvis, { x: 0, y: -240 + Math.abs(Math.sin(phase)) * 2, angle: pelvisAngle });
     set(parts.head, { x: 16 + Math.sin(phase + 0.55) * 2.2, y: -510 - bob, angle: -torsoLean * 0.45 });
     set(parts.crown, { x: 24 + Math.sin(phase + 0.55) * 2.2, y: -566 - bob, angle: -5 - torsoLean * 0.45 });
 
-    const farFoot = placeLimb({
+    const leftShoulder = torsoAnchor({ x: 11, y: 70 }, torsoAngle);
+    const rightShoulder = torsoAnchor({ x: 178, y: 70 }, torsoAngle);
+    const leftHip = pelvisAnchor({ x: 12, y: 88 }, pelvisAngle);
+    const rightHip = pelvisAnchor({ x: 103, y: 88 }, pelvisAngle);
+
+    const placeArm = ({ upper, lower, end, shoulder, swing, side }) => {
+      const upperAngle = side * 2 + swing;
+      const lowerAngle = upperAngle * 0.68 + side * 4;
+      const handAngle = lowerAngle * 0.42 + side * 3;
+      placeLimb({
+        upper,
+        lower,
+        end,
+        x: shoulder.x,
+        y: shoulder.y,
+        upperAngle,
+        lowerAngle,
+        upperLowerAnchor: armAnchors.upperLower,
+        lowerLowerAnchor: armAnchors.lowerLower,
+        endTopAnchor: side < 0 ? armAnchors.closedHandTop : armAnchors.openHandTop,
+        endOffsetX: side * 2,
+        endOffsetY: -1,
+        endAngle: handAngle
+      });
+      return { handAngle };
+    };
+
+    const placeLeg = ({ upper, lower, end, hip, step, side }) => {
+      const upperAngle = side * 2 + step;
+      const lowerAngle = upperAngle * 0.58 - step * 0.22;
+      const footAngle = side * -76 + step * 0.32;
+      placeLimb({
+        upper,
+        lower,
+        end,
+        x: hip.x,
+        y: hip.y,
+        upperAngle,
+        lowerAngle,
+        upperLowerAnchor: legAnchors.upperLower,
+        lowerLowerAnchor: legAnchors.lowerLower,
+        endTopAnchor: legAnchors.footTop,
+        endOffsetX: side * 6,
+        endOffsetY: 2,
+        endAngle: footAngle
+      });
+      return anchorWorld(end, legAnchors.footTop, footAngle);
+    };
+
+    placeLeg({
       upper: parts.farLeg,
       lower: parts.farShin,
       end: parts.farFoot,
-      x: 30 + farStep * 4,
-      y: -242 + Math.abs(farStep) * 3,
-      upperAngle: -5 + farStep * 6,
-      lowerAngle: 4 - farStep * 7,
-      upperLength: segmentSpan(parts.farLeg, 104, 0.96),
-      lowerLength: segmentSpan(parts.farShin, 104, 0.96),
-      endOffsetX: 8,
-      endOffsetY: 2,
-      endAngle: 78 + farStep * 4
+      hip: rightHip,
+      step: farStep * 10,
+      side: 1
     });
-    const nearFoot = placeLimb({
+    const nearFoot = placeLeg({
       upper: parts.nearLeg,
       lower: parts.nearShin,
       end: parts.nearFoot,
-      x: -30 + nearStep * 5,
-      y: -242 + Math.abs(nearStep) * 4,
-      upperAngle: 5 + nearStep * 7,
-      lowerAngle: -4 - nearStep * 8,
-      upperLength: segmentSpan(parts.nearLeg, 104, 0.96),
-      lowerLength: segmentSpan(parts.nearShin, 104, 0.96),
-      endOffsetX: -8,
-      endOffsetY: 2,
-      endAngle: -78 + nearStep * 4
+      hip: leftHip,
+      step: nearStep * 12,
+      side: -1
     });
 
-    const farArmSwing = Math.sin(phase + Math.PI) * 32;
-    const nearArmSwing = Math.sin(phase) * 36;
-    placeLimb({
+    const farArmSwing = Math.sin(phase + Math.PI) * 34;
+    const nearArmSwing = Math.sin(phase) * 38;
+    placeArm({
       upper: parts.farArm,
       lower: parts.farForearm,
       end: parts.farHand,
-      x: 56,
-      y: -392 - bob,
-      upperAngle: 3 + farArmSwing * 0.72,
-      lowerAngle: -2 + farArmSwing * 0.48,
-      upperLength: segmentSpan(parts.farArm, 108, 0.94),
-      lowerLength: segmentSpan(parts.farForearm, 104, 0.94),
-      endOffsetX: 4,
-      endOffsetY: -1,
-      endAngle: 4 + farArmSwing * 0.18
+      shoulder: rightShoulder,
+      swing: farArmSwing,
+      side: 1
     });
-    const nearWrist = placeLimb({
+    const nearArmPose = placeArm({
       upper: parts.nearArm,
       lower: parts.nearForearm,
       end: parts.nearHand,
-      x: -56,
-      y: -392 - bob,
-      upperAngle: -3 + nearArmSwing * 0.72,
-      lowerAngle: 2 + nearArmSwing * 0.48,
-      upperLength: segmentSpan(parts.nearArm, 108, 0.94),
-      lowerLength: segmentSpan(parts.nearForearm, 104, 0.94),
-      endOffsetX: -4,
-      endOffsetY: -1,
-      endAngle: -4 + nearArmSwing * 0.18
+      shoulder: leftShoulder,
+      swing: nearArmSwing,
+      side: -1
     });
+    const suitcaseAnchor = closedHandSuitcaseAnchor(nearArmPose.handAngle);
     set(parts.suitcase, {
-      x: nearWrist.x - 8,
-      y: Math.max(nearFoot.y - 8, nearWrist.y + 12 + Math.sin(phase + 0.9) * 4),
-      angle: -4 + Math.sin(phase) * 2
+      x: suitcaseAnchor.x,
+      y: Math.max(nearFoot.y - 8, suitcaseAnchor.y + Math.sin(phase + 0.9) * 4),
+      angle: -4 + nearArmPose.handAngle * 0.22
     });
   }
 
