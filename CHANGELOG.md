@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.55.28
+
+- Moved BU's giant hand layer below Gabi and the cat while keeping it above the platforms.
+- Reduced giant hand impact sound volume.
+- Let bird attack target landed giant hands through their acorn hitbox.
+- Reduced giant hand boss damage to 1% per successful hit.
+
 ## v0.55.27
 
 - Reworked BU's giant hand into a telegraphed boss attack with warning motion, impact sounds, debris, a punish window, and sky retraction.

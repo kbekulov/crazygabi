@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.27";
+const GAME_VERSION = "v0.55.28";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -163,12 +163,12 @@ const COLOSSUS_DEPTH = -9.55;
 const COLOSSUS_STEP_SHAKE_DURATION = 180;
 const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
 const COLOSSUS_HOWL_VOLUME = 1.08;
-const GIANT_HAND_DEPTH = ITEM_DEPTH + 1.35;
+const GIANT_HAND_DEPTH = 3.6;
 const GIANT_HAND_FALL_SPEED = 940;
 const GIANT_HAND_RETRACT_SPEED = 780;
 const GIANT_HAND_TELEGRAPH_MS = 1800;
 const GIANT_HAND_LANDED_MS = 5000;
-const GIANT_HAND_DAMAGE = 0.05;
+const GIANT_HAND_DAMAGE = 0.01;
 const GIANT_HAND_HIT_COOLDOWN_MS = 520;
 const GIANT_HAND_IMPACT_SHAKE_DURATION = 360;
 const GIANT_HAND_IMPACT_SHAKE_INTENSITY = 0.009;
@@ -279,7 +279,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-giant-hand-boss-phase";
+const ASSET_VERSION = "20260615-giant-hand-depth-volume";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -5638,7 +5638,7 @@ class PlayScene extends Phaser.Scene {
     if (!state.hasBirdControl) return false;
     if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
-    const target = this.findNearestVisibleLivingEnemy();
+    const target = this.findNearestVisibleBirdAttackTarget();
 
     this.lastBirdAttackAt = time;
     state.questProgress.birdAttackUsed = true;
@@ -5708,21 +5708,23 @@ class PlayScene extends Phaser.Scene {
     this.birdAttackCameraFocus = focus;
     const centerOnEnemy = (lerp = 0.08) => {
       if (!this.birdAttackZoomActive || !this.birdAttackZoomProxy) return;
-      const targetX = target?.active ? target.x : focus.x;
-      const targetY = target?.active ? target.y - 18 : focus.y;
+      const point = target?.active ? this.getBirdAttackTargetPoint(target) : null;
+      const targetX = point ? point.x : focus.x;
+      const targetY = point ? point.y : focus.y;
       focus.x = Phaser.Math.Linear(focus.x, targetX, lerp);
       focus.y = Phaser.Math.Linear(focus.y, targetY, lerp);
       camera.setZoom(this.birdAttackZoomProxy.zoom);
       camera.centerOn(Math.round(focus.x), Math.round(focus.y));
     };
+    const targetPoint = this.getBirdAttackTargetPoint(target);
 
     this.playLevelSfx(BIRD_ZOOM_IN_SFX_KEY, 1.0);
     camera.shake(85, 0.0018);
     this.birdAttackZoomTween?.remove?.();
     this.birdAttackZoomTween = this.tweens.add({
       targets: focus,
-      x: target.x,
-      y: target.y - 18,
+      x: targetPoint.x,
+      y: targetPoint.y,
       duration: BIRD_ATTACK_CAMERA_ENEMY_SHIFT_MS,
       ease: "Sine.easeInOut",
       onUpdate: () => {
@@ -5805,29 +5807,73 @@ class PlayScene extends Phaser.Scene {
     updateBirdCooldownHud(remaining / BIRD_ATTACK_COOLDOWN);
   }
 
-  findNearestVisibleLivingEnemy() {
+  findNearestVisibleBirdAttackTarget() {
     let closest = null;
     let closestDistance = Infinity;
-    this.enemies?.children.iterate((enemy) => {
-      if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
-      if (!this.isEnemyVisibleOnScreen(enemy)) return;
-      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.x, enemy.y);
+    const consider = (target) => {
+      if (!target?.active || !this.isBirdAttackTargetVisible(target)) return;
+      const point = this.getBirdAttackTargetPoint(target);
+      const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, point.x, point.y);
       if (distance < closestDistance) {
-        closest = enemy;
+        closest = target;
         closestDistance = distance;
       }
+    };
+    this.enemies?.children.iterate((enemy) => {
+      if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
+      consider(enemy);
+    });
+    this.giantHands?.children.iterate((hand) => {
+      if (!this.isGiantHandBirdAttackTarget(hand)) return;
+      consider(hand);
     });
     return closest;
   }
 
+  isGiantHandBirdAttackTarget(target) {
+    return Boolean(target?.active && target.getData("phase") === "landed" && !target.getData("done"));
+  }
+
+  isBirdAttackTargetVisible(target) {
+    if (this.isGiantHandBirdAttackTarget(target)) {
+      return this.isRectVisibleOnScreen(this.getGiantHandWorldHitbox(target, "acorn"));
+    }
+    return this.isEnemyVisibleOnScreen(target);
+  }
+
+  getBirdAttackTargetPoint(target) {
+    if (this.isGiantHandBirdAttackTarget(target)) {
+      const hitbox = this.getGiantHandWorldHitbox(target, "acorn");
+      return {
+        x: hitbox.centerX,
+        y: hitbox.centerY
+      };
+    }
+    return {
+      x: target?.x || 0,
+      y: (target?.y || 0) - 16
+    };
+  }
+
   isEnemyVisibleOnScreen(enemy) {
     if (!enemy) return false;
+    return this.isPointVisibleOnScreen(enemy.x, enemy.y);
+  }
+
+  isPointVisibleOnScreen(x, y) {
     const camera = this.cameras.main;
     const minX = camera.scrollX + 12;
     const maxX = camera.scrollX + VIEW_WIDTH - 12;
     const minY = camera.scrollY + 12;
     const maxY = camera.scrollY + PLAY_HEIGHT - 12;
-    return enemy.x >= minX && enemy.x <= maxX && enemy.y >= minY && enemy.y <= maxY;
+    return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  }
+
+  isRectVisibleOnScreen(rect) {
+    if (!rect) return false;
+    const camera = this.cameras.main;
+    const view = new Phaser.Geom.Rectangle(camera.scrollX + 12, camera.scrollY + 12, VIEW_WIDTH - 24, PLAY_HEIGHT - 24);
+    return Phaser.Geom.Intersects.RectangleToRectangle(view, rect);
   }
 
   playGabiPointAnimation(time = 0) {
@@ -6419,8 +6465,9 @@ class PlayScene extends Phaser.Scene {
     const directionX = target?.active ? (target.x >= this.player.x ? 1 : -1) : (this.player.flipX ? -1 : 1);
     const baseX = camera.scrollX + (directionX > 0 ? -120 : VIEW_WIDTH + 120);
     const baseY = Phaser.Math.Clamp(this.player.y - 48, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
-    const targetX = target?.active ? target.x : camera.scrollX + (directionX > 0 ? VIEW_WIDTH + 240 : -240);
-    const targetY = target?.active ? target.y - 16 : Phaser.Math.Clamp(this.player.y - 32, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
+    const targetPoint = target?.active ? this.getBirdAttackTargetPoint(target) : null;
+    const targetX = targetPoint ? targetPoint.x : camera.scrollX + (directionX > 0 ? VIEW_WIDTH + 240 : -240);
+    const targetY = targetPoint ? targetPoint.y : Phaser.Math.Clamp(this.player.y - 32, camera.scrollY + 62, camera.scrollY + PLAY_HEIGHT - 132);
     const baseSpeed = Phaser.Math.Between(96, 168) * directionX;
     const travelSeconds = Math.max(0.1, Math.abs(targetX - baseX) / Math.abs(baseSpeed));
     const baseVy = Phaser.Math.Clamp((targetY - baseY) / travelSeconds, -42, 42);
@@ -7275,7 +7322,7 @@ class PlayScene extends Phaser.Scene {
       const target = flock.target;
       let speedFactor = 1;
       const targetPoint = target?.active && !target.getData("dying")
-        ? { x: target.x, y: target.y - 16 }
+        ? this.getBirdAttackTargetPoint(target)
         : flock.targetPoint;
       if (!flock.hitTriggered && targetPoint) {
         const distance = Phaser.Math.Distance.Between(flock.x, flock.y, targetPoint.x, targetPoint.y);
@@ -7297,14 +7344,19 @@ class PlayScene extends Phaser.Scene {
         return true;
       });
 
-      if (!flock.hitTriggered && target?.active && !target.getData("dying") && this.isEnemyVisibleOnScreen(target)) {
-        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, target.x, target.y - 16);
+      if (!flock.hitTriggered && target?.active && !target.getData("dying") && this.isBirdAttackTargetVisible(target)) {
+        const hitPoint = this.getBirdAttackTargetPoint(target);
+        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, hitPoint.x, hitPoint.y);
         if (distance < BIRD_ATTACK_HIT_RADIUS) {
           flock.hitTriggered = true;
           flock.vx = flock.baseVx ?? flock.vx;
           flock.vy = flock.baseVy ?? flock.vy;
-          this.defeatEnemy(target);
-          awardScore(300);
+          if (this.isGiantHandBirdAttackTarget(target)) {
+            this.damageGiantHand(target);
+          } else {
+            this.defeatEnemy(target);
+            awardScore(300);
+          }
           updateHud();
         }
       }
@@ -9465,7 +9517,7 @@ class PlayScene extends Phaser.Scene {
     hand.body.allowGravity = false;
     hand.body.immovable = true;
     this.cameras.main.shake(GIANT_HAND_IMPACT_SHAKE_DURATION, GIANT_HAND_IMPACT_SHAKE_INTENSITY);
-    this.playLevelSfx(Phaser.Utils.Array.GetRandom(GIANT_HAND_IMPACT_SFX_KEYS), 0.72);
+    this.playLevelSfx(Phaser.Utils.Array.GetRandom(GIANT_HAND_IMPACT_SFX_KEYS), 0.576);
     this.spawnGiantHandDebris(hand);
     if (this.playerIntersectsGiantHandHarm(hand)) this.loseLife();
   }
