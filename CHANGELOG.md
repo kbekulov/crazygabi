@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.18
+
+- Raised BU's crown baseline and made the crown-fix animation use a more humanoid folded-arm reach.
+- Increased the suitcase-hand attack rotation for a stronger upward swing.
+- Moved the BU label below the custom boss healthbar.
+
 ## v0.55.17
 
 - Connected the colossus head to the torso neck using explicit PNG anchor coordinates.
