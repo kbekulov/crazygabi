@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.21
+
+- Shifted BU's crown rightward on the head.
+- Increased the free-hand upper-arm rotation during the crown-fix motion.
+- Doubled the free-hand rotation around its anchor during the crown-fix motion.
+- Kept the Level 5 boss soundtrack active after returning to the browser tab.
+- Updated Gabi's dash sprite asset.
+
 ## v0.55.20
 
 - Lowered BU's crown from the previous high placement.

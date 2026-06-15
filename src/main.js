@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.20";
+const GAME_VERSION = "v0.55.21";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-rig-debug";
+const ASSET_VERSION = "20260615-bu-crown-offset";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2035,6 +2035,7 @@ class PlayScene extends Phaser.Scene {
     this.bossHealthVisible = false;
     this.bossHealth = 1;
     this.bossDefeated = false;
+    this.bossSoundtrackActive = false;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -3100,7 +3101,7 @@ class PlayScene extends Phaser.Scene {
     const headAngle = -torsoLean * 0.45;
     set(parts.head, { x: neck.x + Math.sin(phase + 0.55) * 1.2, y: neck.y - 2 - bob * 0.35, angle: headAngle });
     set(parts.crown, {
-      x: parts.head.x + 8 + Math.sin(phase + 0.55) * 1.2,
+      x: parts.head.x + 26 + Math.sin(phase + 0.55) * 1.2,
       y: parts.head.y - 111 + crownSlipAmount * 18,
       angle: -5 + crownSlipAmount * 8 - torsoLean * 0.45
     });
@@ -3201,9 +3202,9 @@ class PlayScene extends Phaser.Scene {
       shoulder: rightShoulder,
       swing: farArmSwing,
       side: 1,
-      upperAdd: crownFixAmount * -117,
+      upperAdd: crownFixAmount * -140,
       lowerAdd: crownFixAmount * -160,
-      handAdd: crownFixAmount * -40
+      handAdd: crownFixAmount * -80
     });
     placeArm({
       upper: parts.nearArm,
@@ -8742,7 +8743,24 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  startMusic() {
+  shouldUseBossSoundtrack() {
+    return Boolean(this.level?.bossSoundtrack && (this.bossSoundtrackActive || this.bossHealthVisible || this.bossDefeated));
+  }
+
+  startActiveLevelMusic() {
+    if (this.shouldUseBossSoundtrack()) {
+      this.startBossSoundtrack();
+      return;
+    }
+    this.startMusic({ forceLevel: true });
+  }
+
+  startMusic({ forceLevel = false } = {}) {
+    if (!forceLevel && this.shouldUseBossSoundtrack()) {
+      this.startBossSoundtrack();
+      return;
+    }
+    this.bossSoundtrackActive = false;
     if (!isMusicEnabled()) {
       if (this.bgm?.isPlaying) this.bgm.stop();
       this.stopAmbientMusic({ destroy: false });
@@ -8777,6 +8795,7 @@ class PlayScene extends Phaser.Scene {
   startBossSoundtrack() {
     const soundtrack = this.level?.bossSoundtrack;
     if (!soundtrack) return;
+    this.bossSoundtrackActive = true;
     if (!isMusicEnabled()) {
       if (this.bgm?.isPlaying) this.bgm.stop();
       return;
@@ -8914,7 +8933,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     if (this.levelReady && state.running && !state.won) {
-      this.startMusic();
+      this.startActiveLevelMusic();
     } else if (!this.levelReady && (!hud.mainMenu.hidden || !hud.menuPanel.hidden)) {
       this.startMenuMusic();
     }
@@ -8933,7 +8952,7 @@ class PlayScene extends Phaser.Scene {
       if (!this.wasMusicPlayingBeforeHidden) return;
       this.resumeAudioContext();
       if (this.levelReady && state.running && !state.won) {
-        this.startMusic();
+        this.startActiveLevelMusic();
       } else if (!this.levelReady && (!hud.mainMenu.hidden || !hud.menuPanel.hidden)) {
         this.startMenuMusic();
       }
