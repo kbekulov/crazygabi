@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.18";
+const GAME_VERSION = "v0.55.19";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-crown-fix";
+const ASSET_VERSION = "20260615-bu-heavy-rig";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2897,7 +2897,7 @@ class PlayScene extends Phaser.Scene {
       isWalking: false,
       suitcaseAttackActive: false,
       suitcaseAttackStartedAt: 0,
-      suitcaseAttackDuration: 1180,
+      suitcaseAttackDuration: 2100,
       nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(4200, 8200),
       suitcaseAttackDropTriggerAt: 0,
       crownSlipActive: false,
@@ -3011,7 +3011,7 @@ class PlayScene extends Phaser.Scene {
       ? Phaser.Math.Clamp((this.time.now - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration, 0, 1)
       : 0;
     const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -168;
-    const suitcaseAttackTwist = Math.sin(attackProgress * Math.PI) * -28;
+    const suitcaseAttackTwist = Math.sin(attackProgress * Math.PI) * -42;
     const crownSlipProgress = rig.crownSlipActive
       ? Phaser.Math.Clamp((this.time.now - rig.crownSlipStartedAt) / rig.crownSlipDuration, 0, 1)
       : 0;
@@ -3100,7 +3100,7 @@ class PlayScene extends Phaser.Scene {
     set(parts.head, { x: neck.x + Math.sin(phase + 0.55) * 1.2, y: neck.y - 2 - bob * 0.35, angle: headAngle });
     set(parts.crown, {
       x: parts.head.x + 8 + Math.sin(phase + 0.55) * 1.2,
-      y: parts.head.y - 76 + crownSlipAmount * 18,
+      y: parts.head.y - 146 + crownSlipAmount * 18,
       angle: -5 + crownSlipAmount * 8 - torsoLean * 0.45
     });
 
@@ -3118,19 +3118,22 @@ class PlayScene extends Phaser.Scene {
       side,
       attackLift = 0,
       handTwist = 0,
-      foldAmount = 0
+      foldAmount = 0,
+      upperAdd = 0,
+      lowerAdd = 0,
+      handAdd = 0
     }) => {
-      const upperAngle = side * 2 + swing;
+      const upperAngle = side * 2 + swing + upperAdd;
       const lowerAngle = Phaser.Math.Linear(
         upperAngle * 0.68 + side * 4 + attackLift * 0.32,
         upperAngle + side * 112,
         foldAmount
-      );
+      ) + lowerAdd;
       const handAngle = Phaser.Math.Linear(
         lowerAngle * 0.42 + side * 3 + attackLift * 0.16 + handTwist,
         lowerAngle + side * 14,
         foldAmount
-      );
+      ) + handAdd;
       placeLimb({
         upper,
         lower,
@@ -3188,7 +3191,7 @@ class PlayScene extends Phaser.Scene {
       side: -1
     });
 
-    const farArmSwing = Phaser.Math.Linear(idleSway, Math.sin(phase + Math.PI) * 34, walkBlend) - crownFixAmount * 122;
+    const farArmSwing = Phaser.Math.Linear(idleSway, Math.sin(phase + Math.PI) * 34, walkBlend);
     const nearArmSwing = Phaser.Math.Linear(-idleSway * 0.8, Math.sin(phase) * 38, walkBlend) + suitcaseAttackLift;
     placeArm({
       upper: parts.farArm,
@@ -3197,7 +3200,9 @@ class PlayScene extends Phaser.Scene {
       shoulder: rightShoulder,
       swing: farArmSwing,
       side: 1,
-      foldAmount: crownFixAmount
+      upperAdd: crownFixAmount * -90,
+      lowerAdd: crownFixAmount * -160,
+      handAdd: crownFixAmount * -40
     });
     placeArm({
       upper: parts.nearArm,
@@ -3254,7 +3259,7 @@ class PlayScene extends Phaser.Scene {
       if (!rig.suitcaseAttackActive && time >= (rig.nextSuitcaseAttackAt ?? 0)) {
         rig.suitcaseAttackActive = true;
         rig.suitcaseAttackStartedAt = time;
-        rig.suitcaseAttackDuration = Phaser.Math.Between(1040, 1280);
+        rig.suitcaseAttackDuration = Phaser.Math.Between(1850, 2400);
       }
     }
     if (rig.suitcaseAttackActive) {

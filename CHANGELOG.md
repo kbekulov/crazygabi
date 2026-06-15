@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.19
+
+- Raised BU's crown substantially higher above the head.
+- Slowed the suitcase-hand attack swing so it feels heavier while adding more hand rotation.
+- Reworked the open-hand crown-fix pose around explicit relative rotations from the idle arm pose.
+
 ## v0.55.18
 
 - Raised BU's crown baseline and made the crown-fix animation use a more humanoid folded-arm reach.
