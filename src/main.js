@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.22";
+const GAME_VERSION = "v0.55.23";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-crown-fine-tune";
+const ASSET_VERSION = "20260615-bu-crown-slip-offset";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -3101,8 +3101,8 @@ class PlayScene extends Phaser.Scene {
     const headAngle = -torsoLean * 0.45;
     set(parts.head, { x: neck.x + Math.sin(phase + 0.55) * 1.2, y: neck.y - 2 - bob * 0.35, angle: headAngle });
     set(parts.crown, {
-      x: parts.head.x + 17 + Math.sin(phase + 0.55) * 1.2,
-      y: parts.head.y - 102 + crownSlipAmount * 18,
+      x: parts.head.x + 17 + crownSlipAmount * 18 + Math.sin(phase + 0.55) * 1.2,
+      y: parts.head.y - 102 + crownSlipAmount,
       angle: -5 + crownSlipAmount * 8 - torsoLean * 0.45
     });
 
