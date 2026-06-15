@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.27
+
+- Reworked BU's giant hand into a telegraphed boss attack with warning motion, impact sounds, debris, a punish window, and sky retraction.
+- Made BU's health drop only when Gabi damages the landed hand.
+- Added a Level 5 acorn basket so Gabi can attack the hand with throws.
+- Focused the boss intro zoom on BU's head.
+- Narrowed the giant hand's direct harm zone so near misses are fairer.
+
 ## v0.55.26
 
 - Added BU's giant hand crush attack after the boss reveal.
