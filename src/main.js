@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.15";
+const GAME_VERSION = "v0.55.16";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-idle-attack";
+const ASSET_VERSION = "20260615-bu-arena-suitcase-hand";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -331,7 +331,7 @@ const LEVEL_WIDTH_TILES = 148;
 const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
-const LEVEL_FIVE_WIDTH_TILES = 480;
+const LEVEL_FIVE_WIDTH_TILES = 720;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -582,8 +582,7 @@ const LEVELS = [
         upperArm: "./public/assets/boss/colossus/upper_arm.png",
         lowerArm: "./public/assets/boss/colossus/lower_arm.png",
         openHand: "./public/assets/boss/colossus/open_hand.png",
-        closedHand: "./public/assets/boss/colossus/closed_hand.png",
-        suitcase: "./public/assets/boss/colossus/suitcase.png",
+        suitcaseHand: "./public/assets/boss/colossus/suitcase_hand.png",
         upperLeg: "./public/assets/boss/colossus/upper_leg.png",
         lowerLeg: "./public/assets/boss/colossus/lower_leg.png",
         foot: "./public/assets/boss/colossus/foot.png"
@@ -666,7 +665,7 @@ const LEVELS = [
       { row: 8, column: 28.4, direction: 1 }
     ],
     finishZone: {
-      x: 452 * TILE,
+      x: 692 * TILE,
       y: 154 * TILE
     },
     haystacks: [
@@ -1062,7 +1061,19 @@ function createLevelFive() {
   const { rows, put, run } = createLevelRows(162, LEVEL_FIVE_WIDTH_TILES);
 
   run(8, 0, 30);
-  run(160, 42, 430);
+  run(160, 42, 655);
+  run(155, 104, 12);
+  run(152, 146, 14);
+  run(156, 192, 10);
+  run(151, 238, 16);
+  run(154, 292, 14);
+  run(150, 338, 18);
+  run(156, 386, 12);
+  run(152, 432, 16);
+  run(155, 486, 14);
+  run(151, 538, 18);
+  run(154, 598, 16);
+  run(150, 648, 18);
 
   [
     [6, 4, "p"],
@@ -1070,12 +1081,29 @@ function createLevelFive() {
     [7, 25, "d"],
     [159, 48, "g"],
     [159, 78, "g"],
+    [154, 109, "g"],
     [159, 118, "g"],
+    [151, 153, "g"],
     [159, 168, "g"],
+    [155, 197, "g"],
     [159, 228, "g"],
+    [150, 244, "g"],
+    [153, 299, "g"],
     [159, 292, "g"],
+    [149, 347, "g"],
     [159, 356, "g"],
-    [159, 424, "g"]
+    [155, 392, "g"],
+    [159, 424, "g"],
+    [151, 439, "g"],
+    [159, 468, "g"],
+    [154, 492, "g"],
+    [159, 522, "g"],
+    [150, 548, "g"],
+    [159, 584, "g"],
+    [153, 606, "g"],
+    [159, 636, "g"],
+    [149, 656, "g"],
+    [159, 684, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -2841,8 +2869,7 @@ class PlayScene extends Phaser.Scene {
       nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { anchor: footTopAnchor }),
       nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { anchor: armTopAnchor }),
       nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { anchor: forearmTopAnchor }),
-      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { anchor: { x: 19, y: 14 } }),
-      suitcase: addPart("suitcase", "colossus-suitcase", -142, -142, { angle: -4 })
+      nearHand: addPart("nearHand", "colossus-suitcaseHand", -112, -194, { anchor: { x: 64, y: 13 } })
     };
 
     this.distantColossus = {
@@ -2969,7 +2996,7 @@ class PlayScene extends Phaser.Scene {
     const attackProgress = rig.suitcaseAttackActive
       ? Phaser.Math.Clamp((this.time.now - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration, 0, 1)
       : 0;
-    const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -78;
+    const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -132;
 
     const set = (part, props = {}) => {
       if (!part) return;
@@ -3026,18 +3053,11 @@ class PlayScene extends Phaser.Scene {
       set(end, { x: wrist.x + endOffsetX, y: wrist.y + endOffsetY, angle: endAngle });
       return anchorWorld(end, endTopAnchor, endAngle);
     };
-    const closedHandSuitcaseAnchor = (handAngle) => {
-      const handBottom = anchorWorld(parts.nearHand, { x: 19, y: 77 }, handAngle);
-      return {
-        x: handBottom.x - 18,
-        y: handBottom.y + 6
-      };
-    };
     const armAnchors = {
       upperLower: { x: 30, y: 143 },
       lowerLower: { x: 32, y: 140 },
       openHandTop: { x: 30, y: 17 },
-      closedHandTop: { x: 19, y: 14 }
+      suitcaseHandTop: { x: 64, y: 13 }
     };
     const legAnchors = {
       upperLower: { x: 29, y: 143 },
@@ -3071,7 +3091,7 @@ class PlayScene extends Phaser.Scene {
         lowerAngle,
         upperLowerAnchor: armAnchors.upperLower,
         lowerLowerAnchor: armAnchors.lowerLower,
-        endTopAnchor: side < 0 ? armAnchors.closedHandTop : armAnchors.openHandTop,
+        endTopAnchor: side < 0 ? armAnchors.suitcaseHandTop : armAnchors.openHandTop,
         endOffsetX: side * 2,
         endOffsetY: -1,
         endAngle: handAngle
@@ -3109,7 +3129,7 @@ class PlayScene extends Phaser.Scene {
       step: farStep * 10,
       side: 1
     });
-    const nearFoot = placeLeg({
+    placeLeg({
       upper: parts.nearLeg,
       lower: parts.nearShin,
       end: parts.nearFoot,
@@ -3128,7 +3148,7 @@ class PlayScene extends Phaser.Scene {
       swing: farArmSwing,
       side: 1
     });
-    const nearArmPose = placeArm({
+    placeArm({
       upper: parts.nearArm,
       lower: parts.nearForearm,
       end: parts.nearHand,
@@ -3136,12 +3156,6 @@ class PlayScene extends Phaser.Scene {
       swing: nearArmSwing,
       side: -1,
       attackLift: suitcaseAttackLift
-    });
-    const suitcaseAnchor = closedHandSuitcaseAnchor(nearArmPose.handAngle);
-    set(parts.suitcase, {
-      x: suitcaseAnchor.x,
-      y: Math.max(nearFoot.y - 8, suitcaseAnchor.y + Math.sin(phase + 0.9) * 4),
-      angle: -4 + nearArmPose.handAngle * 0.22
     });
   }
 

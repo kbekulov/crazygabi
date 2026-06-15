@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.16
+
+- Extended the Level 5 boss arena with more ground, platform beats, and coin placements.
+- Replaced the colossus closed hand and separate suitcase with the combined suitcase-hand texture.
+- Increased the colossus suitcase-arm windup into a full upward swing while keeping idle arm motion subtle.
+- Restyled the BU boss health bar with rounded corners, centered name text, and a textured red fill.
+- Updated the colossus foot anchor to the new explicit PNG joint coordinate.
+
 ## v0.55.15
 
 - Added walking-aware colossus arm sway so idle motion stays subtle and walking keeps the stronger arm movement.
