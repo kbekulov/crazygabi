@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.12";
+const GAME_VERSION = "v0.55.13";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-vertical-bones";
+const ASSET_VERSION = "20260615-colossus-arm-sway";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -3032,21 +3032,21 @@ class PlayScene extends Phaser.Scene {
       endAngle: -78 + nearStep * 4
     });
 
-    const farArmSwing = Math.sin(phase + Math.PI) * 9;
-    const nearArmSwing = Math.sin(phase) * 10;
+    const farArmSwing = Math.sin(phase + Math.PI) * 32;
+    const nearArmSwing = Math.sin(phase) * 36;
     placeLimb({
       upper: parts.farArm,
       lower: parts.farForearm,
       end: parts.farHand,
       x: 56,
       y: -392 - bob,
-      upperAngle: 3 + farArmSwing * 0.32,
-      lowerAngle: -2 + farArmSwing * 0.22,
+      upperAngle: 3 + farArmSwing * 0.72,
+      lowerAngle: -2 + farArmSwing * 0.48,
       upperLength: segmentSpan(parts.farArm, 108, 0.94),
       lowerLength: segmentSpan(parts.farForearm, 104, 0.94),
       endOffsetX: 4,
       endOffsetY: -1,
-      endAngle: 4 + farArmSwing * 0.08
+      endAngle: 4 + farArmSwing * 0.18
     });
     const nearWrist = placeLimb({
       upper: parts.nearArm,
@@ -3054,13 +3054,13 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearHand,
       x: -56,
       y: -392 - bob,
-      upperAngle: -3 + nearArmSwing * 0.32,
-      lowerAngle: 2 + nearArmSwing * 0.22,
+      upperAngle: -3 + nearArmSwing * 0.72,
+      lowerAngle: 2 + nearArmSwing * 0.48,
       upperLength: segmentSpan(parts.nearArm, 108, 0.94),
       lowerLength: segmentSpan(parts.nearForearm, 104, 0.94),
       endOffsetX: -4,
       endOffsetY: -1,
-      endAngle: -4 + nearArmSwing * 0.08
+      endAngle: -4 + nearArmSwing * 0.18
     });
     set(parts.suitcase, {
       x: nearWrist.x - 8,

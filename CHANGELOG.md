@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.13
+
+- Exaggerated the Level 5 colossus arm sway to make the PNG limb anchors easier to verify.
+
 ## v0.55.12
 
 - Restored the Level 5 colossus PNG rig to vertical limb joints with alpha-aware top pivots.
