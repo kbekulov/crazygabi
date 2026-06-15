@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.14";
+const GAME_VERSION = "v0.55.15";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-anchor-map";
+const ASSET_VERSION = "20260615-colossus-idle-attack";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2824,10 +2824,11 @@ class PlayScene extends Phaser.Scene {
     const forearmTopAnchor = { x: 32, y: 23 };
     const upperLegTopAnchor = { x: 29, y: 22 };
     const lowerLegTopAnchor = { x: 25, y: 23 };
+    const footTopAnchor = { x: 26, y: 6 };
     const parts = {
       farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { anchor: upperLegTopAnchor }),
       farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { anchor: lowerLegTopAnchor }),
-      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { anchor: { x: 39, y: 20 } }),
+      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { anchor: footTopAnchor }),
       farArm: addPart("farArm", "colossus-upperArm", 66, -406, { anchor: armTopAnchor }),
       farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { anchor: forearmTopAnchor }),
       farHand: addPart("farHand", "colossus-openHand", 98, -194, { anchor: { x: 30, y: 17 } }),
@@ -2837,7 +2838,7 @@ class PlayScene extends Phaser.Scene {
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
       nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { anchor: upperLegTopAnchor }),
       nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { anchor: lowerLegTopAnchor }),
-      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { anchor: { x: 39, y: 20 } }),
+      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { anchor: footTopAnchor }),
       nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { anchor: armTopAnchor }),
       nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { anchor: forearmTopAnchor }),
       nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { anchor: { x: 19, y: 14 } }),
@@ -2854,7 +2855,14 @@ class PlayScene extends Phaser.Scene {
       baseGroundY: config.groundY ?? PLAY_HEIGHT - 78,
       cycleMs: config.cycleMs ?? 5200,
       lastStepIndex: -1,
-      phaseOffset: Phaser.Math.FloatBetween(0, Math.PI * 2)
+      phaseOffset: Phaser.Math.FloatBetween(0, Math.PI * 2),
+      walkBlend: 0,
+      isWalking: false,
+      suitcaseAttackActive: false,
+      suitcaseAttackStartedAt: 0,
+      suitcaseAttackDuration: 1180,
+      nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(4200, 8200),
+      suitcaseAttackDropTriggerAt: 0
     };
     this.updateDistantColossus(this.time.now, 0);
   }
@@ -2955,8 +2963,13 @@ class PlayScene extends Phaser.Scene {
     const nearStep = Math.sin(phase);
     const farStep = Math.sin(phase + Math.PI);
     const torsoLean = Math.sin(phase + 0.3) * 1.6;
-    const armSwing = Math.sin(phase + Math.PI) * 9;
     const bob = Math.abs(Math.sin(phase)) * 3;
+    const walkBlend = Phaser.Math.Clamp(rig.walkBlend ?? (rig.isWalking ? 1 : 0), 0, 1);
+    const idleSway = Math.sin(phase * 0.55) * 3.2;
+    const attackProgress = rig.suitcaseAttackActive
+      ? Phaser.Math.Clamp((this.time.now - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration, 0, 1)
+      : 0;
+    const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -78;
 
     const set = (part, props = {}) => {
       if (!part) return;
@@ -3029,7 +3042,7 @@ class PlayScene extends Phaser.Scene {
     const legAnchors = {
       upperLower: { x: 29, y: 143 },
       lowerLower: { x: 25, y: 140 },
-      footTop: { x: 39, y: 20 }
+      footTop: { x: 26, y: 6 }
     };
 
     const torsoAngle = torsoLean;
@@ -3044,10 +3057,10 @@ class PlayScene extends Phaser.Scene {
     const leftHip = pelvisAnchor({ x: 12, y: 88 }, pelvisAngle);
     const rightHip = pelvisAnchor({ x: 103, y: 88 }, pelvisAngle);
 
-    const placeArm = ({ upper, lower, end, shoulder, swing, side }) => {
+    const placeArm = ({ upper, lower, end, shoulder, swing, side, attackLift = 0 }) => {
       const upperAngle = side * 2 + swing;
-      const lowerAngle = upperAngle * 0.68 + side * 4;
-      const handAngle = lowerAngle * 0.42 + side * 3;
+      const lowerAngle = upperAngle * 0.68 + side * 4 + attackLift * 0.32;
+      const handAngle = lowerAngle * 0.42 + side * 3 + attackLift * 0.16;
       placeLimb({
         upper,
         lower,
@@ -3105,8 +3118,8 @@ class PlayScene extends Phaser.Scene {
       side: -1
     });
 
-    const farArmSwing = Math.sin(phase + Math.PI) * 34;
-    const nearArmSwing = Math.sin(phase) * 38;
+    const farArmSwing = Phaser.Math.Linear(idleSway, Math.sin(phase + Math.PI) * 34, walkBlend);
+    const nearArmSwing = Phaser.Math.Linear(-idleSway * 0.8, Math.sin(phase) * 38, walkBlend) + suitcaseAttackLift;
     placeArm({
       upper: parts.farArm,
       lower: parts.farForearm,
@@ -3121,7 +3134,8 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearHand,
       shoulder: leftShoulder,
       swing: nearArmSwing,
-      side: -1
+      side: -1,
+      attackLift: suitcaseAttackLift
     });
     const suitcaseAnchor = closedHandSuitcaseAnchor(nearArmPose.handAngle);
     set(parts.suitcase, {
@@ -3138,6 +3152,7 @@ class PlayScene extends Phaser.Scene {
     const config = rig.config;
     const phase = ((time / rig.cycleMs) * Math.PI * 2 + rig.phaseOffset) % (Math.PI * 2);
     rig.phase = phase;
+    let isWalking = false;
     if (!this.bossRevealActive) {
       const dt = delta / 1000;
       const targetX = this.getDistantColossusTargetX(rig);
@@ -3151,6 +3166,7 @@ class PlayScene extends Phaser.Scene {
           const direction = Math.sign(distance);
           rig.facing = direction || rig.facing || 1;
           rig[positionKey] += direction * Math.min(remaining, speed);
+          isWalking = speed > 0.001;
         }
       } else {
         const drift = (config.driftSpeed ?? -4.8) * dt;
@@ -3160,6 +3176,27 @@ class PlayScene extends Phaser.Scene {
         } else {
           rig.screenX += Number.isFinite(drift) ? drift : 0;
         }
+        isWalking = Number.isFinite(drift) && Math.abs(drift) > 0.001;
+      }
+    }
+    rig.isWalking = isWalking;
+    const walkTarget = isWalking ? 1 : 0;
+    const blendRate = Math.min(1, Math.max(0.05, delta / 260));
+    rig.walkBlend = Phaser.Math.Linear(rig.walkBlend ?? walkTarget, walkTarget, blendRate);
+
+    if (rig.parts && !isWalking && !this.bossRevealActive && state.running && !state.won) {
+      if (!rig.suitcaseAttackActive && time >= (rig.nextSuitcaseAttackAt ?? 0)) {
+        rig.suitcaseAttackActive = true;
+        rig.suitcaseAttackStartedAt = time;
+        rig.suitcaseAttackDuration = Phaser.Math.Between(1040, 1280);
+      }
+    }
+    if (rig.suitcaseAttackActive) {
+      const progress = (time - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration;
+      if (progress >= 1) {
+        rig.suitcaseAttackActive = false;
+        rig.suitcaseAttackDropTriggerAt = time;
+        rig.nextSuitcaseAttackAt = time + Phaser.Math.Between(5200, 9800);
       }
     }
 
@@ -3188,7 +3225,7 @@ class PlayScene extends Phaser.Scene {
     this.updateSpineColossusLabels();
 
     const stepIndex = Math.floor((time + rig.phaseOffset * 100) / (rig.cycleMs / 2));
-    if (stepIndex !== rig.lastStepIndex) {
+    if (isWalking && stepIndex !== rig.lastStepIndex) {
       rig.lastStepIndex = stepIndex;
       this.triggerColossusFootstepShake();
     }

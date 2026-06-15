@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.55.15
+
+- Added walking-aware colossus arm sway so idle motion stays subtle and walking keeps the stronger arm movement.
+- Added an occasional idle suitcase-arm swing for the colossus as a future attack trigger.
+- Updated the colossus foot anchor to the new explicit PNG joint coordinate.
+- Included the updated colossus hand and torso assets.
+
 ## v0.55.14
 
 - Rebuilt the Level 5 colossus PNG rig with explicit humanoid shoulder, arm, hand, pelvis, and suitcase anchors.
