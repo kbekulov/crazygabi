@@ -212,43 +212,54 @@ button:active {
 .boss-health {
   position: absolute;
   left: 50%;
-  top: clamp(20px, 3.6vw, 34px);
-  width: clamp(190px, 24vw, 310px);
-  height: clamp(16px, 1.8vw, 22px);
+  top: clamp(28px, 4.7vw, 48px);
+  width: clamp(236px, 28vw, 336px);
+  aspect-ratio: 336 / 54;
   transform: translate(-50%, -50%);
-  border: 2px solid rgba(18, 8, 8, 0.94);
-  background: rgba(24, 5, 5, 0.78);
-  box-shadow: 0 0 0 1px rgba(244, 220, 176, 0.18), 0 0 14px rgba(0, 0, 0, 0.76);
-  overflow: hidden;
-  border-radius: 999px;
+  pointer-events: none;
 }
 
 .boss-health[hidden] {
   display: none;
 }
 
+.boss-health-frame {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  aspect-ratio: 336 / 34;
+  background-image: url("../public/assets/boss/colossus/healthbar_empty.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.75)) drop-shadow(0 0 9px rgba(0, 0, 0, 0.72));
+  overflow: hidden;
+}
+
 .boss-health span {
+  position: absolute;
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  background-image:
-    linear-gradient(180deg, rgba(255, 118, 98, 0.88) 0%, rgba(183, 12, 12, 0.92) 56%, rgba(72, 0, 0, 0.96) 100%),
-    url("../public/assets/boss/colossus/torso.png");
-  background-size: 100% 100%, 150px auto;
-  background-position: center, center;
-  background-blend-mode: normal, multiply;
-  border-radius: inherit;
-  box-shadow: inset 0 1px 0 rgba(255, 219, 188, 0.42), inset 0 0 10px rgba(45, 0, 0, 0.5);
+  background-image: url("../public/assets/boss/colossus/healthbar_full.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  clip-path: inset(0 6.845% 0 0);
 }
 
 .boss-health strong {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: 0;
   display: grid;
   place-items: center;
   text-align: center;
   color: #f4dcb0;
-  font-size: clamp(10px, 1.2vw, 15px);
+  font-size: clamp(11px, 1.25vw, 16px);
   line-height: 1;
   text-shadow: 2px 2px 0 #000;
   letter-spacing: 0;

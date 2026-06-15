@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crazy Gabi v0.55.16</title>
-    <link rel="stylesheet" href="./src/styles.css?v=20260615-bu-arena-suitcase-hand" />
+    <title>Crazy Gabi v0.55.17</title>
+    <link rel="stylesheet" href="./src/styles.css?v=20260615-bu-healthbar-crown" />
   </head>
   <body>
     <main id="shell">
@@ -34,9 +34,11 @@
             </div>
           </div>
           <div id="quest-list" class="hud-quests" hidden aria-label="Quest list"></div>
-          <div id="boss-health" class="boss-health" hidden aria-label="Colossus health">
-            <span id="boss-health-fill"></span>
+          <div id="boss-health" class="boss-health" hidden aria-label="BU health">
             <strong>BU</strong>
+            <div class="boss-health-frame" aria-hidden="true">
+              <span id="boss-health-fill"></span>
+            </div>
           </div>
           <div class="hud-equipped">
             <img id="equipped-icon" alt="" />
@@ -141,7 +143,7 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
-    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260614-colossus-head"></script>
-    <script type="module" src="./src/main.js?v=20260614-colossus-head"></script>
+    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260615-bu-healthbar-crown"></script>
+    <script type="module" src="./src/main.js?v=20260615-bu-healthbar-crown"></script>
   </body>
 </html>

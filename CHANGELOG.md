@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.17
+
+- Connected the colossus head to the torso neck using explicit PNG anchor coordinates.
+- Corrected the colossus feet to use their native texture orientation.
+- Added a stronger suitcase-arm swing, a slight suitcase-hand counter-rotation, and an occasional crown slip/fix animation while BU walks.
+- Replaced the BU boss health display with the custom full and empty healthbar artwork.
+- Made Level 5 completion wait for BU's health to drain to zero after the howl reveal.
+
 ## v0.55.16
 
 - Extended the Level 5 boss arena with more ground, platform beats, and coin placements.

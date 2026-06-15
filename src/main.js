@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.16";
+const GAME_VERSION = "v0.55.17";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-arena-suitcase-hand";
+const ASSET_VERSION = "20260615-bu-healthbar-crown";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -564,6 +564,8 @@ const LEVELS = [
     soundtrack: "bgm-lv5",
     bossSoundtrack: "bgm-lv5-boss",
     bossRevealAt: 0.5,
+    bossHealthGate: true,
+    bossHealthDrainPerSecond: 0.012,
     ambientSoundtrack: "wind-1",
     ambientVolume: 0.18,
     enemySprite: "robot-lv1",
@@ -1290,8 +1292,14 @@ function setBossHealthVisible(visible) {
 
 function updateBossHealthHud({ value = 1 } = {}) {
   if (!hud.bossHealth) return;
+  const health = Phaser.Math.Clamp(value, 0, 1);
   if (hud.bossHealthFill) {
-    hud.bossHealthFill.style.width = `${Phaser.Math.Clamp(value, 0, 1) * 100}%`;
+    const textureWidth = 336;
+    const redLeft = 24;
+    const redRight = 313;
+    const visibleRight = redLeft + (redRight - redLeft) * health;
+    const clipRightPercent = ((textureWidth - visibleRight) / textureWidth) * 100;
+    hud.bossHealthFill.style.clipPath = `inset(0 ${clipRightPercent.toFixed(3)}% 0 0)`;
   }
 }
 
@@ -2025,6 +2033,8 @@ class PlayScene extends Phaser.Scene {
     this.bossRevealTweens = [];
     this.bossRevealTimers = [];
     this.bossHealthVisible = false;
+    this.bossHealth = 1;
+    this.bossDefeated = false;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -2862,7 +2872,7 @@ class PlayScene extends Phaser.Scene {
       farHand: addPart("farHand", "colossus-openHand", 98, -194, { anchor: { x: 30, y: 17 } }),
       pelvis: addPart("pelvis", "colossus-pelvis", 0, -264),
       torso: addPart("torso", "colossus-torso", 0, -362),
-      head: addPart("head", "colossus-head", 16, -520, { scaleX: 0.8, scaleY: 0.8 }),
+      head: addPart("head", "colossus-head", 16, -520, { anchor: { x: 38, y: 150 }, scaleX: 0.8, scaleY: 0.8 }),
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
       nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { anchor: upperLegTopAnchor }),
       nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { anchor: lowerLegTopAnchor }),
@@ -2889,7 +2899,11 @@ class PlayScene extends Phaser.Scene {
       suitcaseAttackStartedAt: 0,
       suitcaseAttackDuration: 1180,
       nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(4200, 8200),
-      suitcaseAttackDropTriggerAt: 0
+      suitcaseAttackDropTriggerAt: 0,
+      crownSlipActive: false,
+      crownSlipStartedAt: 0,
+      crownSlipDuration: 2100,
+      nextCrownSlipAt: this.time.now + Phaser.Math.Between(6800, 12600)
     };
     this.updateDistantColossus(this.time.now, 0);
   }
@@ -2997,6 +3011,18 @@ class PlayScene extends Phaser.Scene {
       ? Phaser.Math.Clamp((this.time.now - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration, 0, 1)
       : 0;
     const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -132;
+    const suitcaseAttackTwist = Math.sin(attackProgress * Math.PI) * -7;
+    const crownSlipProgress = rig.crownSlipActive
+      ? Phaser.Math.Clamp((this.time.now - rig.crownSlipStartedAt) / rig.crownSlipDuration, 0, 1)
+      : 0;
+    const crownSlipAmount = crownSlipProgress <= 0.34
+      ? Phaser.Math.Easing.Sine.Out(crownSlipProgress / 0.34)
+      : crownSlipProgress <= 0.62
+        ? 1
+        : 1 - Phaser.Math.Easing.Sine.InOut((crownSlipProgress - 0.62) / 0.38);
+    const crownFixAmount = crownSlipProgress > 0.48 && crownSlipProgress < 0.92
+      ? Math.sin(((crownSlipProgress - 0.48) / 0.44) * Math.PI)
+      : 0;
 
     const set = (part, props = {}) => {
       if (!part) return;
@@ -3069,18 +3095,24 @@ class PlayScene extends Phaser.Scene {
     const pelvisAngle = -torsoLean * 0.42;
     set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoAngle });
     set(parts.pelvis, { x: 0, y: -240 + Math.abs(Math.sin(phase)) * 2, angle: pelvisAngle });
-    set(parts.head, { x: 16 + Math.sin(phase + 0.55) * 2.2, y: -510 - bob, angle: -torsoLean * 0.45 });
-    set(parts.crown, { x: 24 + Math.sin(phase + 0.55) * 2.2, y: -566 - bob, angle: -5 - torsoLean * 0.45 });
+    const neck = torsoAnchor({ x: 100, y: 14 }, torsoAngle);
+    const headAngle = -torsoLean * 0.45;
+    set(parts.head, { x: neck.x + Math.sin(phase + 0.55) * 1.2, y: neck.y - 2 - bob * 0.35, angle: headAngle });
+    set(parts.crown, {
+      x: parts.head.x + 8 + Math.sin(phase + 0.55) * 1.2,
+      y: parts.head.y - 56 + crownSlipAmount * 18,
+      angle: -5 + crownSlipAmount * 8 - torsoLean * 0.45
+    });
 
     const leftShoulder = torsoAnchor({ x: 11, y: 70 }, torsoAngle);
     const rightShoulder = torsoAnchor({ x: 178, y: 70 }, torsoAngle);
     const leftHip = pelvisAnchor({ x: 12, y: 88 }, pelvisAngle);
     const rightHip = pelvisAnchor({ x: 103, y: 88 }, pelvisAngle);
 
-    const placeArm = ({ upper, lower, end, shoulder, swing, side, attackLift = 0 }) => {
+    const placeArm = ({ upper, lower, end, shoulder, swing, side, attackLift = 0, handTwist = 0 }) => {
       const upperAngle = side * 2 + swing;
       const lowerAngle = upperAngle * 0.68 + side * 4 + attackLift * 0.32;
-      const handAngle = lowerAngle * 0.42 + side * 3 + attackLift * 0.16;
+      const handAngle = lowerAngle * 0.42 + side * 3 + attackLift * 0.16 + handTwist;
       placeLimb({
         upper,
         lower,
@@ -3102,7 +3134,7 @@ class PlayScene extends Phaser.Scene {
     const placeLeg = ({ upper, lower, end, hip, step, side }) => {
       const upperAngle = side * 2 + step;
       const lowerAngle = upperAngle * 0.58 - step * 0.22;
-      const footAngle = side * -76 + step * 0.32;
+      const footAngle = 0;
       placeLimb({
         upper,
         lower,
@@ -3138,7 +3170,7 @@ class PlayScene extends Phaser.Scene {
       side: -1
     });
 
-    const farArmSwing = Phaser.Math.Linear(idleSway, Math.sin(phase + Math.PI) * 34, walkBlend);
+    const farArmSwing = Phaser.Math.Linear(idleSway, Math.sin(phase + Math.PI) * 34, walkBlend) - crownFixAmount * 88;
     const nearArmSwing = Phaser.Math.Linear(-idleSway * 0.8, Math.sin(phase) * 38, walkBlend) + suitcaseAttackLift;
     placeArm({
       upper: parts.farArm,
@@ -3155,7 +3187,8 @@ class PlayScene extends Phaser.Scene {
       shoulder: leftShoulder,
       swing: nearArmSwing,
       side: -1,
-      attackLift: suitcaseAttackLift
+      attackLift: suitcaseAttackLift,
+      handTwist: suitcaseAttackTwist
     });
   }
 
@@ -3211,6 +3244,18 @@ class PlayScene extends Phaser.Scene {
         rig.suitcaseAttackActive = false;
         rig.suitcaseAttackDropTriggerAt = time;
         rig.nextSuitcaseAttackAt = time + Phaser.Math.Between(5200, 9800);
+      }
+    }
+    if (rig.parts && isWalking && !rig.crownSlipActive && time >= (rig.nextCrownSlipAt ?? Infinity)) {
+      rig.crownSlipActive = true;
+      rig.crownSlipStartedAt = time;
+      rig.crownSlipDuration = Phaser.Math.Between(1900, 2400);
+    }
+    if (rig.crownSlipActive) {
+      const progress = (time - rig.crownSlipStartedAt) / rig.crownSlipDuration;
+      if (progress >= 1) {
+        rig.crownSlipActive = false;
+        rig.nextCrownSlipAt = time + Phaser.Math.Between(7600, 14800);
       }
     }
 
@@ -3351,13 +3396,26 @@ class PlayScene extends Phaser.Scene {
 
   showBossHealthBar() {
     this.bossHealthVisible = true;
+    this.bossHealth = 1;
+    this.bossDefeated = false;
     setBossHealthVisible(true);
-    this.updateBossHealthBar();
+    this.updateBossHealthBar(0);
   }
 
-  updateBossHealthBar() {
+  updateBossHealthBar(delta = 0) {
     if (!this.bossHealthVisible || !this.distantColossus?.object?.active) return;
-    updateBossHealthHud({ value: 1 });
+    if (this.level.bossHealthGate && state.running && !state.won && !this.bossRevealActive && !this.bossDefeated) {
+      const drain = (this.level.bossHealthDrainPerSecond ?? 0) * (delta / 1000);
+      this.bossHealth = Phaser.Math.Clamp((this.bossHealth ?? 1) - drain, 0, 1);
+      if (this.bossHealth <= 0) {
+        this.bossDefeated = true;
+        this.bossHealth = 0;
+        updateBossHealthHud({ value: 0 });
+        this.completeLevel();
+        return;
+      }
+    }
+    updateBossHealthHud({ value: this.bossHealth ?? 1 });
   }
 
   cancelBossRevealCamera({ restoreCamera = true } = {}) {
@@ -5237,7 +5295,7 @@ class PlayScene extends Phaser.Scene {
     this.updateParallax();
     this.updateDistantColossus(time, delta);
     this.updateBossReveal(time);
-    this.updateBossHealthBar();
+    this.updateBossHealthBar(delta);
     this.updateLightRays(time);
     this.updateWater(delta);
     this.updateLanternOverlay();
@@ -7347,6 +7405,7 @@ class PlayScene extends Phaser.Scene {
   updateFinishZone() {
     const zone = this.level.finishZone;
     if (!zone || !this.player || !state.running || state.won) return;
+    if (this.level.bossHealthGate && !this.bossDefeated) return;
     if (this.player.x >= zone.x && this.player.y >= zone.y) {
       this.completeLevel();
     }
