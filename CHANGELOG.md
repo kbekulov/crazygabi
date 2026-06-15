@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.10
+
+- Reworked the Level 5 colossus arm and leg anchors to use texture-based limb spans.
+- Moved the colossus pelvis behind the torso in the body draw order.
+
 ## v0.55.9
 
 - Tuned the Level 5 colossus gait so the pelvis sits higher, the suitcase stays closer to the hand, and the arms sway while walking.
