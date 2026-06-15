@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.29
+
+- Added elevated Level 5 shelter platforms for avoiding BU's hand attacks.
+- Made giant hand impact debris fly higher, fall back down, and stay visible until it leaves.
+- Added a chance for giant hand impacts to drop a heart on the lowest platform.
+- Made giant hand impacts spawn regular enemies on the lowest platform.
+- Changed BU defeat to remove the boss, reveal a key, then reveal an exit door after the key is picked up.
+
 ## v0.55.28
 
 - Moved BU's giant hand layer below Gabi and the cat while keeping it above the platforms.

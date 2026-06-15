@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.28";
+const GAME_VERSION = "v0.55.29";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -170,6 +170,8 @@ const GIANT_HAND_TELEGRAPH_MS = 1800;
 const GIANT_HAND_LANDED_MS = 5000;
 const GIANT_HAND_DAMAGE = 0.01;
 const GIANT_HAND_HIT_COOLDOWN_MS = 520;
+const GIANT_HAND_HEART_DROP_CHANCE = 0.3;
+const GIANT_HAND_ENEMY_SPAWN_COUNT = [2, 4];
 const GIANT_HAND_IMPACT_SHAKE_DURATION = 360;
 const GIANT_HAND_IMPACT_SHAKE_INTENSITY = 0.009;
 const DAMAGE_INVULNERABLE_MS = 1250;
@@ -279,7 +281,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-giant-hand-depth-volume";
+const ASSET_VERSION = "20260615-boss-hand-arena";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -693,7 +695,8 @@ const LEVELS = [
     ],
     finishZone: {
       x: 692 * TILE,
-      y: 154 * TILE
+      y: 154 * TILE,
+      requireBossExitDoor: true
     },
     haystacks: [
       { x: 58 * TILE, floorRow: 160 }
@@ -1101,6 +1104,12 @@ function createLevelFive() {
   run(151, 538, 18);
   run(154, 598, 16);
   run(150, 648, 18);
+  [
+    [153, 276, 8],
+    [152, 414, 9],
+    [153, 562, 9],
+    [152, 626, 10]
+  ].forEach(([row, column, length]) => run(row, column, length));
 
   [
     [6, 4, "p"],
@@ -2062,6 +2071,8 @@ class PlayScene extends Phaser.Scene {
     this.bossHealthVisible = false;
     this.bossHealth = 1;
     this.bossDefeated = false;
+    this.bossExitKeySpawned = false;
+    this.bossExitDoorSpawned = false;
     this.bossSoundtrackActive = false;
     this.damageInvulnerableUntil = 0;
     this.damageFlickerTween = null;
@@ -3547,10 +3558,7 @@ class PlayScene extends Phaser.Scene {
   updateBossHealthBar(delta = 0) {
     if (!this.bossHealthVisible || !this.distantColossus?.object?.active) return;
     if (this.level.bossHealthGate && state.running && !state.won && !this.bossRevealActive && !this.bossDefeated && this.bossHealth <= 0) {
-      this.bossDefeated = true;
-      this.bossHealth = 0;
-      updateBossHealthHud({ value: 0 });
-      this.completeLevel();
+      this.handleBossDefeated();
       return;
     }
     updateBossHealthHud({ value: this.bossHealth ?? 1 });
@@ -3561,9 +3569,47 @@ class PlayScene extends Phaser.Scene {
     this.bossHealth = Phaser.Math.Clamp((this.bossHealth ?? 1) - Math.max(0, amount), 0, 1);
     updateBossHealthHud({ value: this.bossHealth });
     if (this.bossHealth <= 0) {
-      this.bossDefeated = true;
-      this.completeLevel();
+      this.handleBossDefeated();
     }
+  }
+
+  handleBossDefeated() {
+    if (this.bossDefeated) return;
+    this.bossDefeated = true;
+    this.bossHealth = 0;
+    updateBossHealthHud({ value: 0 });
+    this.stopGiantHandBossAttacks();
+    this.dismissDistantColossus();
+    this.revealBossExitKey();
+  }
+
+  stopGiantHandBossAttacks() {
+    const rig = this.distantColossus;
+    if (rig) {
+      rig.giantHandTelegraphActive = false;
+      rig.giantHandDropped = true;
+      rig.nextGiantHandAttackAt = Infinity;
+    }
+    this.giantHands?.children?.iterate((hand) => {
+      if (!hand?.active) return;
+      if (hand.getData("phase") === "retracting") return;
+      this.retractGiantHand(hand);
+    });
+  }
+
+  dismissDistantColossus() {
+    const rig = this.distantColossus;
+    if (!rig?.object?.active || rig.dismissTween) return;
+    rig.dismissTween = this.tweens.add({
+      targets: rig.object,
+      y: rig.object.y - 180,
+      alpha: 0,
+      duration: 1450,
+      ease: "Sine.in",
+      onComplete: () => {
+        rig.object?.setVisible(false);
+      }
+    });
   }
 
   cancelBossRevealCamera({ restoreCamera = true } = {}) {
@@ -4398,17 +4444,7 @@ class PlayScene extends Phaser.Scene {
           this.tweens.add({ targets: lantern, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
-          const enemySprite = this.level.enemySprite || "robot-lv1";
-          const enemy = this.enemies.create(x, y, enemySprite, 0);
-          enemy.setBounce(0);
-          enemy.setCollideWorldBounds(true);
-          enemy.setScale(ROBOT_SCALE);
-          enemy.setDepth(5);
-          enemy.body.setSize(112, 110).setOffset(58, 82);
-          enemy.play(`${enemySprite}-move`);
-          this.enemyDirection.set(enemy, columnIndex % 2 ? -1 : 1);
-          this.attachEnemyLabel(enemy);
-          state.totalEnemies += 1;
+          this.createEnemyAt(x, y, columnIndex % 2 ? -1 : 1);
         }
         if (cell === "a") {
           const hazardKey = this.level.fallingHazard || "falling-acorn";
@@ -7613,6 +7649,7 @@ class PlayScene extends Phaser.Scene {
   updateFinishZone() {
     const zone = this.level.finishZone;
     if (!zone || !this.player || !state.running || state.won) return;
+    if (zone.requireBossExitDoor) return;
     if (this.level.bossHealthGate && !this.bossDefeated) return;
     if (this.player.x >= zone.x && this.player.y >= zone.y) {
       this.completeLevel();
@@ -9357,7 +9394,73 @@ class PlayScene extends Phaser.Scene {
     state.hasKey = true;
     awardScore(500);
     this.playLevelSfx(KEY_PICKUP_SFX_KEY, 0.5);
+    if (key.getData("bossExitKey")) this.revealBossExitDoor();
     updateHud();
+  }
+
+  revealBossExitKey() {
+    if (!this.level?.bossHealthGate || this.bossExitKeySpawned || !this.player?.active || !this.keys) return;
+    const run = this.getLowestPlatformRunNear(this.player.x);
+    const targetX = Phaser.Math.Clamp(this.player.x + (this.player.flipX ? -82 : 82), (run?.startX ?? 0) + 28, (run?.endX ?? this.levelWidth) - 28);
+    const targetY = run ? run.topY - TILE / 2 : this.player.y - 24;
+    const key = this.keys.create(this.player.x, this.player.y - 76, "door-key");
+    key.setScale(ITEM_SCALE);
+    key.setDepth(ITEM_DEPTH);
+    key.setCircle(58, 59, 59);
+    key.setData("bossExitKey", true);
+    this.keyPoint = { x: targetX, y: targetY };
+    this.keySprite = key;
+    this.keyRevealed = true;
+    this.bossExitKeySpawned = true;
+    this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+    this.tweens.add({
+      targets: key,
+      x: targetX,
+      y: targetY,
+      duration: 520,
+      ease: "Back.out"
+    });
+  }
+
+  revealBossExitDoor() {
+    if (!this.level?.bossHealthGate || this.bossExitDoorSpawned || !this.player?.active || !this.doors) return;
+    const run = this.getLowestPlatformRunNear(this.player.x);
+    const direction = this.player.flipX ? 1 : -1;
+    const x = Phaser.Math.Clamp(this.player.x + direction * 118, (run?.startX ?? 0) + 44, (run?.endX ?? this.levelWidth) - 44);
+    const y = (run ? run.topY - TILE / 2 : this.player.y) + (this.level.doorYOffset ?? -16);
+    const door = this.doors.create(x, y, "exit-door");
+    door.setScale(DOOR_SCALE);
+    door.setDepth(DOOR_DEPTH);
+    door.refreshBody();
+    door.setAlpha(0);
+    this.doorPoint = { x: door.x, y: door.y };
+    this.bossExitDoorSpawned = true;
+    this.tweens.add({
+      targets: door,
+      alpha: 1,
+      y: y - 8,
+      duration: 420,
+      ease: "Sine.out",
+      onComplete: () => {
+        if (door.active) door.y = y - 8;
+      }
+    });
+  }
+
+  createEnemyAt(x, y, direction = 1) {
+    const enemySprite = this.level.enemySprite || "robot-lv1";
+    const enemy = this.enemies.create(x, y, enemySprite, 0);
+    enemy.setBounce(0);
+    enemy.setCollideWorldBounds(true);
+    enemy.setScale(ROBOT_SCALE);
+    enemy.setDepth(5);
+    enemy.body.setSize(112, 110).setOffset(58, 82);
+    enemy.play(`${enemySprite}-move`);
+    this.enemyDirection.set(enemy, direction || 1);
+    this.attachEnemyLabel(enemy);
+    state.totalEnemies += 1;
+    updateQuestHud();
+    return enemy;
   }
 
   defeatEnemy(enemy) {
@@ -9519,6 +9622,8 @@ class PlayScene extends Phaser.Scene {
     this.cameras.main.shake(GIANT_HAND_IMPACT_SHAKE_DURATION, GIANT_HAND_IMPACT_SHAKE_INTENSITY);
     this.playLevelSfx(Phaser.Utils.Array.GetRandom(GIANT_HAND_IMPACT_SFX_KEYS), 0.576);
     this.spawnGiantHandDebris(hand);
+    this.tryDropHeartFromGiantHand(hand);
+    this.spawnGiantHandImpactEnemies(hand);
     if (this.playerIntersectsGiantHandHarm(hand)) this.loseLife();
   }
 
@@ -9650,27 +9755,102 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnGiantHandDebris(hand) {
-    const count = 18;
+    const count = 22;
     for (let index = 0; index < count; index += 1) {
       const hasBrick = this.textures.exists("falling-brick");
+      const startX = hand.x + Phaser.Math.Between(-120, 120);
+      const startY = hand.getBounds().bottom - Phaser.Math.Between(8, 40);
       const debris = hasBrick
-        ? this.add.image(hand.x + Phaser.Math.Between(-110, 110), hand.getBounds().bottom - Phaser.Math.Between(10, 52), "falling-brick")
-        : this.add.rectangle(hand.x, hand.getBounds().bottom, Phaser.Math.Between(10, 26), Phaser.Math.Between(3, 8), 0x8f6a43);
+        ? this.add.image(startX, startY, "falling-brick")
+        : this.add.rectangle(startX, startY, Phaser.Math.Between(10, 26), Phaser.Math.Between(3, 8), 0x8f6a43);
       debris.setDepth(ITEM_DEPTH + 1.6);
       debris.setAlpha(Phaser.Math.FloatBetween(0.62, 0.9));
       debris.setScale(Phaser.Math.FloatBetween(0.12, 0.32));
       debris.setAngle(Phaser.Math.Between(0, 360));
       this.tweens.add({
         targets: debris,
-        x: debris.x + Phaser.Math.Between(-160, 160),
-        y: debris.y - Phaser.Math.Between(46, 150),
-        alpha: 0,
-        angle: debris.angle + Phaser.Math.Between(-180, 180),
-        duration: Phaser.Math.Between(520, 900),
+        x: debris.x + Phaser.Math.Between(-190, 190),
+        y: debris.y - Phaser.Math.Between(160, 340),
+        angle: debris.angle + Phaser.Math.Between(-260, 260),
+        duration: Phaser.Math.Between(460, 720),
         ease: "Quad.easeOut",
-        onComplete: () => debris.destroy()
+        onComplete: () => {
+          this.tweens.add({
+            targets: debris,
+            x: debris.x + Phaser.Math.Between(-90, 90),
+            y: debris.y + Phaser.Math.Between(260, 520),
+            angle: debris.angle + Phaser.Math.Between(-360, 360),
+            duration: Phaser.Math.Between(720, 1120),
+            ease: "Quad.easeIn",
+            onComplete: () => debris.destroy()
+          });
+        }
       });
     }
+  }
+
+  tryDropHeartFromGiantHand(hand) {
+    if (!this.heartDrops || Phaser.Math.FloatBetween(0, 1) > GIANT_HAND_HEART_DROP_CHANCE) return;
+    const run = this.getLowestPlatformRunNear(hand.x);
+    if (!run) return;
+    const settleX = Phaser.Math.Clamp(hand.x + Phaser.Math.Between(-92, 92), run.startX + 34, run.endX - 34);
+    const settleY = run.topY - TILE / 2;
+    const heart = this.heartDrops.create(settleX, hand.getBounds().bottom - 70, "life-heart");
+    heart.setScale(HEART_SCALE);
+    heart.setDepth(ITEM_DEPTH);
+    heart.setCircle(58, 61, 58);
+    heart.body.allowGravity = false;
+    heart.body.immovable = true;
+    heart.setData("armedAt", this.time.now + HEART_PICKUP_DELAY);
+    this.tweens.add({
+      targets: heart,
+      x: settleX,
+      y: settleY,
+      duration: 520,
+      ease: "Bounce.out",
+      onComplete: () => {
+        this.tweens.add({
+          targets: heart,
+          y: heart.y - 9,
+          duration: 520,
+          yoyo: true,
+          repeat: -1,
+          ease: "Sine.inOut"
+        });
+      }
+    });
+  }
+
+  spawnGiantHandImpactEnemies(hand) {
+    if (!this.enemies || !this.level?.enemySprite) return;
+    const run = this.getLowestPlatformRunNear(hand.x);
+    if (!run) return;
+    const count = Phaser.Math.Between(...GIANT_HAND_ENEMY_SPAWN_COUNT);
+    const usedXs = [];
+    for (let index = 0; index < count; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const rawX = hand.x + side * Phaser.Math.Between(90, 230) + Phaser.Math.Between(-26, 26);
+      const x = Phaser.Math.Clamp(rawX, run.startX + 46, run.endX - 46);
+      if (usedXs.some((usedX) => Math.abs(usedX - x) < 44)) continue;
+      usedXs.push(x);
+      const enemy = this.createEnemyAt(x, run.topY - 42, x < this.player.x ? 1 : -1);
+      enemy.setAlpha(0);
+      enemy.y -= 18;
+      this.tweens.add({
+        targets: enemy,
+        alpha: 1,
+        y: run.topY - 42,
+        duration: 260,
+        ease: "Quad.out"
+      });
+    }
+  }
+
+  getLowestPlatformRunNear(x) {
+    const runs = (this.platformRuns || [])
+      .filter((run) => run.endX - run.startX >= TILE * 3)
+      .sort((a, b) => b.topY - a.topY || Math.abs(x - ((a.startX + a.endX) / 2)) - Math.abs(x - ((b.startX + b.endX) / 2)));
+    return runs[0] || null;
   }
 
   hitEnemyWithThrownItem(item, enemy) {
