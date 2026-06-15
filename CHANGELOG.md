@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.55.20
+
+- Lowered BU's crown from the previous high placement.
+- Made the crown-fix animation occur more frequently for visual debugging.
+- Added extra lower-arm rotation to the suitcase attack so the swing feels less stiff.
+- Increased the free-hand upper-arm rotation during the crown-fix motion.
+- Moved BU's lower-leg layers behind the upper-leg layers.
+
 ## v0.55.19
 
 - Raised BU's crown substantially higher above the head.

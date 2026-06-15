@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.19";
+const GAME_VERSION = "v0.55.20";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-heavy-rig";
+const ASSET_VERSION = "20260615-bu-rig-debug";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2864,8 +2864,8 @@ class PlayScene extends Phaser.Scene {
     const lowerLegTopAnchor = { x: 25, y: 23 };
     const footTopAnchor = { x: 26, y: 6 };
     const parts = {
-      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { anchor: upperLegTopAnchor }),
       farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { anchor: lowerLegTopAnchor }),
+      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { anchor: upperLegTopAnchor }),
       farFoot: addPart("farFoot", "colossus-foot", 48, -30, { anchor: footTopAnchor }),
       farArm: addPart("farArm", "colossus-upperArm", 66, -406, { anchor: armTopAnchor }),
       farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { anchor: forearmTopAnchor }),
@@ -2874,8 +2874,8 @@ class PlayScene extends Phaser.Scene {
       torso: addPart("torso", "colossus-torso", 0, -362),
       head: addPart("head", "colossus-head", 16, -520, { anchor: { x: 38, y: 150 }, scaleX: 0.8, scaleY: 0.8 }),
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
-      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { anchor: upperLegTopAnchor }),
       nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { anchor: lowerLegTopAnchor }),
+      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { anchor: upperLegTopAnchor }),
       nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { anchor: footTopAnchor }),
       nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { anchor: armTopAnchor }),
       nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { anchor: forearmTopAnchor }),
@@ -2903,7 +2903,7 @@ class PlayScene extends Phaser.Scene {
       crownSlipActive: false,
       crownSlipStartedAt: 0,
       crownSlipDuration: 2100,
-      nextCrownSlipAt: this.time.now + Phaser.Math.Between(6800, 12600)
+      nextCrownSlipAt: this.time.now + Phaser.Math.Between(1400, 2800)
     };
     this.updateDistantColossus(this.time.now, 0);
   }
@@ -3011,6 +3011,7 @@ class PlayScene extends Phaser.Scene {
       ? Phaser.Math.Clamp((this.time.now - rig.suitcaseAttackStartedAt) / rig.suitcaseAttackDuration, 0, 1)
       : 0;
     const suitcaseAttackLift = Math.sin(attackProgress * Math.PI) * -168;
+    const suitcaseAttackLowerTwist = Math.sin(attackProgress * Math.PI) * -48;
     const suitcaseAttackTwist = Math.sin(attackProgress * Math.PI) * -42;
     const crownSlipProgress = rig.crownSlipActive
       ? Phaser.Math.Clamp((this.time.now - rig.crownSlipStartedAt) / rig.crownSlipDuration, 0, 1)
@@ -3100,7 +3101,7 @@ class PlayScene extends Phaser.Scene {
     set(parts.head, { x: neck.x + Math.sin(phase + 0.55) * 1.2, y: neck.y - 2 - bob * 0.35, angle: headAngle });
     set(parts.crown, {
       x: parts.head.x + 8 + Math.sin(phase + 0.55) * 1.2,
-      y: parts.head.y - 146 + crownSlipAmount * 18,
+      y: parts.head.y - 111 + crownSlipAmount * 18,
       angle: -5 + crownSlipAmount * 8 - torsoLean * 0.45
     });
 
@@ -3200,7 +3201,7 @@ class PlayScene extends Phaser.Scene {
       shoulder: rightShoulder,
       swing: farArmSwing,
       side: 1,
-      upperAdd: crownFixAmount * -90,
+      upperAdd: crownFixAmount * -117,
       lowerAdd: crownFixAmount * -160,
       handAdd: crownFixAmount * -40
     });
@@ -3212,7 +3213,8 @@ class PlayScene extends Phaser.Scene {
       swing: nearArmSwing,
       side: -1,
       attackLift: suitcaseAttackLift,
-      handTwist: suitcaseAttackTwist
+      handTwist: suitcaseAttackTwist,
+      lowerAdd: suitcaseAttackLowerTwist
     });
   }
 
@@ -3279,7 +3281,7 @@ class PlayScene extends Phaser.Scene {
       const progress = (time - rig.crownSlipStartedAt) / rig.crownSlipDuration;
       if (progress >= 1) {
         rig.crownSlipActive = false;
-        rig.nextCrownSlipAt = time + Phaser.Math.Between(7600, 14800);
+        rig.nextCrownSlipAt = time + Phaser.Math.Between(1800, 3800);
       }
     }
 
