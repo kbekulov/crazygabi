@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.26
+
+- Added BU's giant hand crush attack after the boss reveal.
+- Changed hit damage to continue gameplay with a brief Gabi flicker instead of restarting the level.
+- Moved BU's health bar to the bottom of the screen and renamed the label to BU (Boss).
+
 ## v0.55.25
 
 - Nudged BU's slipped crown state slightly left.

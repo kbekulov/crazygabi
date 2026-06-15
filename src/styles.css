@@ -212,10 +212,10 @@ button:active {
 .boss-health {
   position: absolute;
   left: 50%;
-  top: clamp(28px, 4.7vw, 48px);
+  bottom: clamp(26px, 4vw, 44px);
   width: clamp(236px, 28vw, 336px);
   aspect-ratio: 336 / 58;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   pointer-events: none;
 }
 
@@ -227,7 +227,7 @@ button:active {
   position: absolute;
   left: 0;
   right: 0;
-  top: 0;
+  bottom: 0;
   aspect-ratio: 336 / 34;
   background-image: url("../public/assets/boss/colossus/healthbar_empty.png");
   background-size: 100% 100%;
@@ -254,7 +254,7 @@ button:active {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
   height: 18px;
   display: grid;
   place-items: center;

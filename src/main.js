@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.25";
+const GAME_VERSION = "v0.55.26";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -162,6 +162,11 @@ const COLOSSUS_DEPTH = -9.55;
 const COLOSSUS_STEP_SHAKE_DURATION = 180;
 const COLOSSUS_STEP_SHAKE_INTENSITY = 0.0014;
 const COLOSSUS_HOWL_VOLUME = 1.08;
+const GIANT_HAND_DEPTH = ITEM_DEPTH + 1.35;
+const GIANT_HAND_FALL_SPEED = 940;
+const GIANT_HAND_IMPACT_SHAKE_DURATION = 360;
+const GIANT_HAND_IMPACT_SHAKE_INTENSITY = 0.009;
+const DAMAGE_INVULNERABLE_MS = 1250;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
 const ROBOT_FRAME_HEIGHT = 238;
@@ -268,7 +273,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-bu-crown-slip-left";
+const ASSET_VERSION = "20260615-giant-hand-hazard";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -602,6 +607,10 @@ const LEVELS = [
       shakeDuration: COLOSSUS_STEP_SHAKE_DURATION,
       shakeIntensity: COLOSSUS_STEP_SHAKE_INTENSITY
     },
+    giantHandAttacks: [
+      { key: "giant-hand-1", src: "./public/assets/boss/colossus/giant_hand_1.png" },
+      { key: "giant-hand-2", src: "./public/assets/boss/colossus/giant_hand_2.png" }
+    ],
     storyFrames: [
       { key: "story-level-5-frame-1-v2", src: "./public/assets/story/level-5/frame_1_v2.png" },
       { key: "story-level-5-frame-2-v2", src: "./public/assets/story/level-5/frame_2_v2.png" },
@@ -1979,6 +1988,7 @@ class PlayScene extends Phaser.Scene {
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
+    this.giantHands = this.physics.add.group({ allowGravity: false, immovable: false });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.haystacks = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -2036,6 +2046,8 @@ class PlayScene extends Phaser.Scene {
     this.bossHealth = 1;
     this.bossDefeated = false;
     this.bossSoundtrackActive = false;
+    this.damageInvulnerableUntil = 0;
+    this.damageFlickerTween = null;
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -2251,6 +2263,7 @@ class PlayScene extends Phaser.Scene {
       }
       spineAsset(level.distantColossus);
       colossusPartAssets(level.distantColossus);
+      (level.giantHandAttacks || []).forEach((attack) => image(attack.key, attack.src));
 
       image("parallax-city", "./public/assets/environment/paralax_city.png");
       if (level.parallax === "parallax-underground") image("parallax-underground", "./public/assets/environment/paralax_underground.png");
@@ -2904,7 +2917,8 @@ class PlayScene extends Phaser.Scene {
       crownSlipActive: false,
       crownSlipStartedAt: 0,
       crownSlipDuration: 2100,
-      nextCrownSlipAt: this.time.now + Phaser.Math.Between(1400, 2800)
+      nextCrownSlipAt: this.time.now + Phaser.Math.Between(1400, 2800),
+      freeArmHandAttackTriggered: false
     };
     this.updateDistantColossus(this.time.now, 0);
   }
@@ -3277,9 +3291,19 @@ class PlayScene extends Phaser.Scene {
       rig.crownSlipActive = true;
       rig.crownSlipStartedAt = time;
       rig.crownSlipDuration = Phaser.Math.Between(1900, 2400);
+      rig.freeArmHandAttackTriggered = false;
     }
     if (rig.crownSlipActive) {
       const progress = (time - rig.crownSlipStartedAt) / rig.crownSlipDuration;
+      if (
+        this.bossHealthVisible &&
+        !this.bossDefeated &&
+        !rig.freeArmHandAttackTriggered &&
+        progress >= 0.58
+      ) {
+        rig.freeArmHandAttackTriggered = true;
+        this.spawnGiantHandAttack();
+      }
       if (progress >= 1) {
         rig.crownSlipActive = false;
         rig.nextCrownSlipAt = time + Phaser.Math.Between(1800, 3800);
@@ -5185,6 +5209,8 @@ class PlayScene extends Phaser.Scene {
       this.physics.add.collider(this.cat, this.movingPlatforms);
     }
     this.physics.add.collider(this.enemies, this.platforms);
+    this.physics.add.collider(this.giantHands, this.platforms, this.handleGiantHandPlatformHit, null, this);
+    this.physics.add.collider(this.giantHands, this.movingPlatforms, this.handleGiantHandPlatformHit, null, this);
     this.physics.add.collider(
       this.thrownItems,
       this.platforms,
@@ -5208,6 +5234,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
+    this.physics.add.overlap(this.player, this.giantHands, this.hitGiantHand, null, this);
     this.physics.add.overlap(this.player, this.haystacks, this.landInHaystack, null, this);
     this.physics.add.overlap(this.player, this.doors, this.enterDoor, null, this);
   }
@@ -5319,6 +5346,7 @@ class PlayScene extends Phaser.Scene {
     this.updateEnvironmentalQuake(time);
     this.updateAcorns(time);
     this.updateThrownItems();
+    this.updateGiantHands();
     this.updateParallax();
     this.updateDistantColossus(time, delta);
     this.updateBossReveal(time);
@@ -5349,7 +5377,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     if (this.updateScriptedHaystackDive(time, delta)) {
-      if (this.player.y > this.levelHeight + 56) this.loseLife();
+      if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
       this.updateDiveWindLines(time);
       this.updateDiveCameraZoom();
       this.updateGabiAnimation(false, false);
@@ -5381,7 +5409,7 @@ class PlayScene extends Phaser.Scene {
     if (leftPressed) this.handleGabiDashTap(-1, time);
     if (rightPressed) this.handleGabiDashTap(1, time);
     if (this.updateGabiDashState(time)) {
-      if (this.player.y > this.levelHeight + 56) this.loseLife();
+      if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
       this.updateDiveCameraZoom();
       return;
     }
@@ -5437,7 +5465,7 @@ class PlayScene extends Phaser.Scene {
     this.updateDiveWindLines(time);
     this.updateDiveCameraZoom();
 
-    if (this.player.y > this.levelHeight + 56) this.loseLife();
+    if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
     this.updateGabiAnimation(left || right, onFloor);
     this.enforceFinalElevatorRidePose();
   }
@@ -6593,6 +6621,8 @@ class PlayScene extends Phaser.Scene {
 
   resetPlayerToSpawn() {
     this.stopScriptedHaystackDive();
+    this.damageFlickerTween?.remove?.();
+    this.damageFlickerTween = null;
     this.resetPlayerMotion();
     this.resetGabiDashState();
     this.resetGlideState();
@@ -6601,6 +6631,7 @@ class PlayScene extends Phaser.Scene {
     this.gabiActionRestoreTimer = null;
     this.gabiActionUntil = 0;
     this.player.setPosition(this.spawnPoint.x, this.spawnPoint.y);
+    this.player.setAlpha(1);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("idle");
   }
@@ -9037,6 +9068,11 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.giantHands?.clear?.(true, true);
+    this.giantHands = null;
+    this.damageFlickerTween?.remove?.();
+    this.damageFlickerTween = null;
+    this.damageInvulnerableUntil = 0;
     this.distantColossus?.labels?.forEach((label) => label.text?.destroy?.());
     this.distantColossus?.object?.destroy?.();
     this.distantColossus = null;
@@ -9281,6 +9317,67 @@ class PlayScene extends Phaser.Scene {
     this.loseLife();
   }
 
+  hitGiantHand(_player, hand) {
+    if (!state.running || !hand?.active || hand.getData("spent")) return;
+    this.loseLife();
+  }
+
+  spawnGiantHandAttack() {
+    if (!state.running || state.won || this.bossRevealActive || !this.bossHealthVisible || this.bossDefeated) return;
+    const attacks = this.level.giantHandAttacks || [];
+    if (!attacks.length || !this.player?.active || !this.giantHands) return;
+
+    const attack = Phaser.Utils.Array.GetRandom(attacks);
+    if (!attack?.key || !this.textures.exists(attack.key)) return;
+
+    const camera = this.cameras.main;
+    const hand = this.giantHands.create(this.player.x, 0, attack.key);
+    const scale = (PLAY_HEIGHT * 1.08) / Math.max(1, hand.height || PLAY_HEIGHT);
+    const spawnY = camera.scrollY - hand.height * scale * 0.58;
+    hand.setPosition(this.player.x, spawnY);
+    hand.setScale(scale);
+    hand.setDepth(GIANT_HAND_DEPTH);
+    hand.setAlpha(0.98);
+    hand.setVelocity(0, GIANT_HAND_FALL_SPEED);
+    hand.setData("spent", false);
+    hand.setData("armedAt", this.time.now + 120);
+    hand.body.setAllowGravity(false);
+    hand.body.setImmovable(false);
+    hand.body.setSize(hand.width * 0.72, hand.height * 0.88, true);
+  }
+
+  handleGiantHandPlatformHit(hand) {
+    if (!hand?.active || hand.getData("spent")) return;
+    hand.setData("spent", true);
+    hand.setVelocity(0, 0);
+    hand.body.moves = false;
+    hand.body.enable = false;
+    this.cameras.main.shake(GIANT_HAND_IMPACT_SHAKE_DURATION, GIANT_HAND_IMPACT_SHAKE_INTENSITY);
+    if (
+      this.player?.active &&
+      Phaser.Geom.Intersects.RectangleToRectangle(hand.getBounds(), this.player.getBounds())
+    ) {
+      this.loseLife();
+    }
+    this.tweens.add({
+      targets: hand,
+      alpha: 0,
+      y: hand.y + 10,
+      duration: 520,
+      ease: "Sine.in",
+      onComplete: () => hand.destroy()
+    });
+  }
+
+  updateGiantHands() {
+    if (!this.giantHands) return;
+    const cullY = this.cameras.main.scrollY + PLAY_HEIGHT + 760;
+    this.giantHands.children.iterate((hand) => {
+      if (!hand?.active) return;
+      if (hand.y > cullY) hand.destroy();
+    });
+  }
+
   hitEnemyWithThrownItem(item, enemy) {
     if (!state.running || !item.active || !enemy.active || enemy.getData("dying")) return;
     this.ricochetThrownItemFromEnemy(item, enemy);
@@ -9309,13 +9406,16 @@ class PlayScene extends Phaser.Scene {
     acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
   }
 
-  loseLife() {
+  loseLife({ respawn = false } = {}) {
     if (!state.running) return;
+    const now = this.time?.now || 0;
+    if (!respawn && now < (this.damageInvulnerableUntil || 0)) return;
+    this.damageInvulnerableUntil = now + DAMAGE_INVULNERABLE_MS;
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
     state.lives -= 1;
     updateHud();
-    this.cameras.main.shake(180, 0.012);
+    this.cameras.main.shake(respawn ? 180 : 120, respawn ? 0.012 : 0.006);
     if (state.lives <= 0) {
       this.showGameOverScreen({
         copy: "Gabi ran out of chances. The city was too demanding."
@@ -9323,10 +9423,14 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     if (Number.isFinite(state.timeLeft)) state.timeLeft = Math.max(45, state.timeLeft);
-    this.resetFinalElevator();
-    this.resetMysteriousMan();
-    this.resetPlayerToSpawn();
-    this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
+    if (respawn) {
+      this.resetFinalElevator();
+      this.resetMysteriousMan();
+      this.resetPlayerToSpawn();
+      this.showGabiSpeech(Phaser.Math.RND.pick(PICKUP_SPEECH_LINES.respawn));
+    } else {
+      this.flickerPlayerDamage();
+    }
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.resetGlideState();
@@ -9335,10 +9439,30 @@ class PlayScene extends Phaser.Scene {
     this.wingPromptActive = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
-    this.thrownItems.clear(true, true);
-    if (!state.hasKey) this.resetKeyReveal();
-    this.resetCatNpc();
-    this.createDiveIndicatorBirds();
+    if (respawn) {
+      this.thrownItems.clear(true, true);
+      if (!state.hasKey) this.resetKeyReveal();
+      this.resetCatNpc();
+      this.createDiveIndicatorBirds();
+    }
+  }
+
+  flickerPlayerDamage() {
+    if (!this.player?.active) return;
+    this.damageFlickerTween?.remove?.();
+    this.player.setAlpha(1);
+    this.damageFlickerTween = this.tweens.add({
+      targets: this.player,
+      alpha: 0.18,
+      duration: 80,
+      yoyo: true,
+      repeat: 7,
+      ease: "Stepped",
+      onComplete: () => {
+        if (this.player?.active) this.player.setAlpha(1);
+        this.damageFlickerTween = null;
+      }
+    });
   }
 
   enterDoor() {
