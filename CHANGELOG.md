@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.9
+
+- Tuned the Level 5 colossus gait so the pelvis sits higher, the suitcase stays closer to the hand, and the arms sway while walking.
+- Replaced the moving colossus health bar with a fixed boss health bar named BU.
+- Made Level 5 use an infinite timer instead of counting down.
+
 ## v0.55.8
 
 - Reduced the Level 5 colossus head and crown size and shifted them back over the neck.

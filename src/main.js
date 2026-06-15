@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.8";
+const GAME_VERSION = "v0.55.9";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260614-colossus-head";
+const ASSET_VERSION = "20260615-colossus-gait";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -560,7 +560,7 @@ const LEVELS = [
   {
     name: "Level 5",
     rows: createLevelFive(),
-    timeLimit: 180,
+    timeLimit: null,
     soundtrack: "bgm-lv5",
     bossSoundtrack: "bgm-lv5-boss",
     bossRevealAt: 0.5,
@@ -1220,7 +1220,7 @@ function updateHud() {
     heart.alt = "";
     hud.lives.appendChild(heart);
   }
-  hud.time.textContent = String(state.timeLeft).padStart(3, "0");
+  hud.time.textContent = Number.isFinite(state.timeLeft) ? String(state.timeLeft).padStart(3, "0") : "∞";
   hud.key.textContent = state.hasKey ? "01" : "00";
   updateEquippedHud();
   updateQuestHud();
@@ -1260,12 +1260,8 @@ function setBossHealthVisible(visible) {
   hud.bossHealth.hidden = !visible;
 }
 
-function updateBossHealthHud({ x = VIEW_WIDTH / 2, y = 72, value = 1 } = {}) {
+function updateBossHealthHud({ value = 1 } = {}) {
   if (!hud.bossHealth) return;
-  const clampedX = Phaser.Math.Clamp(x, 120, VIEW_WIDTH - 120);
-  const clampedY = Phaser.Math.Clamp(y, 36, 112);
-  hud.bossHealth.style.setProperty("--boss-health-x", `${clampedX}px`);
-  hud.bossHealth.style.setProperty("--boss-health-y", `${clampedY}px`);
   if (hud.bossHealthFill) {
     hud.bossHealthFill.style.width = `${Phaser.Math.Clamp(value, 0, 1) * 100}%`;
   }
@@ -2047,7 +2043,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.moves = false;
     this.player.setVelocity(0, 0);
 
-    state.timeLeft = this.level.timeLimit;
+    state.timeLeft = Number.isFinite(this.level.timeLimit) ? this.level.timeLimit : Infinity;
     state.hasKey = false;
     state.hasDoubleJump = false;
     state.hasBirdControl = false;
@@ -2773,7 +2769,7 @@ class PlayScene extends Phaser.Scene {
       farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { originY: 0.1 }),
       farHand: addPart("farHand", "colossus-openHand", 98, -194, { originY: 0.16 }),
       torso: addPart("torso", "colossus-torso", 0, -362),
-      pelvis: addPart("pelvis", "colossus-pelvis", 0, -248),
+      pelvis: addPart("pelvis", "colossus-pelvis", 0, -264),
       head: addPart("head", "colossus-head", 16, -520, { scaleX: 0.8, scaleY: 0.8 }),
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
       nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { originY: 0.12 }),
@@ -2926,7 +2922,7 @@ class PlayScene extends Phaser.Scene {
     };
 
     set(parts.torso, { x: Math.sin(phase) * 1.8, y: -344 - bob, angle: torsoLean });
-    set(parts.pelvis, { x: 0, y: -222 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
+    set(parts.pelvis, { x: 0, y: -240 + Math.abs(Math.sin(phase)) * 2, angle: -torsoLean * 0.42 });
     set(parts.head, { x: 16 + Math.sin(phase + 0.55) * 2.2, y: -510 - bob, angle: -torsoLean * 0.45 });
     set(parts.crown, { x: 24 + Math.sin(phase + 0.55) * 2.2, y: -566 - bob, angle: -5 - torsoLean * 0.45 });
 
@@ -2934,10 +2930,10 @@ class PlayScene extends Phaser.Scene {
       upper: parts.farLeg,
       lower: parts.farShin,
       end: parts.farFoot,
-      x: 34 + farStep * 5,
-      y: -250 + Math.abs(farStep) * 3,
-      upperAngle: -4 + farStep * 8,
-      lowerAngle: 5 - farStep * 10,
+      x: 30 + farStep * 4,
+      y: -242 + Math.abs(farStep) * 3,
+      upperAngle: -6 + farStep * 7,
+      lowerAngle: 4 - farStep * 8,
       upperLength: 92,
       lowerLength: 94,
       endOffsetX: 10,
@@ -2948,10 +2944,10 @@ class PlayScene extends Phaser.Scene {
       upper: parts.nearLeg,
       lower: parts.nearShin,
       end: parts.nearFoot,
-      x: -34 + nearStep * 7,
-      y: -250 + Math.abs(nearStep) * 4,
-      upperAngle: 4 + nearStep * 10,
-      lowerAngle: -5 - nearStep * 12,
+      x: -30 + nearStep * 5,
+      y: -242 + Math.abs(nearStep) * 4,
+      upperAngle: 6 + nearStep * 8,
+      lowerAngle: -4 - nearStep * 9,
       upperLength: 92,
       lowerLength: 94,
       endOffsetX: -10,
@@ -2959,24 +2955,39 @@ class PlayScene extends Phaser.Scene {
       endAngle: -78 + nearStep * 5
     });
 
-    const farArmSwing = Math.sin(phase + Math.PI) * 5;
-    const nearArmSwing = Math.sin(phase) * 6;
-    const farShoulder = { x: 66, y: -392 - bob };
-    const nearShoulder = { x: -66, y: -392 - bob };
-    const farElbow = { x: farShoulder.x + farArmSwing * 0.22, y: farShoulder.y + 92 };
-    const nearElbow = { x: nearShoulder.x + nearArmSwing * 0.22, y: nearShoulder.y + 92 };
-    const farWrist = { x: farElbow.x + farArmSwing * 0.18, y: farElbow.y + 88 };
-    const nearWrist = { x: nearElbow.x + nearArmSwing * 0.18, y: nearElbow.y + 88 };
-
-    set(parts.farArm, { x: farShoulder.x, y: farShoulder.y, angle: 3 + farArmSwing * 0.18 });
-    set(parts.farForearm, { x: farElbow.x, y: farElbow.y, angle: -2 + farArmSwing * 0.12 });
-    set(parts.farHand, { x: farWrist.x + 4, y: farWrist.y - 2, angle: 4 + farArmSwing * 0.08 });
-    set(parts.nearArm, { x: nearShoulder.x, y: nearShoulder.y, angle: -3 + nearArmSwing * 0.18 });
-    set(parts.nearForearm, { x: nearElbow.x, y: nearElbow.y, angle: 2 + nearArmSwing * 0.12 });
-    set(parts.nearHand, { x: nearWrist.x - 4, y: nearWrist.y - 2, angle: -4 + nearArmSwing * 0.08 });
+    const farArmSwing = Math.sin(phase + Math.PI) * 11;
+    const nearArmSwing = Math.sin(phase) * 13;
+    placeLimb({
+      upper: parts.farArm,
+      lower: parts.farForearm,
+      end: parts.farHand,
+      x: 56,
+      y: -392 - bob,
+      upperAngle: 6 + farArmSwing * 0.42,
+      lowerAngle: 3 + farArmSwing * 0.28,
+      upperLength: 86,
+      lowerLength: 82,
+      endOffsetX: 4,
+      endOffsetY: 0,
+      endAngle: 5 + farArmSwing * 0.14
+    });
+    const nearWrist = placeLimb({
+      upper: parts.nearArm,
+      lower: parts.nearForearm,
+      end: parts.nearHand,
+      x: -56,
+      y: -392 - bob,
+      upperAngle: -6 + nearArmSwing * 0.42,
+      lowerAngle: -3 + nearArmSwing * 0.28,
+      upperLength: 86,
+      lowerLength: 82,
+      endOffsetX: -4,
+      endOffsetY: 0,
+      endAngle: -5 + nearArmSwing * 0.14
+    });
     set(parts.suitcase, {
-      x: nearWrist.x - 32,
-      y: Math.max(nearFoot.y - 10, nearWrist.y + 34 + Math.sin(phase + 0.9) * 4),
+      x: nearWrist.x - 14,
+      y: Math.max(nearFoot.y - 8, nearWrist.y + 22 + Math.sin(phase + 0.9) * 4),
       angle: -5 + Math.sin(phase) * 2
     });
   }
@@ -3156,13 +3167,7 @@ class PlayScene extends Phaser.Scene {
 
   updateBossHealthBar() {
     if (!this.bossHealthVisible || !this.distantColossus?.object?.active) return;
-    const rig = this.distantColossus;
-    const head = rig.parts?.head;
-    const scaleX = rig.object.scaleX || 1;
-    const scaleY = rig.object.scaleY || 1;
-    const headX = rig.object.x + ((head?.x ?? 0) * scaleX);
-    const headY = rig.object.y + ((head?.y ?? -500) * scaleY) - 22;
-    updateBossHealthHud({ x: headX, y: headY, value: 1 });
+    updateBossHealthHud({ value: 1 });
   }
 
   cancelBossRevealCamera({ restoreCamera = true } = {}) {
@@ -8444,6 +8449,12 @@ class PlayScene extends Phaser.Scene {
 
   startTimer() {
     if (this.timerEvent) this.timerEvent.remove(false);
+    if (!Number.isFinite(this.level.timeLimit)) {
+      this.timerEvent = null;
+      state.timeLeft = Infinity;
+      updateHud();
+      return;
+    }
     this.timerEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
@@ -9017,7 +9028,7 @@ class PlayScene extends Phaser.Scene {
       });
       return;
     }
-    state.timeLeft = Math.max(45, state.timeLeft);
+    if (Number.isFinite(state.timeLeft)) state.timeLeft = Math.max(45, state.timeLeft);
     this.resetFinalElevator();
     this.resetMysteriousMan();
     this.resetPlayerToSpawn();
@@ -9049,7 +9060,7 @@ class PlayScene extends Phaser.Scene {
     this.setGabiAnimation("idle");
     if (this.timerEvent) this.timerEvent.remove(false);
     awardScore(state.levelGems === state.totalGems ? 1000 : 350);
-    awardScore(state.timeLeft * 10);
+    if (Number.isFinite(state.timeLeft)) awardScore(state.timeLeft * 10);
     updateHud();
     if (state.levelIndex < LEVELS.length - 1) {
       this.advanceToNextLevel();

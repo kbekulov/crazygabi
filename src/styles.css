@@ -210,17 +210,16 @@ button:active {
 }
 
 .boss-health {
-  --boss-health-x: 50%;
-  --boss-health-y: 72px;
   position: absolute;
-  left: var(--boss-health-x);
-  top: var(--boss-health-y);
-  width: clamp(150px, 18vw, 230px);
-  height: clamp(9px, 1.05vw, 13px);
+  left: 50%;
+  top: clamp(20px, 3.6vw, 34px);
+  width: clamp(190px, 24vw, 310px);
+  height: clamp(16px, 1.8vw, 22px);
   transform: translate(-50%, -50%);
   border: 2px solid rgba(18, 8, 8, 0.94);
   background: rgba(24, 5, 5, 0.78);
   box-shadow: 0 0 0 1px rgba(244, 220, 176, 0.18), 0 0 14px rgba(0, 0, 0, 0.76);
+  overflow: hidden;
 }
 
 .boss-health[hidden] {
@@ -233,6 +232,19 @@ button:active {
   height: 100%;
   background: linear-gradient(180deg, #ff5959 0%, #b70c0c 56%, #5d0202 100%);
   box-shadow: inset 0 1px 0 rgba(255, 219, 188, 0.42);
+}
+
+.boss-health strong {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #f4dcb0;
+  font-size: clamp(10px, 1.2vw, 15px);
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 0;
+  pointer-events: none;
 }
 
 .bird-cooldown {
