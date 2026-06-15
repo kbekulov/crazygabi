@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.10";
+const GAME_VERSION = "v0.55.11";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -268,7 +268,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-colossus-anchors";
+const ASSET_VERSION = "20260615-colossus-bones";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2750,10 +2750,62 @@ class PlayScene extends Phaser.Scene {
     object.setScale(config.scale ?? 1);
     object.setAlpha(config.alpha ?? 0.55);
 
+    const alphaBoundsCache = new Map();
+    const getAlphaBounds = (key) => {
+      if (alphaBoundsCache.has(key)) return alphaBoundsCache.get(key);
+      const texture = this.textures.get(key);
+      const source = texture?.getSourceImage?.();
+      const width = source?.width || texture?.source?.[0]?.width || 1;
+      const height = source?.height || texture?.source?.[0]?.height || 1;
+      const fallback = { minX: 0, minY: 0, maxX: width - 1, maxY: height - 1, width, height };
+      if (!source || !width || !height) {
+        alphaBoundsCache.set(key, fallback);
+        return fallback;
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      if (!context) {
+        alphaBoundsCache.set(key, fallback);
+        return fallback;
+      }
+      context.drawImage(source, 0, 0);
+      const data = context.getImageData(0, 0, width, height).data;
+      let minX = width;
+      let minY = height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+          if (data[(y * width + x) * 4 + 3] < 24) continue;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      const bounds = maxX >= minX && maxY >= minY
+        ? { minX, minY, maxX, maxY, width, height }
+        : fallback;
+      alphaBoundsCache.set(key, bounds);
+      return bounds;
+    };
+
     const addPart = (name, key, x, y, options = {}) => {
       if (!this.textures.exists(key)) return null;
       const sprite = this.add.image(x, y, key);
-      sprite.setOrigin(options.originX ?? 0.5, options.originY ?? 0.5);
+      if (options.boneOrigin) {
+        const bounds = getAlphaBounds(key);
+        sprite.setOrigin(
+          Phaser.Math.Clamp((bounds.minX + (options.boneInsetX ?? 0)) / bounds.width, 0, 1),
+          Phaser.Math.Clamp(((bounds.minY + bounds.maxY) / 2 + (options.boneOffsetY ?? 0)) / bounds.height, 0, 1)
+        );
+        sprite.setData("alphaBounds", bounds);
+      } else {
+        sprite.setOrigin(options.originX ?? 0.5, options.originY ?? 0.5);
+      }
       sprite.setScale(options.scaleX ?? 1, options.scaleY ?? 1);
       sprite.setAngle(options.angle ?? 0);
       sprite.setAlpha(options.alpha ?? 1);
@@ -2762,22 +2814,22 @@ class PlayScene extends Phaser.Scene {
     };
 
     const parts = {
-      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { originY: 0.12 }),
-      farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { originY: 0.1 }),
-      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { originY: 0.18 }),
-      farArm: addPart("farArm", "colossus-upperArm", 66, -406, { originY: 0.08 }),
-      farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { originY: 0.08 }),
-      farHand: addPart("farHand", "colossus-openHand", 98, -194, { originY: 0.08 }),
+      farLeg: addPart("farLeg", "colossus-upperLeg", 34, -254, { boneOrigin: true }),
+      farShin: addPart("farShin", "colossus-lowerLeg", 34, -152, { boneOrigin: true }),
+      farFoot: addPart("farFoot", "colossus-foot", 48, -30, { boneOrigin: true }),
+      farArm: addPart("farArm", "colossus-upperArm", 66, -406, { boneOrigin: true }),
+      farForearm: addPart("farForearm", "colossus-lowerArm", 82, -300, { boneOrigin: true }),
+      farHand: addPart("farHand", "colossus-openHand", 98, -194, { boneOrigin: true }),
       pelvis: addPart("pelvis", "colossus-pelvis", 0, -264),
       torso: addPart("torso", "colossus-torso", 0, -362),
       head: addPart("head", "colossus-head", 16, -520, { scaleX: 0.8, scaleY: 0.8 }),
       crown: addPart("crown", "colossus-crown", 24, -580, { angle: -5, scaleX: 0.8, scaleY: 0.8 }),
-      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { originY: 0.12 }),
-      nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { originY: 0.1 }),
-      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { originY: 0.18 }),
-      nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { originY: 0.08 }),
-      nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { originY: 0.08 }),
-      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { originY: 0.08 }),
+      nearLeg: addPart("nearLeg", "colossus-upperLeg", -34, -254, { boneOrigin: true }),
+      nearShin: addPart("nearShin", "colossus-lowerLeg", -34, -152, { boneOrigin: true }),
+      nearFoot: addPart("nearFoot", "colossus-foot", -48, -30, { boneOrigin: true }),
+      nearArm: addPart("nearArm", "colossus-upperArm", -70, -406, { boneOrigin: true }),
+      nearForearm: addPart("nearForearm", "colossus-lowerArm", -92, -300, { boneOrigin: true }),
+      nearHand: addPart("nearHand", "colossus-closedHand", -112, -194, { boneOrigin: true }),
       suitcase: addPart("suitcase", "colossus-suitcase", -142, -142, { angle: -4 })
     };
 
@@ -2908,14 +2960,17 @@ class PlayScene extends Phaser.Scene {
     const jointEnd = (x, y, length, angle) => {
       const radians = (angle * Math.PI) / 180;
       return {
-        x: x + Math.sin(radians) * length,
-        y: y + Math.cos(radians) * length
+        x: x + Math.cos(radians) * length,
+        y: y + Math.sin(radians) * length
       };
     };
     const segmentSpan = (part, fallback, trim = 0.86) => {
       if (!part) return fallback;
-      const originY = Number.isFinite(part.originY) ? part.originY : 0.5;
-      return Math.max(18, part.height * Math.abs(part.scaleY || 1) * (1 - originY) * trim);
+      const bounds = part.getData?.("alphaBounds");
+      const visibleWidth = bounds ? Math.max(1, bounds.maxX - bounds.minX + 1) : part.width;
+      const originX = Number.isFinite(part.originX) ? part.originX : 0;
+      const originLeftInset = part.width * originX - (bounds?.minX ?? 0);
+      return Math.max(18, (visibleWidth - originLeftInset) * Math.abs(part.scaleX || 1) * trim);
     };
     const placeLimb = ({
       upper,
@@ -2950,13 +3005,13 @@ class PlayScene extends Phaser.Scene {
       end: parts.farFoot,
       x: 30 + farStep * 4,
       y: -242 + Math.abs(farStep) * 3,
-      upperAngle: -6 + farStep * 7,
-      lowerAngle: 4 - farStep * 8,
-      upperLength: segmentSpan(parts.farLeg, 104, 0.76),
-      lowerLength: segmentSpan(parts.farShin, 104, 0.76),
-      endOffsetX: 10,
-      endOffsetY: 8,
-      endAngle: 78 + farStep * 5
+      upperAngle: 78 + farStep * 8,
+      lowerAngle: 86 - farStep * 8,
+      upperLength: segmentSpan(parts.farLeg, 104, 0.88),
+      lowerLength: segmentSpan(parts.farShin, 104, 0.88),
+      endOffsetX: 4,
+      endOffsetY: 2,
+      endAngle: 92 + farStep * 4
     });
     const nearFoot = placeLimb({
       upper: parts.nearLeg,
@@ -2964,13 +3019,13 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearFoot,
       x: -30 + nearStep * 5,
       y: -242 + Math.abs(nearStep) * 4,
-      upperAngle: 6 + nearStep * 8,
-      lowerAngle: -4 - nearStep * 9,
-      upperLength: segmentSpan(parts.nearLeg, 104, 0.76),
-      lowerLength: segmentSpan(parts.nearShin, 104, 0.76),
-      endOffsetX: -10,
-      endOffsetY: 8,
-      endAngle: -78 + nearStep * 5
+      upperAngle: 102 - nearStep * 9,
+      lowerAngle: 94 + nearStep * 9,
+      upperLength: segmentSpan(parts.nearLeg, 104, 0.88),
+      lowerLength: segmentSpan(parts.nearShin, 104, 0.88),
+      endOffsetX: -4,
+      endOffsetY: 2,
+      endAngle: 88 - nearStep * 4
     });
 
     const farArmSwing = Math.sin(phase + Math.PI) * 11;
@@ -2981,13 +3036,13 @@ class PlayScene extends Phaser.Scene {
       end: parts.farHand,
       x: 56,
       y: -392 - bob,
-      upperAngle: 6 + farArmSwing * 0.42,
-      lowerAngle: 3 + farArmSwing * 0.28,
+      upperAngle: 84 + farArmSwing * 0.38,
+      lowerAngle: 92 + farArmSwing * 0.24,
       upperLength: segmentSpan(parts.farArm, 108, 0.82),
       lowerLength: segmentSpan(parts.farForearm, 104, 0.82),
-      endOffsetX: 2,
-      endOffsetY: -1,
-      endAngle: 5 + farArmSwing * 0.14
+      endOffsetX: 0,
+      endOffsetY: 0,
+      endAngle: 96 + farArmSwing * 0.12
     });
     const nearWrist = placeLimb({
       upper: parts.nearArm,
@@ -2995,18 +3050,18 @@ class PlayScene extends Phaser.Scene {
       end: parts.nearHand,
       x: -56,
       y: -392 - bob,
-      upperAngle: -6 + nearArmSwing * 0.42,
-      lowerAngle: -3 + nearArmSwing * 0.28,
+      upperAngle: 96 + nearArmSwing * 0.38,
+      lowerAngle: 88 + nearArmSwing * 0.24,
       upperLength: segmentSpan(parts.nearArm, 108, 0.82),
       lowerLength: segmentSpan(parts.nearForearm, 104, 0.82),
-      endOffsetX: -2,
-      endOffsetY: -1,
-      endAngle: -5 + nearArmSwing * 0.14
+      endOffsetX: 0,
+      endOffsetY: 0,
+      endAngle: 84 + nearArmSwing * 0.12
     });
     set(parts.suitcase, {
-      x: nearWrist.x - 8,
-      y: Math.max(nearFoot.y - 8, nearWrist.y + 16 + Math.sin(phase + 0.9) * 4),
-      angle: -5 + Math.sin(phase) * 2
+      x: nearWrist.x + 4,
+      y: Math.max(nearFoot.y - 8, nearWrist.y + 8 + Math.sin(phase + 0.9) * 4),
+      angle: 2 + Math.sin(phase) * 2
     });
   }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.11
+
+- Rebuilt the Level 5 colossus PNG limb math around right-facing bone axes and visible alpha-bound pivots.
+
 ## v0.55.10
 
 - Reworked the Level 5 colossus arm and leg anchors to use texture-based limb spans.
