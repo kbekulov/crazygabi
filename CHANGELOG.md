@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.25
+
+- Nudged BU's slipped crown state slightly left.
+
 ## v0.55.24
 
 - Increased BU's slipped crown clockwise rotation while keeping the resting crown angle unchanged.
