@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.22
+
+- Nudged BU's crown slightly left and downward for a better fit on the head.
+
 ## v0.55.21
 
 - Shifted BU's crown rightward on the head.
