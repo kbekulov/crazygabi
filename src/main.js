@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.30";
+const GAME_VERSION = "v0.55.31";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -177,11 +177,12 @@ const GIANT_HAND_IMPACT_SHAKE_INTENSITY = 0.009;
 const GIANT_HAND_RIDE_LIFT_MS = 1150;
 const GIANT_HAND_RIDE_SHAKE_VELOCITY_Y = -170;
 const SUITCASE_BOX_DEPTH = ITEM_DEPTH + 1.35;
-const SUITCASE_BOX_START_SCALE = 0.05;
-const SUITCASE_BOX_IMPACT_SCALE = 0.42;
-const SUITCASE_BOX_FLIGHT_MS = 850;
+const SUITCASE_BOX_START_SCALE = 0.1;
+const SUITCASE_BOX_IMPACT_SCALE = 1;
+const SUITCASE_BOX_FLIGHT_MS = 4000;
 const SUITCASE_BOX_ENEMY_SPAWN_COUNT = [2, 4];
 const SUITCASE_BOX_HEART_DROP_CHANCE = 0.28;
+const BOSS_ATTACK_MIN_GAP_MS = 2400;
 const DAMAGE_INVULNERABLE_MS = 1250;
 const THROWN_ACORN_MAX_BOUNCES = 3;
 const ROBOT_FRAME_WIDTH = 238;
@@ -289,7 +290,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260615-boss-box-hand-ride";
+const ASSET_VERSION = "20260618-boss-attack-spacing";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2982,6 +2983,7 @@ class PlayScene extends Phaser.Scene {
       nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(4200, 8200),
       suitcaseBoxThrown: false,
       suitcaseAttackDropTriggerAt: 0,
+      bossAttackBusyUntil: 0,
       crownSlipActive: false,
       crownSlipStartedAt: 0,
       crownSlipDuration: 2100,
@@ -3356,12 +3358,16 @@ class PlayScene extends Phaser.Scene {
     const blendRate = Math.min(1, Math.max(0.05, delta / 260));
     rig.walkBlend = Phaser.Math.Linear(rig.walkBlend ?? walkTarget, walkTarget, blendRate);
 
-    if (rig.parts && !isWalking && !this.bossRevealActive && this.bossHealthVisible && !this.bossDefeated && state.running && !state.won) {
+    if (rig.parts && !isWalking && this.canStartBossPattern(time)) {
       if (!rig.suitcaseAttackActive && time >= (rig.nextSuitcaseAttackAt ?? 0)) {
         rig.suitcaseAttackActive = true;
         rig.suitcaseAttackStartedAt = time;
         rig.suitcaseAttackDuration = Phaser.Math.Between(1850, 2400);
         rig.suitcaseBoxThrown = false;
+        rig.bossAttackBusyUntil = Math.max(
+          rig.bossAttackBusyUntil || 0,
+          time + SUITCASE_BOX_FLIGHT_MS + BOSS_ATTACK_MIN_GAP_MS
+        );
       }
     }
     if (rig.suitcaseAttackActive) {
@@ -3374,6 +3380,7 @@ class PlayScene extends Phaser.Scene {
         rig.suitcaseAttackActive = false;
         rig.suitcaseAttackDropTriggerAt = time;
         rig.nextSuitcaseAttackAt = time + Phaser.Math.Between(5200, 9800);
+        rig.nextGiantHandAttackAt = Math.max(rig.nextGiantHandAttackAt || 0, time + BOSS_ATTACK_MIN_GAP_MS);
       }
     }
     if (rig.parts && isWalking && !rig.crownSlipActive && time >= (rig.nextCrownSlipAt ?? Infinity)) {
@@ -3425,10 +3432,21 @@ class PlayScene extends Phaser.Scene {
   shouldStartGiantHandTelegraph(time = this.time.now) {
     const rig = this.distantColossus;
     if (!rig?.parts || rig.giantHandTelegraphActive) return false;
-    if (!this.bossHealthVisible || this.bossRevealActive || this.bossDefeated || !state.running || state.won) return false;
+    if (!this.canStartBossPattern(time)) return false;
     if (!this.level.giantHandAttacks?.length || !this.player?.active) return false;
     if (time < (rig.nextGiantHandAttackAt ?? Infinity)) return false;
     return !this.hasActiveGiantHand();
+  }
+
+  canStartBossPattern(time = this.time.now) {
+    const rig = this.distantColossus;
+    if (!rig?.parts) return false;
+    if (!this.bossHealthVisible || this.bossRevealActive || this.bossDefeated || !state.running || state.won) return false;
+    if (time < (rig.bossAttackBusyUntil || 0)) return false;
+    if (rig.giantHandTelegraphActive || rig.suitcaseAttackActive) return false;
+    if (this.hasActiveGiantHand()) return false;
+    if ((this.suitcaseBoxProjectiles || []).some((box) => box?.active)) return false;
+    return true;
   }
 
   startGiantHandTelegraph(time = this.time.now) {
@@ -3441,6 +3459,10 @@ class PlayScene extends Phaser.Scene {
     rig.giantHandDropped = false;
     rig.suitcaseAttackActive = false;
     rig.walkBlend = 0;
+    rig.bossAttackBusyUntil = Math.max(
+      rig.bossAttackBusyUntil || 0,
+      time + GIANT_HAND_TELEGRAPH_MS + GIANT_HAND_LANDED_MS + BOSS_ATTACK_MIN_GAP_MS
+    );
     this.playLevelSfx(COLOSSUS_HOWL_SFX_KEY, COLOSSUS_HOWL_VOLUME);
   }
 
@@ -3460,6 +3482,7 @@ class PlayScene extends Phaser.Scene {
     if (progress >= 1) {
       rig.giantHandTelegraphActive = false;
       rig.nextGiantHandAttackAt = time + Phaser.Math.Between(7600, 11800);
+      rig.nextSuitcaseAttackAt = Math.max(rig.nextSuitcaseAttackAt || 0, time + BOSS_ATTACK_MIN_GAP_MS);
     }
   }
 
@@ -3492,21 +3515,34 @@ class PlayScene extends Phaser.Scene {
       run.startX + 58,
       run.endX - 58
     );
-    const targetY = run.topY - 40;
+    const targetY = run.topY + 8;
     const box = this.add.image(sourceX, sourceY, config.key);
+    box.setOrigin(0.5, 1);
     box.setDepth(SUITCASE_BOX_DEPTH);
     box.setScale(SUITCASE_BOX_START_SCALE);
     box.setAngle(Phaser.Math.Between(-30, 30));
     this.suitcaseBoxProjectiles?.push(box);
+    const apex = {
+      x: Phaser.Math.Linear(sourceX, targetX, Phaser.Math.FloatBetween(0.38, 0.62)) + Phaser.Math.Between(-210, 210),
+      y: Math.min(sourceY, targetY) - Phaser.Math.Between(180, 360)
+    };
+    const spinDirection = Phaser.Math.RND.pick([-1, 1]);
+    const flight = { progress: 0 };
     this.tweens.add({
-      targets: box,
-      x: targetX,
-      y: targetY,
-      scaleX: SUITCASE_BOX_IMPACT_SCALE,
-      scaleY: SUITCASE_BOX_IMPACT_SCALE,
-      angle: box.angle + Phaser.Math.RND.pick([-1, 1]) * Phaser.Math.Between(540, 900),
+      targets: flight,
+      progress: 1,
       duration: SUITCASE_BOX_FLIGHT_MS,
       ease: "Quad.easeIn",
+      onUpdate: () => {
+        if (!box.active) return;
+        const t = flight.progress;
+        const inv = 1 - t;
+        box.x = inv * inv * sourceX + 2 * inv * t * apex.x + t * t * targetX;
+        box.y = inv * inv * sourceY + 2 * inv * t * apex.y + t * t * targetY;
+        const scale = Phaser.Math.Linear(SUITCASE_BOX_START_SCALE, SUITCASE_BOX_IMPACT_SCALE, Phaser.Math.Easing.Sine.InOut(t));
+        box.setScale(scale);
+        box.setAngle(box.angle + spinDirection * Phaser.Math.Linear(5.2, 18, t));
+      },
       onComplete: () => this.handleSuitcaseBoxImpact(box, run)
     });
   }
@@ -6695,6 +6731,7 @@ class PlayScene extends Phaser.Scene {
       target,
       targetPoint: { x: targetX, y: targetY },
       hitTriggered: false,
+      hitTargets: new Set(),
       startedAt: time,
       startDistance,
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
@@ -7544,6 +7581,8 @@ class PlayScene extends Phaser.Scene {
       }
       flock.vx = (flock.baseVx ?? flock.vx) * speedFactor;
       flock.vy = (flock.baseVy ?? flock.vy) * speedFactor;
+      const previousX = flock.x;
+      const previousY = flock.y;
       flock.x += flock.vx * seconds;
       flock.y += flock.vy * seconds;
       const age = Math.max(0, time - flock.startedAt);
@@ -7557,22 +7596,7 @@ class PlayScene extends Phaser.Scene {
         return true;
       });
 
-      if (!flock.hitTriggered && target?.active && !target.getData("dying") && this.isBirdAttackTargetVisible(target)) {
-        const hitPoint = this.getBirdAttackTargetPoint(target);
-        const distance = Phaser.Math.Distance.Between(flock.x, flock.y, hitPoint.x, hitPoint.y);
-        if (distance < BIRD_ATTACK_HIT_RADIUS) {
-          flock.hitTriggered = true;
-          flock.vx = flock.baseVx ?? flock.vx;
-          flock.vy = flock.baseVy ?? flock.vy;
-          if (this.isGiantHandBirdAttackTarget(target)) {
-            this.damageGiantHand(target);
-          } else {
-            this.defeatEnemy(target);
-            awardScore(300);
-          }
-          updateHud();
-        }
-      }
+      this.applyBirdAttackSweepHits(flock, previousX, previousY);
 
       const camera = this.cameras.main;
       const outside =
@@ -7585,6 +7609,50 @@ class PlayScene extends Phaser.Scene {
       return false;
     });
     this.birdFlocks = this.birdFlockGroups.flatMap((flock) => flock.birds);
+  }
+
+  applyBirdAttackSweepHits(flock, previousX, previousY) {
+    if (!flock?.hitTargets) return;
+    let scored = false;
+    const tryHit = (target) => {
+      if (!target?.active || flock.hitTargets.has(target)) return;
+      if (target.getData?.("dying")) return;
+      if (!this.isBirdAttackTargetVisible(target)) return;
+      const point = this.getBirdAttackTargetPoint(target);
+      const distance = this.distancePointToSegment(point.x, point.y, previousX, previousY, flock.x, flock.y);
+      if (distance > BIRD_ATTACK_HIT_RADIUS) return;
+      flock.hitTargets.add(target);
+      if (target === flock.target) {
+        flock.hitTriggered = true;
+        flock.vx = flock.baseVx ?? flock.vx;
+        flock.vy = flock.baseVy ?? flock.vy;
+      }
+      if (this.isGiantHandBirdAttackTarget(target)) {
+        this.damageGiantHand(target);
+      } else {
+        this.defeatEnemy(target);
+        awardScore(300);
+        scored = true;
+      }
+    };
+
+    this.enemies?.children.iterate((enemy) => {
+      if (!enemy?.active || !enemy.body?.enable || enemy.getData("dying")) return;
+      tryHit(enemy);
+    });
+    this.giantHands?.children.iterate((hand) => {
+      if (this.isGiantHandBirdAttackTarget(hand)) tryHit(hand);
+    });
+    if (scored) updateHud();
+  }
+
+  distancePointToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lengthSq = dx * dx + dy * dy;
+    if (lengthSq <= 0.0001) return Phaser.Math.Distance.Between(px, py, ax, ay);
+    const t = Phaser.Math.Clamp(((px - ax) * dx + (py - ay) * dy) / lengthSq, 0, 1);
+    return Phaser.Math.Distance.Between(px, py, ax + dx * t, ay + dy * t);
   }
 
   scheduleNextBirdFlock(time = 0) {
@@ -9432,6 +9500,11 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks?.forEach((flock) => flock.birds?.forEach((bird) => bird?.destroy?.()));
     this.birdAttackFlocks = [];
+    this.suitcaseBoxProjectiles?.forEach((box) => {
+      this.tweens?.killTweensOf?.(box);
+      box?.destroy?.();
+    });
+    this.suitcaseBoxProjectiles = [];
     this.giantHands?.clear?.(true, true);
     this.giantHands = null;
     this.damageFlickerTween?.remove?.();

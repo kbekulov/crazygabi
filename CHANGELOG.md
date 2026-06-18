@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.31
+
+- Added spacing between BU's hand crush and suitcase crate attacks so patterns do not overlap.
+- Changed BU's thrown crate into a longer spinning ballistic arc from distant scale to full size.
+- Let bird attack sweep through and defeat multiple enemies along its flight path.
+
 ## v0.55.30
 
 - Reduced kill impact sound volume and raised the Level 5 boss music volume.
