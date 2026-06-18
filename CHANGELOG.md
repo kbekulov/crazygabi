@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.32
+
+- Fixed BU's thrown crate so it spins around its center while flying toward the platform.
+
 ## v0.55.31
 
 - Added spacing between BU's hand crush and suitcase crate attacks so patterns do not overlap.

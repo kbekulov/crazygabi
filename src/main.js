@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.31";
+const GAME_VERSION = "v0.55.32";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -290,7 +290,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260618-boss-attack-spacing";
+const ASSET_VERSION = "20260619-centered-crate-spin";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -3515,16 +3515,16 @@ class PlayScene extends Phaser.Scene {
       run.startX + 58,
       run.endX - 58
     );
-    const targetY = run.topY + 8;
+    const targetCenterY = run.topY - (this.textures.get(config.key)?.getSourceImage?.()?.height || 0) * SUITCASE_BOX_IMPACT_SCALE * 0.5 + 8;
     const box = this.add.image(sourceX, sourceY, config.key);
-    box.setOrigin(0.5, 1);
+    box.setOrigin(0.5);
     box.setDepth(SUITCASE_BOX_DEPTH);
     box.setScale(SUITCASE_BOX_START_SCALE);
     box.setAngle(Phaser.Math.Between(-30, 30));
     this.suitcaseBoxProjectiles?.push(box);
     const apex = {
       x: Phaser.Math.Linear(sourceX, targetX, Phaser.Math.FloatBetween(0.38, 0.62)) + Phaser.Math.Between(-210, 210),
-      y: Math.min(sourceY, targetY) - Phaser.Math.Between(180, 360)
+      y: Math.min(sourceY, targetCenterY) - Phaser.Math.Between(180, 360)
     };
     const spinDirection = Phaser.Math.RND.pick([-1, 1]);
     const flight = { progress: 0 };
@@ -3538,7 +3538,7 @@ class PlayScene extends Phaser.Scene {
         const t = flight.progress;
         const inv = 1 - t;
         box.x = inv * inv * sourceX + 2 * inv * t * apex.x + t * t * targetX;
-        box.y = inv * inv * sourceY + 2 * inv * t * apex.y + t * t * targetY;
+        box.y = inv * inv * sourceY + 2 * inv * t * apex.y + t * t * targetCenterY;
         const scale = Phaser.Math.Linear(SUITCASE_BOX_START_SCALE, SUITCASE_BOX_IMPACT_SCALE, Phaser.Math.Easing.Sine.InOut(t));
         box.setScale(scale);
         box.setAngle(box.angle + spinDirection * Phaser.Math.Linear(5.2, 18, t));
