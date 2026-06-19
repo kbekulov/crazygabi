@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.33
+
+- Removed the main menu sound recommendation line.
+- Expanded Level 5 quest goals to include the basket, boss, key, enemies, and leap/bird objectives.
+- Retuned Easy and Hard difficulty around timers, hazard frequency, enemy density, recovery hearts, and BU boss attack pressure.
+
 ## v0.55.32
 
 - Fixed BU's thrown crate so it spins around its center while flying toward the platform.

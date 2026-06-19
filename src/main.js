@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.32";
+const GAME_VERSION = "v0.55.33";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -290,7 +290,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260619-centered-crate-spin";
+const ASSET_VERSION = "20260619-difficulty-quest-balance";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -307,6 +307,44 @@ const DEFAULT_AUDIO_SETTINGS = {
   sfx: true
 };
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
+const DIFFICULTY_PROFILES = {
+  [DIFFICULTY_EASY]: {
+    scoreMultiplier: 0.5,
+    timeMultiplier: 1.25,
+    hazardDelayMultiplier: 1.45,
+    hazardPaceMultiplier: 0.82,
+    quakeDelayMultiplier: 1.35,
+    quakeBurstMultiplier: 0.75,
+    enemyHeartDropChance: 0.42,
+    maxHeartDrops: 4,
+    giantHandHeartDropChance: 0.45,
+    suitcaseBoxHeartDropChance: 0.42,
+    suitcaseBoxEnemySpawnCount: [1, 2],
+    bossAttackGapMs: 4200,
+    giantHandTelegraphMs: 2250,
+    giantHandNextDelay: [10500, 15500],
+    suitcaseNextDelay: [8200, 13200],
+    respawnMinTime: 70
+  },
+  [DIFFICULTY_HARD]: {
+    scoreMultiplier: 1,
+    timeMultiplier: 0.9,
+    hazardDelayMultiplier: 0.78,
+    hazardPaceMultiplier: 1.12,
+    quakeDelayMultiplier: 0.82,
+    quakeBurstMultiplier: 1.2,
+    enemyHeartDropChance: 0.16,
+    maxHeartDrops: 2,
+    giantHandHeartDropChance: 0.16,
+    suitcaseBoxHeartDropChance: 0.14,
+    suitcaseBoxEnemySpawnCount: [3, 5],
+    bossAttackGapMs: 1700,
+    giantHandTelegraphMs: 1500,
+    giantHandNextDelay: [5600, 8800],
+    suitcaseNextDelay: [3900, 6800],
+    respawnMinTime: 35
+  }
+};
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const INTRO_RETRY_MS = 1000;
@@ -723,7 +761,7 @@ const LEVELS = [
     ],
     introTitle: "Level 5",
     introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below.",
-    questTasks: ["leap", "bird", "coins"]
+    questTasks: ["leap", "basket", "bird", "boss", "key", "coins", "enemies"]
   }
 ];
 
@@ -1176,7 +1214,8 @@ function createQuestProgress() {
   return {
     birdAttackUsed: false,
     leapOfFaith: false,
-    elevatorRidden: false
+    elevatorRidden: false,
+    bossDefeated: false
   };
 }
 
@@ -1389,6 +1428,7 @@ function getLevelQuestDefinitions(level = getActiveLevel()) {
     key: { label: "FIND THE KEY", complete: () => state.hasKey },
     coins: { label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.levelGems >= state.totalGems },
     bird: { label: "USE BIRD ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) },
+    boss: { label: "DEFEAT BU", complete: () => Boolean(state.questProgress?.bossDefeated) },
     leap: { label: "DO A LEAP OF FAITH", complete: () => Boolean(state.questProgress?.leapOfFaith) },
     elevator: { label: "RIDE THE ELEVATOR", complete: () => Boolean(state.questProgress?.elevatorRidden) },
     enemies: { label: "DEFEAT ALL ENEMIES", complete: () => state.totalEnemies > 0 && state.enemiesDefeated >= state.totalEnemies }
@@ -1526,8 +1566,23 @@ function updateDifficultyToggle() {
   hud.difficultyHard.setAttribute("aria-pressed", String(!isEasy));
 }
 
+function getDifficultyProfile() {
+  return DIFFICULTY_PROFILES[state.difficulty] || DIFFICULTY_PROFILES[DIFFICULTY_HARD];
+}
+
+function getDifficultyScaledRange(range, multiplierKey, minimum = 1) {
+  const multiplier = getDifficultyProfile()[multiplierKey] ?? 1;
+  const scaled = (range || [minimum, minimum]).map((value) => Math.max(minimum, Math.round(value * multiplier)));
+  return scaled[0] <= scaled[1] ? scaled : [scaled[1], scaled[0]];
+}
+
+function getEffectiveTimeLimit(level) {
+  if (!Number.isFinite(level?.timeLimit)) return Infinity;
+  return Math.max(45, Math.round(level.timeLimit * (getDifficultyProfile().timeMultiplier ?? 1)));
+}
+
 function getScoreMultiplier() {
-  return state.difficulty === DIFFICULTY_EASY ? 0.5 : 1;
+  return getDifficultyProfile().scoreMultiplier ?? 1;
 }
 
 function awardScore(points) {
@@ -2149,7 +2204,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.moves = false;
     this.player.setVelocity(0, 0);
 
-    state.timeLeft = Number.isFinite(this.level.timeLimit) ? this.level.timeLimit : Infinity;
+    state.timeLeft = getEffectiveTimeLimit(this.level);
     state.hasKey = false;
     state.hasDoubleJump = false;
     state.hasBirdControl = false;
@@ -2980,7 +3035,7 @@ class PlayScene extends Phaser.Scene {
       suitcaseAttackActive: false,
       suitcaseAttackStartedAt: 0,
       suitcaseAttackDuration: 2100,
-      nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(4200, 8200),
+      nextSuitcaseAttackAt: this.time.now + Phaser.Math.Between(...getDifficultyProfile().suitcaseNextDelay),
       suitcaseBoxThrown: false,
       suitcaseAttackDropTriggerAt: 0,
       bossAttackBusyUntil: 0,
@@ -2991,8 +3046,8 @@ class PlayScene extends Phaser.Scene {
       freeArmHandAttackTriggered: false,
       giantHandTelegraphActive: false,
       giantHandTelegraphStartedAt: 0,
-      giantHandTelegraphDuration: GIANT_HAND_TELEGRAPH_MS,
-      nextGiantHandAttackAt: this.time.now + Phaser.Math.Between(3600, 6200),
+      giantHandTelegraphDuration: getDifficultyProfile().giantHandTelegraphMs ?? GIANT_HAND_TELEGRAPH_MS,
+      nextGiantHandAttackAt: this.time.now + Phaser.Math.Between(...getDifficultyProfile().giantHandNextDelay),
       nextGiantHandRumbleAt: 0,
       giantHandDropped: false
     };
@@ -3366,7 +3421,7 @@ class PlayScene extends Phaser.Scene {
         rig.suitcaseBoxThrown = false;
         rig.bossAttackBusyUntil = Math.max(
           rig.bossAttackBusyUntil || 0,
-          time + SUITCASE_BOX_FLIGHT_MS + BOSS_ATTACK_MIN_GAP_MS
+          time + SUITCASE_BOX_FLIGHT_MS + (getDifficultyProfile().bossAttackGapMs ?? BOSS_ATTACK_MIN_GAP_MS)
         );
       }
     }
@@ -3379,8 +3434,8 @@ class PlayScene extends Phaser.Scene {
       if (progress >= 1) {
         rig.suitcaseAttackActive = false;
         rig.suitcaseAttackDropTriggerAt = time;
-        rig.nextSuitcaseAttackAt = time + Phaser.Math.Between(5200, 9800);
-        rig.nextGiantHandAttackAt = Math.max(rig.nextGiantHandAttackAt || 0, time + BOSS_ATTACK_MIN_GAP_MS);
+        rig.nextSuitcaseAttackAt = time + Phaser.Math.Between(...getDifficultyProfile().suitcaseNextDelay);
+        rig.nextGiantHandAttackAt = Math.max(rig.nextGiantHandAttackAt || 0, time + (getDifficultyProfile().bossAttackGapMs ?? BOSS_ATTACK_MIN_GAP_MS));
       }
     }
     if (rig.parts && isWalking && !rig.crownSlipActive && time >= (rig.nextCrownSlipAt ?? Infinity)) {
@@ -3454,14 +3509,14 @@ class PlayScene extends Phaser.Scene {
     if (!rig) return;
     rig.giantHandTelegraphActive = true;
     rig.giantHandTelegraphStartedAt = time;
-    rig.giantHandTelegraphDuration = GIANT_HAND_TELEGRAPH_MS;
+    rig.giantHandTelegraphDuration = getDifficultyProfile().giantHandTelegraphMs ?? GIANT_HAND_TELEGRAPH_MS;
     rig.nextGiantHandRumbleAt = time;
     rig.giantHandDropped = false;
     rig.suitcaseAttackActive = false;
     rig.walkBlend = 0;
     rig.bossAttackBusyUntil = Math.max(
       rig.bossAttackBusyUntil || 0,
-      time + GIANT_HAND_TELEGRAPH_MS + GIANT_HAND_LANDED_MS + BOSS_ATTACK_MIN_GAP_MS
+      time + rig.giantHandTelegraphDuration + GIANT_HAND_LANDED_MS + (getDifficultyProfile().bossAttackGapMs ?? BOSS_ATTACK_MIN_GAP_MS)
     );
     this.playLevelSfx(COLOSSUS_HOWL_SFX_KEY, COLOSSUS_HOWL_VOLUME);
   }
@@ -3481,8 +3536,8 @@ class PlayScene extends Phaser.Scene {
     }
     if (progress >= 1) {
       rig.giantHandTelegraphActive = false;
-      rig.nextGiantHandAttackAt = time + Phaser.Math.Between(7600, 11800);
-      rig.nextSuitcaseAttackAt = Math.max(rig.nextSuitcaseAttackAt || 0, time + BOSS_ATTACK_MIN_GAP_MS);
+      rig.nextGiantHandAttackAt = time + Phaser.Math.Between(...getDifficultyProfile().giantHandNextDelay);
+      rig.nextSuitcaseAttackAt = Math.max(rig.nextSuitcaseAttackAt || 0, time + (getDifficultyProfile().bossAttackGapMs ?? BOSS_ATTACK_MIN_GAP_MS));
     }
   }
 
@@ -3608,7 +3663,7 @@ class PlayScene extends Phaser.Scene {
 
   spawnSuitcaseBoxEnemies(x, run) {
     if (!this.enemies || !this.level?.enemySprite || !run) return;
-    const count = Phaser.Math.Between(...SUITCASE_BOX_ENEMY_SPAWN_COUNT);
+    const count = Phaser.Math.Between(...(getDifficultyProfile().suitcaseBoxEnemySpawnCount || SUITCASE_BOX_ENEMY_SPAWN_COUNT));
     const usedXs = [];
     for (let index = 0; index < count; index += 1) {
       const side = index % 2 === 0 ? -1 : 1;
@@ -3630,7 +3685,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   tryDropHeartFromSuitcaseBox(x, run) {
-    if (!this.heartDrops || !run || Phaser.Math.FloatBetween(0, 1) > SUITCASE_BOX_HEART_DROP_CHANCE) return;
+    if (!this.heartDrops || !run || Phaser.Math.FloatBetween(0, 1) > (getDifficultyProfile().suitcaseBoxHeartDropChance ?? SUITCASE_BOX_HEART_DROP_CHANCE)) return;
     const settleX = Phaser.Math.Clamp(x + Phaser.Math.Between(-84, 84), run.startX + 34, run.endX - 34);
     const settleY = run.topY - TILE / 2;
     const heart = this.heartDrops.create(x, settleY - 80, "life-heart");
@@ -3783,9 +3838,11 @@ class PlayScene extends Phaser.Scene {
   handleBossDefeated() {
     if (this.bossDefeated) return;
     this.bossDefeated = true;
+    state.questProgress.bossDefeated = true;
     this.bossHealth = 0;
     updateBossHealthHud({ value: 0 });
     this.stopGiantHandBossAttacks();
+    updateQuestHud();
     this.dismissDistantColossus();
     this.revealBossExitKey();
   }
@@ -4668,8 +4725,8 @@ class PlayScene extends Phaser.Scene {
           acorn.body.allowGravity = false;
           acorn.body.immovable = false;
           acorn.setData("homeX", x);
-          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
-          acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
+          acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...getDifficultyScaledRange(this.level.acornDelay, "hazardDelayMultiplier", 60)));
+          acorn.setData("pace", Phaser.Math.Between(...getDifficultyScaledRange(this.level.acornPace, "hazardPaceMultiplier", 80)));
           acorn.setVelocity(0, 0);
           acorn.setVisible(false);
           acorn.body.enable = false;
@@ -8982,7 +9039,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    this.nextQuakeAt = fromTime + Phaser.Math.Between(quake.minDelay, quake.maxDelay);
+    this.nextQuakeAt = fromTime + Phaser.Math.Between(...getDifficultyScaledRange([quake.minDelay, quake.maxDelay], "quakeDelayMultiplier", 1000));
   }
 
   updateEnvironmentalQuake(time) {
@@ -8991,15 +9048,15 @@ class PlayScene extends Phaser.Scene {
     if (time < this.nextQuakeAt) return;
 
     this.nextQuakeAt = Infinity;
-    this.quakeDropStartsAt = time + quake.brickDelay;
-    this.quakeDropUntil = this.quakeDropStartsAt + quake.burstDuration;
+    this.quakeDropStartsAt = time + Math.max(120, Math.round(quake.brickDelay * (getDifficultyProfile().hazardDelayMultiplier ?? 1)));
+    this.quakeDropUntil = this.quakeDropStartsAt + Math.max(500, Math.round(quake.burstDuration * (getDifficultyProfile().quakeBurstMultiplier ?? 1)));
     this.cameras.main.shake(quake.shakeDuration, quake.shakeIntensity);
     this.playLevelSfx(quake.sfx, 0.68);
     this.positionQuakeBricksNearLightImpacts();
     this.acorns.children.iterate((acorn) => {
       if (!acorn || !acorn.active) return;
-      acorn.setData("nextDrop", this.quakeDropStartsAt + Phaser.Math.Between(...quake.brickDropDelay));
-      acorn.setData("pace", Phaser.Math.Between(...quake.brickPace));
+      acorn.setData("nextDrop", this.quakeDropStartsAt + Phaser.Math.Between(...getDifficultyScaledRange(quake.brickDropDelay, "hazardDelayMultiplier", 40)));
+      acorn.setData("pace", Phaser.Math.Between(...getDifficultyScaledRange(quake.brickPace, "hazardPaceMultiplier", 80)));
     });
     this.scheduleNextQuake(this.quakeDropUntil);
   }
@@ -9188,7 +9245,8 @@ class PlayScene extends Phaser.Scene {
 
   startTimer() {
     if (this.timerEvent) this.timerEvent.remove(false);
-    if (!Number.isFinite(this.level.timeLimit)) {
+    const effectiveTimeLimit = getEffectiveTimeLimit(this.level);
+    if (!Number.isFinite(effectiveTimeLimit)) {
       this.timerEvent = null;
       state.timeLeft = Infinity;
       updateHud();
@@ -9765,8 +9823,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   tryDropHeart(x, y) {
-    if (this.heartDropsCreated >= MAX_HEART_DROPS_PER_LEVEL) return;
-    if (Phaser.Math.FloatBetween(0, 1) > HEART_DROP_CHANCE) return;
+    if (this.heartDropsCreated >= (getDifficultyProfile().maxHeartDrops ?? MAX_HEART_DROPS_PER_LEVEL)) return;
+    if (Phaser.Math.FloatBetween(0, 1) > (getDifficultyProfile().enemyHeartDropChance ?? HEART_DROP_CHANCE)) return;
 
     this.heartDropsCreated += 1;
     const settleY = this.findPickupYOnPlatform(x, y);
@@ -10113,7 +10171,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   tryDropHeartFromGiantHand(hand) {
-    if (!this.heartDrops || Phaser.Math.FloatBetween(0, 1) > GIANT_HAND_HEART_DROP_CHANCE) return;
+    if (!this.heartDrops || Phaser.Math.FloatBetween(0, 1) > (getDifficultyProfile().giantHandHeartDropChance ?? GIANT_HAND_HEART_DROP_CHANCE)) return;
     const run = this.getLowestPlatformRunNear(hand.x);
     if (!run) return;
     const settleX = Phaser.Math.Clamp(hand.x + Phaser.Math.Between(-92, 92), run.startX + 34, run.endX - 34);
@@ -10161,8 +10219,8 @@ class PlayScene extends Phaser.Scene {
     acorn.setPosition(acorn.getData("homeX"), this.cameras.main.scrollY - FALLING_OBJECT_SPAWN_OFFSET);
     acorn.setVisible(false);
     acorn.body.enable = false;
-    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...this.level.acornDelay));
-    acorn.setData("pace", Phaser.Math.Between(...this.level.acornPace));
+    acorn.setData("nextDrop", this.time.now + Phaser.Math.Between(...getDifficultyScaledRange(this.level.acornDelay, "hazardDelayMultiplier", 60)));
+    acorn.setData("pace", Phaser.Math.Between(...getDifficultyScaledRange(this.level.acornPace, "hazardPaceMultiplier", 80)));
   }
 
   loseLife({ respawn = false } = {}) {
@@ -10181,7 +10239,7 @@ class PlayScene extends Phaser.Scene {
       });
       return;
     }
-    if (Number.isFinite(state.timeLeft)) state.timeLeft = Math.max(45, state.timeLeft);
+    if (Number.isFinite(state.timeLeft)) state.timeLeft = Math.max(getDifficultyProfile().respawnMinTime ?? 45, state.timeLeft);
     if (respawn) {
       this.resetFinalElevator();
       this.resetMysteriousMan();
