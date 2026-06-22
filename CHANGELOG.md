@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.35
+
+- Updated the main chain link art.
+- Moved hanging chain anchors toward platform edges so they can later support climbing routes.
+
 ## v0.55.34
 
 - Added decorative hanging chains for Level 3 and Level 5 platforms.

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.34";
+const GAME_VERSION = "v0.55.35";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -298,7 +298,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260622-hanging-chains";
+const ASSET_VERSION = "20260622-chain-edge-anchors";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -4971,12 +4971,19 @@ class PlayScene extends Phaser.Scene {
       const centerColumn = Math.floor(((run.startX + run.endX) / 2) / TILE);
       const keepNoise = this.wallPlacementNoise(run.rowIndex + 131, centerColumn + 47);
       if (keepNoise > candidateRate) return;
-      const belowTopY = this.findNearestPlatformTopBelow(run.startX + width / 2, run.topY);
+      const edgeInset = Math.min(TILE * 0.9, width * 0.22);
+      const sideNoise = this.wallPlacementNoise(run.rowIndex + 211, centerColumn + 13);
+      const edgeJitter = (this.wallPlacementNoise(run.rowIndex + 241, centerColumn + 37) - 0.5) * TILE * 0.36;
+      const anchorX = sideNoise > 0.5
+        ? run.endX - edgeInset + edgeJitter
+        : run.startX + edgeInset + edgeJitter;
+      const belowTopY = this.findNearestPlatformTopBelow(anchorX, run.topY);
       const availableDrop = Math.min((belowTopY || this.levelHeight + TILE * 3) - run.topY - TILE, TILE * 12);
       if (availableDrop < minLinks * HANGING_CHAIN_LINK_SPACING + TILE) return;
       candidates.push({
         run,
         width,
+        anchorX: Phaser.Math.Clamp(anchorX, run.startX + TILE * 0.5, run.endX - TILE * 0.5),
         availableDrop,
         score: this.wallPlacementNoise(run.rowIndex + 17, centerColumn + 89)
       });
@@ -4986,10 +4993,7 @@ class PlayScene extends Phaser.Scene {
       .sort((a, b) => a.score - b.score)
       .slice(0, maxChains)
       .forEach((candidate, index) => {
-        const { run, width, availableDrop } = candidate;
-        const margin = Math.min(TILE * 1.45, width * 0.28);
-        const anchorNoise = this.wallPlacementNoise(run.rowIndex + 211, Math.floor(run.startX / TILE) + index * 13);
-        const anchorX = run.startX + margin + anchorNoise * Math.max(TILE, width - margin * 2);
+        const { run, anchorX, availableDrop } = candidate;
         const maxLinksForGap = Math.max(minLinks, Math.floor((availableDrop - TILE * 0.6) / HANGING_CHAIN_LINK_SPACING));
         const lengthNoise = this.wallPlacementNoise(run.rowIndex + 307, Math.floor(anchorX / TILE) + 19);
         const linkCount = Phaser.Math.Clamp(
