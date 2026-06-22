@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.36";
+const GAME_VERSION = "v0.55.37";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -47,14 +47,15 @@ const GABI_DASH_FRAME_WIDTH = 238;
 const GABI_DASH_FRAME_HEIGHT = 238;
 const GABI_CLIMB_FRAME_WIDTH = 720;
 const GABI_CLIMB_FRAME_HEIGHT = 720;
-const GABI_CLIMB_SCALE = (GABI_FRAME_HEIGHT * GABI_SCALE) / GABI_CLIMB_FRAME_HEIGHT;
-const GABI_CHAIN_GRAB_DISTANCE = 34;
+const GABI_CLIMB_SCALE = ((GABI_FRAME_HEIGHT * GABI_SCALE) / GABI_CLIMB_FRAME_HEIGHT) * 1.3;
+const GABI_CHAIN_GRAB_DISTANCE = 46;
 const GABI_CHAIN_CLIMB_SPEED = 116;
-const GABI_CHAIN_HORIZONTAL_LERP = 0.34;
-const GABI_CHAIN_TOP_DISMOUNT_Y = 38;
-const GABI_CHAIN_BOTTOM_DISMOUNT_Y = 18;
+const GABI_CHAIN_HORIZONTAL_LERP = 0.38;
+const GABI_CHAIN_SIDE_OFFSET = 18;
+const GABI_CHAIN_TOP_DISMOUNT_Y = 12;
+const GABI_CHAIN_BOTTOM_DISMOUNT_Y = 10;
 const GABI_CHAIN_JUMP_SPEED_Y = -430;
-const GABI_CHAIN_JUMP_SPEED_X = 175;
+const GABI_CHAIN_JUMP_SPEED_X = 230;
 const GABI_DASH_DOUBLE_TAP_MS = 260;
 const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5 * 0.8;
 const GABI_DASH_SPEED = 780;
@@ -308,7 +309,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260622-chain-climb";
+const ASSET_VERSION = "20260622-chain-climb-fixes";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -4991,7 +4992,7 @@ class PlayScene extends Phaser.Scene {
       const centerColumn = Math.floor(((run.startX + run.endX) / 2) / TILE);
       const keepNoise = this.wallPlacementNoise(run.rowIndex + 131, centerColumn + 47);
       if (keepNoise > candidateRate) return;
-      const edgeInset = Math.min(TILE * 0.9, width * 0.22);
+      const edgeInset = Math.min(TILE * 0.34, width * 0.16);
       const sideNoise = this.wallPlacementNoise(run.rowIndex + 211, centerColumn + 13);
       const edgeJitter = (this.wallPlacementNoise(run.rowIndex + 241, centerColumn + 37) - 0.5) * TILE * 0.36;
       const anchorX = sideNoise > 0.5
@@ -5003,7 +5004,7 @@ class PlayScene extends Phaser.Scene {
       candidates.push({
         run,
         width,
-        anchorX: Phaser.Math.Clamp(anchorX, run.startX + TILE * 0.5, run.endX - TILE * 0.5),
+        anchorX: Phaser.Math.Clamp(anchorX, run.startX + TILE * 0.24, run.endX - TILE * 0.24),
         availableDrop,
         score: this.wallPlacementNoise(run.rowIndex + 17, centerColumn + 89)
       });
@@ -5021,7 +5022,7 @@ class PlayScene extends Phaser.Scene {
           minLinks,
           Math.min(maxLinks, maxLinksForGap)
         );
-        this.createHangingChain(anchorX, run.topY + PLATFORM_Y_OFFSET + TILE * 0.18, linkCount, index, run);
+        this.createHangingChain(anchorX, run.topY + TILE * 0.32, linkCount, index, run);
       });
   }
 
@@ -5097,7 +5098,7 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  updateChainClimb({ climbUp = false, climbDown = false, left = false, right = false, jump = false } = {}) {
+  updateChainClimb({ climbUp = false, climbDown = false, left = false, right = false, jump = false, delta = 0 } = {}) {
     if (!this.player?.body || !this.hangingChains?.length || !this.anims.exists("gabi-climb")) return false;
     if (this.chainClimb?.chain && !this.chainClimb.chain.root?.active) this.stopChainClimb();
 
@@ -5111,8 +5112,13 @@ class PlayScene extends Phaser.Scene {
     }
     if (!this.chainClimb) return false;
 
+    if (left !== right) {
+      this.chainClimb.side = left ? -1 : 1;
+      this.setGabiFlip(this.chainClimb.side > 0);
+    }
+
     if (jump && !grabbedThisFrame) {
-      const direction = left !== right ? (left ? -1 : 1) : (this.player.flipX ? -1 : 1);
+      const direction = left !== right ? (left ? -1 : 1) : this.chainClimb.side || (this.player.flipX ? -1 : 1);
       this.stopChainClimb({ jump: true, direction });
       return true;
     }
@@ -5137,9 +5143,15 @@ class PlayScene extends Phaser.Scene {
 
     this.player.body.setAllowGravity(false);
     this.player.setAcceleration(0, 0);
-    this.player.setVelocity(0, verticalInput * GABI_CHAIN_CLIMB_SPEED);
-    const nextY = Phaser.Math.Clamp(this.player.y, minY, maxY);
-    const nextX = Phaser.Math.Linear(this.player.x, target.x, GABI_CHAIN_HORIZONTAL_LERP);
+    this.player.setVelocity(0, 0);
+    const nextY = Phaser.Math.Clamp(
+      this.player.y + verticalInput * GABI_CHAIN_CLIMB_SPEED * (delta / 1000),
+      minY,
+      maxY
+    );
+    const updatedTarget = this.getClimbPointOnChain(this.chainClimb.chain, nextY) || target;
+    const sideOffset = (this.chainClimb.side || 1) * GABI_CHAIN_SIDE_OFFSET;
+    const nextX = Phaser.Math.Linear(this.player.x, updatedTarget.x + sideOffset, GABI_CHAIN_HORIZONTAL_LERP);
     this.player.setPosition(nextX, nextY);
     this.player.body.reset(nextX, nextY);
     this.setGabiAnimation("climb");
@@ -5197,7 +5209,8 @@ class PlayScene extends Phaser.Scene {
 
   startChainClimb(target) {
     if (!target?.chain || !this.player?.body) return;
-    this.chainClimb = { chain: target.chain };
+    const side = this.player.x < target.point.x ? -1 : 1;
+    this.chainClimb = { chain: target.chain, side };
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.resetGlideState();
@@ -5206,7 +5219,11 @@ class PlayScene extends Phaser.Scene {
     this.player.body.setAllowGravity(false);
     this.player.setAcceleration(0, 0);
     this.player.setVelocity(0, 0);
-    this.player.setPosition(target.point.x, Phaser.Math.Clamp(this.player.y, target.chain.anchorY + GABI_CHAIN_TOP_DISMOUNT_Y, this.getChainBottomY(target.chain) - GABI_CHAIN_BOTTOM_DISMOUNT_Y));
+    this.player.setPosition(
+      target.point.x + side * GABI_CHAIN_SIDE_OFFSET,
+      Phaser.Math.Clamp(this.player.y, target.chain.anchorY + GABI_CHAIN_TOP_DISMOUNT_Y, this.getChainBottomY(target.chain) - GABI_CHAIN_BOTTOM_DISMOUNT_Y)
+    );
+    this.setGabiFlip(side > 0);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("climb");
   }
@@ -6107,11 +6124,11 @@ class PlayScene extends Phaser.Scene {
     const right = this.cursors.right.isDown || this.keysInput.right.isDown || mobileDirection > 0;
     const leftPressed = Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.keysInput.left);
     const rightPressed = Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.keysInput.right);
-    const jump =
-      Phaser.Input.Keyboard.JustDown(this.cursors.up) ||
-      Phaser.Input.Keyboard.JustDown(this.keysInput.jump) ||
-      Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW) ||
-      this.consumeMobileJump();
+    const jumpSpace = Phaser.Input.Keyboard.JustDown(this.keysInput.jump);
+    const jumpUp = Phaser.Input.Keyboard.JustDown(this.cursors.up) || Phaser.Input.Keyboard.JustDown(this.keysInput.jumpW);
+    const mobileJump = this.consumeMobileJump();
+    const jump = jumpUp || jumpSpace || mobileJump;
+    const chainJump = jumpSpace || (mobileJump && left !== right);
     const climbUp = this.cursors.up.isDown || this.keysInput.jumpW.isDown || jump;
     const climbDown = this.cursors.down.isDown || this.keysInput.down.isDown;
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
@@ -6126,7 +6143,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.updateChainClimb({ climbUp, climbDown, left, right, jump })) {
+    if (this.updateChainClimb({ climbUp, climbDown, left, right, jump: chainJump, delta })) {
       if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
       this.updateDiveCameraZoom();
       return;

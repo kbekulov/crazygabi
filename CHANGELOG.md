@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.55.37
+
+- Enlarged Gabi's climbing sprite on chains.
+- Fixed chain climbing so Gabi can move up and down manually.
+- Added side switching and directional chain jump-offs.
+- Moved chain anchors closer to platform edges for cleaner platform dismounts.
+
 ## v0.55.36
 
 - Added Gabi's chain climbing sprite and animation.
