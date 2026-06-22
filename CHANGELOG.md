@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.38
+
+- Made Gabi release immediately after climbing past the bottom of a chain.
+- Added automatic chain grabbing when Gabi jumps or dashes into any part of a chain.
+- Centered Gabi's climbing sprite on the chain while keeping left/right directional control.
+
 ## v0.55.37
 
 - Enlarged Gabi's climbing sprite on chains.

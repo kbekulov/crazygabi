@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.37";
+const GAME_VERSION = "v0.55.38";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -49,9 +49,10 @@ const GABI_CLIMB_FRAME_WIDTH = 720;
 const GABI_CLIMB_FRAME_HEIGHT = 720;
 const GABI_CLIMB_SCALE = ((GABI_FRAME_HEIGHT * GABI_SCALE) / GABI_CLIMB_FRAME_HEIGHT) * 1.3;
 const GABI_CHAIN_GRAB_DISTANCE = 46;
+const GABI_CHAIN_AUTO_GRAB_DISTANCE = 30;
 const GABI_CHAIN_CLIMB_SPEED = 116;
 const GABI_CHAIN_HORIZONTAL_LERP = 0.38;
-const GABI_CHAIN_SIDE_OFFSET = 18;
+const GABI_CHAIN_SIDE_OFFSET = 0;
 const GABI_CHAIN_TOP_DISMOUNT_Y = 12;
 const GABI_CHAIN_BOTTOM_DISMOUNT_Y = 10;
 const GABI_CHAIN_JUMP_SPEED_Y = -430;
@@ -309,7 +310,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260622-chain-climb-fixes";
+const ASSET_VERSION = "20260622-chain-auto-catch";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -5098,13 +5099,23 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  updateChainClimb({ climbUp = false, climbDown = false, left = false, right = false, jump = false, delta = 0 } = {}) {
+  updateChainClimb({
+    climbUp = false,
+    climbDown = false,
+    left = false,
+    right = false,
+    jump = false,
+    delta = 0,
+    autoGrab = false
+  } = {}) {
     if (!this.player?.body || !this.hangingChains?.length || !this.anims.exists("gabi-climb")) return false;
     if (this.chainClimb?.chain && !this.chainClimb.chain.root?.active) this.stopChainClimb();
 
     let grabbedThisFrame = false;
-    if (!this.chainClimb && (climbUp || climbDown)) {
-      const target = this.findNearestClimbChainPoint();
+    if (!this.chainClimb && (climbUp || climbDown || autoGrab)) {
+      const target = this.findNearestClimbChainPoint({
+        grabDistance: autoGrab && !climbUp && !climbDown ? GABI_CHAIN_AUTO_GRAB_DISTANCE : GABI_CHAIN_GRAB_DISTANCE
+      });
       if (target) {
         this.startChainClimb(target);
         grabbedThisFrame = true;
@@ -5131,24 +5142,22 @@ class PlayScene extends Phaser.Scene {
 
     const verticalInput = climbUp === climbDown ? 0 : climbUp ? -1 : 1;
     const minY = this.chainClimb.chain.anchorY + GABI_CHAIN_TOP_DISMOUNT_Y;
-    const maxY = this.getChainBottomY(this.chainClimb.chain) - GABI_CHAIN_BOTTOM_DISMOUNT_Y;
+    const bottomY = this.getChainBottomY(this.chainClimb.chain);
+    const maxY = bottomY - GABI_CHAIN_BOTTOM_DISMOUNT_Y;
     if (verticalInput < 0 && this.player.y <= minY + 2) {
       this.dismountChainToPlatform(this.chainClimb.chain);
       return true;
     }
-    if (verticalInput > 0 && this.player.y >= maxY - 2) {
-      this.stopChainClimb();
+    const intendedY = this.player.y + verticalInput * GABI_CHAIN_CLIMB_SPEED * (delta / 1000);
+    if (verticalInput > 0 && intendedY >= bottomY - 1) {
+      this.stopChainClimb({ drop: true });
       return true;
     }
 
     this.player.body.setAllowGravity(false);
     this.player.setAcceleration(0, 0);
     this.player.setVelocity(0, 0);
-    const nextY = Phaser.Math.Clamp(
-      this.player.y + verticalInput * GABI_CHAIN_CLIMB_SPEED * (delta / 1000),
-      minY,
-      maxY
-    );
+    const nextY = Phaser.Math.Clamp(intendedY, minY, maxY);
     const updatedTarget = this.getClimbPointOnChain(this.chainClimb.chain, nextY) || target;
     const sideOffset = (this.chainClimb.side || 1) * GABI_CHAIN_SIDE_OFFSET;
     const nextX = Phaser.Math.Linear(this.player.x, updatedTarget.x + sideOffset, GABI_CHAIN_HORIZONTAL_LERP);
@@ -5163,7 +5172,7 @@ class PlayScene extends Phaser.Scene {
     return true;
   }
 
-  findNearestClimbChainPoint() {
+  findNearestClimbChainPoint({ grabDistance = GABI_CHAIN_GRAB_DISTANCE } = {}) {
     let nearest = null;
     const playerX = this.player.x;
     const playerY = this.player.y - 8;
@@ -5173,7 +5182,7 @@ class PlayScene extends Phaser.Scene {
       const distanceX = Math.abs(point.x - playerX);
       const distanceY = Math.max(0, chain.anchorY - playerY, playerY - this.getChainBottomY(chain));
       const distance = Math.hypot(distanceX, distanceY * 0.6);
-      if (distance > GABI_CHAIN_GRAB_DISTANCE) return;
+      if (distance > grabDistance) return;
       if (!nearest || distance < nearest.distance) nearest = { chain, point, distance };
     });
     return nearest;
@@ -5228,7 +5237,7 @@ class PlayScene extends Phaser.Scene {
     this.setGabiAnimation("climb");
   }
 
-  stopChainClimb({ jump = false, direction = 0 } = {}) {
+  stopChainClimb({ jump = false, drop = false, direction = 0 } = {}) {
     if (!this.chainClimb || !this.player?.body) return;
     this.chainClimb = null;
     this.player.body.setAllowGravity(true);
@@ -5237,6 +5246,9 @@ class PlayScene extends Phaser.Scene {
     if (jump) {
       this.player.setVelocity(direction * GABI_CHAIN_JUMP_SPEED_X, GABI_CHAIN_JUMP_SPEED_Y);
       this.setGabiFlip(direction < 0);
+      this.setGabiAnimation("jump");
+    } else if (drop) {
+      this.player.setVelocity(0, 130);
       this.setGabiAnimation("jump");
     }
   }
@@ -6143,7 +6155,8 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (this.updateChainClimb({ climbUp, climbDown, left, right, jump: chainJump, delta })) {
+    const chainAutoGrab = !onFloor || Boolean(this.gabiDash?.active);
+    if (this.updateChainClimb({ climbUp, climbDown, left, right, jump: chainJump, delta, autoGrab: chainAutoGrab })) {
       if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
       this.updateDiveCameraZoom();
       return;
