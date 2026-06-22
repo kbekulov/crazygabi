@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.36
+
+- Added Gabi's chain climbing sprite and animation.
+- Made hanging chains climbable with up/down movement, jump dismounts, and top platform dismounts.
+
 ## v0.55.35
 
 - Updated the main chain link art.
