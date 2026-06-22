@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.33";
+const GAME_VERSION = "v0.55.34";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -82,6 +82,14 @@ const PLATFORM_Y_OFFSET = 22;
 const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
+const HANGING_CHAIN_DEPTH = FENCE_DEPTH + 0.28;
+const HANGING_CHAIN_ROOT_DEPTH = PLATFORM_DEPTH + 0.18;
+const HANGING_CHAIN_SCALE = 0.25;
+const HANGING_CHAIN_ROOT_BOTTOM_ANCHOR = { x: 37, y: 65 };
+const HANGING_CHAIN_LINK_TOP_ANCHOR = { x: 28, y: 16 };
+const HANGING_CHAIN_LINK_BOTTOM_ANCHOR = { x: 28, y: 101 };
+const HANGING_CHAIN_LINK_SPACING =
+  (HANGING_CHAIN_LINK_BOTTOM_ANCHOR.y - HANGING_CHAIN_LINK_TOP_ANCHOR.y) * HANGING_CHAIN_SCALE;
 const WATER_DEPTH = -1;
 const WALL_FOREGROUND_TILE_SPAN = 2;
 const PLATFORM_SHADOW_DEPTH = PLATFORM_DEPTH + 0.52;
@@ -290,7 +298,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260619-difficulty-quest-balance";
+const ASSET_VERSION = "20260622-hanging-chains";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -500,6 +508,12 @@ const LEVELS = [
     catNpc: true,
     doorYOffset: -30,
     parallax: "parallax-underground",
+    hangingChains: {
+      maxChains: 18,
+      minLinks: 5,
+      maxLinks: 13,
+      candidateRate: 0.44
+    },
     lightRayAlpha: 0.94,
     lightRays: [
       { x: 82, y: -124, topWidth: 18, bottomWidth: 92, height: 1780, lean: 310, alpha: 0.36, thickness: 4, foreground: true, frontAlpha: 0.52, blinding: true, opacityMode: "dim" },
@@ -702,6 +716,12 @@ const LEVELS = [
     doorYOffset: -30,
     parallax: "parallax-park",
     frontParallax: "parallax-park-frontlayer",
+    hangingChains: {
+      maxChains: 16,
+      minLinks: 4,
+      maxLinks: 10,
+      candidateRate: 0.26
+    },
     colossusHaze: {
       color: "#f0d2b8",
       bottomAlpha: 1,
@@ -2087,6 +2107,7 @@ class PlayScene extends Phaser.Scene {
     this.finalElevatorCredits = [];
     this.platformShadows = [];
     this.platformVisuals = this.add.group();
+    this.hangingChains = [];
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.acornBaskets = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -2353,6 +2374,10 @@ class PlayScene extends Phaser.Scene {
       }
       sheet("platform-strip", "./public/assets/environment/platform.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
       sheet("platform-fence", "./public/assets/environment/platform_fence.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
+      if (level.hangingChains) {
+        image("chain-link-root", "./public/assets/environment/chain_link_root.png");
+        image("chain-link-main", "./public/assets/environment/chain_link_main.png");
+      }
       if (level.platformTexture === "platform-underground") {
         sheet("platform-underground", "./public/assets/environment/platform_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
         sheet("platform-fence-underground", "./public/assets/environment/platform_fence_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
@@ -4761,6 +4786,7 @@ class PlayScene extends Phaser.Scene {
       });
     });
     this.createPlatformVisuals();
+    this.createHangingChains();
     this.createMovingPlatforms();
     this.createFinalElevator();
     this.createPlatformShadows();
@@ -4926,6 +4952,118 @@ class PlayScene extends Phaser.Scene {
         });
         this.addPlatformRun(start, columnIndex - start, rowIndex);
       }
+    });
+  }
+
+  createHangingChains() {
+    const config = this.level.hangingChains;
+    if (!config || !this.textures.exists("chain-link-root") || !this.textures.exists("chain-link-main")) return;
+    const minLinks = config.minLinks ?? 4;
+    const maxLinks = config.maxLinks ?? 10;
+    const maxChains = config.maxChains ?? 12;
+    const candidateRate = config.candidateRate ?? 0.28;
+    const candidates = [];
+
+    (this.platformRuns || []).forEach((run) => {
+      const width = run.endX - run.startX;
+      if (width < TILE * 3) return;
+      if (run.topY > this.levelHeight - TILE * 4) return;
+      const centerColumn = Math.floor(((run.startX + run.endX) / 2) / TILE);
+      const keepNoise = this.wallPlacementNoise(run.rowIndex + 131, centerColumn + 47);
+      if (keepNoise > candidateRate) return;
+      const belowTopY = this.findNearestPlatformTopBelow(run.startX + width / 2, run.topY);
+      const availableDrop = Math.min((belowTopY || this.levelHeight + TILE * 3) - run.topY - TILE, TILE * 12);
+      if (availableDrop < minLinks * HANGING_CHAIN_LINK_SPACING + TILE) return;
+      candidates.push({
+        run,
+        width,
+        availableDrop,
+        score: this.wallPlacementNoise(run.rowIndex + 17, centerColumn + 89)
+      });
+    });
+
+    candidates
+      .sort((a, b) => a.score - b.score)
+      .slice(0, maxChains)
+      .forEach((candidate, index) => {
+        const { run, width, availableDrop } = candidate;
+        const margin = Math.min(TILE * 1.45, width * 0.28);
+        const anchorNoise = this.wallPlacementNoise(run.rowIndex + 211, Math.floor(run.startX / TILE) + index * 13);
+        const anchorX = run.startX + margin + anchorNoise * Math.max(TILE, width - margin * 2);
+        const maxLinksForGap = Math.max(minLinks, Math.floor((availableDrop - TILE * 0.6) / HANGING_CHAIN_LINK_SPACING));
+        const lengthNoise = this.wallPlacementNoise(run.rowIndex + 307, Math.floor(anchorX / TILE) + 19);
+        const linkCount = Phaser.Math.Clamp(
+          Math.round(Phaser.Math.Linear(minLinks, maxLinks, lengthNoise)),
+          minLinks,
+          Math.min(maxLinks, maxLinksForGap)
+        );
+        this.createHangingChain(anchorX, run.topY + PLATFORM_Y_OFFSET + TILE * 0.18, linkCount, index);
+      });
+  }
+
+  findNearestPlatformTopBelow(x, y) {
+    let nearest = Infinity;
+    (this.platformRuns || []).forEach((run) => {
+      if (x < run.startX + TILE * 0.25 || x > run.endX - TILE * 0.25) return;
+      if (run.topY <= y + TILE) return;
+      nearest = Math.min(nearest, run.topY);
+    });
+    return Number.isFinite(nearest) ? nearest : null;
+  }
+
+  createHangingChain(anchorX, anchorY, linkCount, index = 0) {
+    const root = this.add.image(anchorX, anchorY, "chain-link-root");
+    root.setScale(HANGING_CHAIN_SCALE);
+    root.setOrigin(
+      HANGING_CHAIN_ROOT_BOTTOM_ANCHOR.x / 75,
+      HANGING_CHAIN_ROOT_BOTTOM_ANCHOR.y / 75
+    );
+    root.setDepth(HANGING_CHAIN_ROOT_DEPTH);
+
+    const links = [];
+    for (let linkIndex = 0; linkIndex < linkCount; linkIndex += 1) {
+      const link = this.add.image(anchorX, anchorY, "chain-link-main");
+      link.setScale(HANGING_CHAIN_SCALE);
+      link.setOrigin(
+        HANGING_CHAIN_LINK_TOP_ANCHOR.x / 57,
+        HANGING_CHAIN_LINK_TOP_ANCHOR.y / 113
+      );
+      link.setDepth(HANGING_CHAIN_DEPTH + linkIndex * 0.001);
+      links.push(link);
+    }
+
+    this.hangingChains.push({
+      anchorX,
+      anchorY,
+      root,
+      links,
+      phase: this.wallPlacementNoise(index + 31, Math.floor(anchorX / TILE) + 71) * Math.PI * 2,
+      speed: 0.75 + this.wallPlacementNoise(index + 59, Math.floor(anchorY / TILE) + 13) * 0.42,
+      amplitude: Phaser.Math.DegToRad(4.5 + this.wallPlacementNoise(index + 83, Math.floor(anchorX / TILE) + 29) * 4.5)
+    });
+  }
+
+  updateHangingChains(time = 0) {
+    if (!this.hangingChains?.length) return;
+    const seconds = time / 1000;
+    this.hangingChains.forEach((chain) => {
+      const baseSwing =
+        Math.sin(seconds * chain.speed + chain.phase) * chain.amplitude +
+        Math.sin(seconds * chain.speed * 0.47 + chain.phase * 1.8) * chain.amplitude * 0.32;
+      let jointX = chain.anchorX;
+      let jointY = chain.anchorY;
+      chain.root.setRotation(baseSwing * 0.08);
+      chain.links.forEach((link, index) => {
+        const t = (index + 1) / chain.links.length;
+        const lag = index * 0.34;
+        const angle =
+          baseSwing * (0.22 + t * 0.9) +
+          Math.sin(seconds * chain.speed * 1.35 + chain.phase - lag) * chain.amplitude * 0.16 * t;
+        link.setPosition(jointX, jointY);
+        link.setRotation(angle);
+        jointX += Math.sin(angle) * HANGING_CHAIN_LINK_SPACING;
+        jointY += Math.cos(angle) * HANGING_CHAIN_LINK_SPACING;
+      });
     });
   }
 
@@ -5757,6 +5895,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBossHealthBar(delta);
     this.updateLightRays(time);
     this.updateWater(delta);
+    this.updateHangingChains(time);
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
@@ -9578,6 +9717,11 @@ class PlayScene extends Phaser.Scene {
     this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
+    this.hangingChains?.forEach((chain) => {
+      chain.root?.destroy?.();
+      chain.links?.forEach((link) => link?.destroy?.());
+    });
+    this.hangingChains = [];
     this.gabiActionRestoreTimer?.remove?.(false);
     this.gabiActionRestoreTimer = null;
     this.gabiActionUntil = 0;

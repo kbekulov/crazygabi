@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.34
+
+- Added decorative hanging chains for Level 3 and Level 5 platforms.
+- Built chains from root and link sprites with varied lengths and joint-based sway.
+
 ## v0.55.33
 
 - Removed the main menu sound recommendation line.
