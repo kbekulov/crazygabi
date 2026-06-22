@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.55.39
+
+- Let Gabi reliably jump or drop off hanging chains without immediately re-grabbing the same chain.
+- Added stronger directional chain swing when Gabi catches a chain from a jump or dash.
+
 ## v0.55.38
 
 - Made Gabi release immediately after climbing past the bottom of a chain.

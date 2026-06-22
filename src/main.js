@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.38";
+const GAME_VERSION = "v0.55.39";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -57,6 +57,10 @@ const GABI_CHAIN_TOP_DISMOUNT_Y = 12;
 const GABI_CHAIN_BOTTOM_DISMOUNT_Y = 10;
 const GABI_CHAIN_JUMP_SPEED_Y = -430;
 const GABI_CHAIN_JUMP_SPEED_X = 230;
+const GABI_CHAIN_RELEASE_LOCK_MS = 380;
+const HANGING_CHAIN_IMPACT_MAX_ANGLE = (18 * Math.PI) / 180;
+const HANGING_CHAIN_IMPACT_SPRING = 18;
+const HANGING_CHAIN_IMPACT_DAMPING = 0.88;
 const GABI_DASH_DOUBLE_TAP_MS = 260;
 const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5 * 0.8;
 const GABI_DASH_SPEED = 780;
@@ -310,7 +314,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260622-chain-auto-catch";
+const ASSET_VERSION = "20260622-chain-release-impulse";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2121,6 +2125,8 @@ class PlayScene extends Phaser.Scene {
     this.platformVisuals = this.add.group();
     this.hangingChains = [];
     this.chainClimb = null;
+    this.chainGrabDisabledUntil = 0;
+    this.chainGrabDisabledChain = null;
     this.gems = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.acornBaskets = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -5068,17 +5074,33 @@ class PlayScene extends Phaser.Scene {
       points: [{ x: anchorX, y: anchorY }],
       phase: this.wallPlacementNoise(index + 31, Math.floor(anchorX / TILE) + 71) * Math.PI * 2,
       speed: 0.75 + this.wallPlacementNoise(index + 59, Math.floor(anchorY / TILE) + 13) * 0.42,
-      amplitude: Phaser.Math.DegToRad(4.5 + this.wallPlacementNoise(index + 83, Math.floor(anchorX / TILE) + 29) * 4.5)
+      amplitude: Phaser.Math.DegToRad(4.5 + this.wallPlacementNoise(index + 83, Math.floor(anchorX / TILE) + 29) * 4.5),
+      impactAngle: 0,
+      impactVelocity: 0
     });
   }
 
-  updateHangingChains(time = 0) {
+  updateHangingChains(time = 0, delta = 16) {
     if (!this.hangingChains?.length) return;
     const seconds = time / 1000;
+    const dt = Phaser.Math.Clamp(delta / 1000, 1 / 120, 1 / 30);
     this.hangingChains.forEach((chain) => {
+      if (Math.abs(chain.impactAngle) > 0.0001 || Math.abs(chain.impactVelocity) > 0.0001) {
+        chain.impactVelocity += -chain.impactAngle * HANGING_CHAIN_IMPACT_SPRING * dt;
+        chain.impactVelocity *= Math.pow(HANGING_CHAIN_IMPACT_DAMPING, dt * 60);
+        chain.impactAngle = Phaser.Math.Clamp(
+          chain.impactAngle + chain.impactVelocity * dt,
+          -HANGING_CHAIN_IMPACT_MAX_ANGLE,
+          HANGING_CHAIN_IMPACT_MAX_ANGLE
+        );
+      } else {
+        chain.impactAngle = 0;
+        chain.impactVelocity = 0;
+      }
       const baseSwing =
         Math.sin(seconds * chain.speed + chain.phase) * chain.amplitude +
-        Math.sin(seconds * chain.speed * 0.47 + chain.phase * 1.8) * chain.amplitude * 0.32;
+        Math.sin(seconds * chain.speed * 0.47 + chain.phase * 1.8) * chain.amplitude * 0.32 +
+        chain.impactAngle;
       let jointX = chain.anchorX;
       let jointY = chain.anchorY;
       const points = [{ x: jointX, y: jointY }];
@@ -5176,7 +5198,11 @@ class PlayScene extends Phaser.Scene {
     let nearest = null;
     const playerX = this.player.x;
     const playerY = this.player.y - 8;
+    const releasedChainLocked =
+      this.chainGrabDisabledChain &&
+      this.time.now < (this.chainGrabDisabledUntil || 0);
     (this.hangingChains || []).forEach((chain) => {
+      if (releasedChainLocked && chain === this.chainGrabDisabledChain) return;
       const point = this.getClimbPointOnChain(chain, playerY);
       if (!point) return;
       const distanceX = Math.abs(point.x - playerX);
@@ -5218,8 +5244,11 @@ class PlayScene extends Phaser.Scene {
 
   startChainClimb(target) {
     if (!target?.chain || !this.player?.body) return;
+    const incomingVelocityX = this.player.body.velocity.x || 0;
+    const incomingVelocityY = this.player.body.velocity.y || 0;
     const side = this.player.x < target.point.x ? -1 : 1;
     this.chainClimb = { chain: target.chain, side };
+    this.applyChainGrabImpulse(target.chain, target.point, incomingVelocityX, incomingVelocityY);
     this.airJumpsUsed = 0;
     this.usingWingJump = false;
     this.resetGlideState();
@@ -5237,9 +5266,27 @@ class PlayScene extends Phaser.Scene {
     this.setGabiAnimation("climb");
   }
 
+  applyChainGrabImpulse(chain, point, incomingVelocityX = 0, incomingVelocityY = 0) {
+    if (!chain) return;
+    const fallbackDirection = Math.sign((point?.x || chain.anchorX) - this.player.x) || chain.side || 1;
+    const direction = Math.abs(incomingVelocityX) > 24 ? Math.sign(incomingVelocityX) : fallbackDirection;
+    const horizontalForce = Phaser.Math.Clamp(Math.abs(incomingVelocityX) / 420, 0.25, 1.25);
+    const verticalForce = Phaser.Math.Clamp(Math.abs(incomingVelocityY) / 900, 0, 0.42);
+    const impulse = direction * (horizontalForce + verticalForce);
+    chain.impactVelocity = Phaser.Math.Clamp((chain.impactVelocity || 0) + impulse * 7.5, -11, 11);
+    chain.impactAngle = Phaser.Math.Clamp(
+      (chain.impactAngle || 0) + impulse * 0.045,
+      -HANGING_CHAIN_IMPACT_MAX_ANGLE,
+      HANGING_CHAIN_IMPACT_MAX_ANGLE
+    );
+  }
+
   stopChainClimb({ jump = false, drop = false, direction = 0 } = {}) {
     if (!this.chainClimb || !this.player?.body) return;
+    const releasedChain = this.chainClimb.chain;
     this.chainClimb = null;
+    this.chainGrabDisabledChain = releasedChain;
+    this.chainGrabDisabledUntil = this.time.now + GABI_CHAIN_RELEASE_LOCK_MS;
     this.player.body.setAllowGravity(true);
     this.player.anims.resume();
     this.currentGabiAnimation = null;
@@ -5248,7 +5295,9 @@ class PlayScene extends Phaser.Scene {
       this.setGabiFlip(direction < 0);
       this.setGabiAnimation("jump");
     } else if (drop) {
-      this.player.setVelocity(0, 130);
+      this.player.y += GABI_CHAIN_GRAB_DISTANCE * 0.45;
+      this.player.body.reset(this.player.x, this.player.y);
+      this.player.setVelocity(0, 185);
       this.setGabiAnimation("jump");
     }
   }
@@ -5583,6 +5632,8 @@ class PlayScene extends Phaser.Scene {
     this.lastDashAt = -Infinity;
     this.gabiDash = null;
     this.chainClimb = null;
+    this.chainGrabDisabledUntil = 0;
+    this.chainGrabDisabledChain = null;
     this.setGabiAnimation("idle");
   }
 
@@ -6099,7 +6150,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBossHealthBar(delta);
     this.updateLightRays(time);
     this.updateWater(delta);
-    this.updateHangingChains(time);
+    this.updateHangingChains(time, delta);
     this.updateLanternOverlay();
     this.updateCatNpc(time, delta);
     this.updateBirdFlocks(time, delta);
@@ -7437,6 +7488,8 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.stopScriptedHaystackDive();
     this.stopChainClimb();
+    this.chainGrabDisabledUntil = 0;
+    this.chainGrabDisabledChain = null;
     this.damageFlickerTween?.remove?.();
     this.damageFlickerTween = null;
     this.resetPlayerMotion();
@@ -9943,6 +9996,8 @@ class PlayScene extends Phaser.Scene {
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
     this.stopChainClimb();
+    this.chainGrabDisabledUntil = 0;
+    this.chainGrabDisabledChain = null;
     this.hangingChains?.forEach((chain) => {
       chain.root?.destroy?.();
       chain.links?.forEach((link) => link?.destroy?.());
