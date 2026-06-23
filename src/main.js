@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.41";
+const GAME_VERSION = "v0.55.42";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -317,7 +317,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260623-key-haystacks";
+const ASSET_VERSION = "20260623-easy-level3-chains";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -537,7 +537,14 @@ const LEVELS = [
       maxChains: 18,
       minLinks: 5,
       maxLinks: 13,
-      candidateRate: 0.44
+      candidateRate: 0.44,
+      easySecondPart: {
+        minColumn: 100,
+        maxChains: 30,
+        minLinks: 8,
+        maxLinks: 18,
+        candidateRate: 0.82
+      }
     },
     haystacks: [
       { x: 142 * TILE + TILE / 2, floorRow: 5 }
@@ -4998,9 +5005,10 @@ class PlayScene extends Phaser.Scene {
   createHangingChains() {
     const config = this.level.hangingChains;
     if (!config || !this.textures.exists("chain-link-root") || !this.textures.exists("chain-link-main")) return;
+    const easySecondPartConfig = state.difficulty === DIFFICULTY_EASY ? config.easySecondPart : null;
     const minLinks = config.minLinks ?? 4;
     const maxLinks = config.maxLinks ?? 10;
-    const maxChains = config.maxChains ?? 12;
+    const maxChains = easySecondPartConfig?.maxChains ?? config.maxChains ?? 12;
     const candidateRate = config.candidateRate ?? 0.28;
     const candidates = [];
 
@@ -5009,8 +5017,15 @@ class PlayScene extends Phaser.Scene {
       if (width < TILE * 3) return;
       if (run.topY > this.levelHeight - TILE * 4) return;
       const centerColumn = Math.floor(((run.startX + run.endX) / 2) / TILE);
+      const easySecondPart = Boolean(
+        easySecondPartConfig &&
+        centerColumn >= (easySecondPartConfig.minColumn ?? 0)
+      );
+      const effectiveCandidateRate = easySecondPart
+        ? easySecondPartConfig.candidateRate ?? candidateRate
+        : candidateRate;
       const keepNoise = this.wallPlacementNoise(run.rowIndex + 131, centerColumn + 47);
-      if (keepNoise > candidateRate) return;
+      if (keepNoise > effectiveCandidateRate) return;
       const edgeInset = Math.min(TILE * 0.34, width * 0.16);
       const sideNoise = this.wallPlacementNoise(run.rowIndex + 211, centerColumn + 13);
       const edgeJitter = (this.wallPlacementNoise(run.rowIndex + 241, centerColumn + 37) - 0.5) * TILE * 0.36;
@@ -5019,12 +5034,14 @@ class PlayScene extends Phaser.Scene {
         : run.startX + edgeInset + edgeJitter;
       const belowTopY = this.findNearestPlatformTopBelow(anchorX, run.topY);
       const availableDrop = Math.min((belowTopY || this.levelHeight + TILE * 3) - run.topY - TILE, TILE * 12);
-      if (availableDrop < minLinks * HANGING_CHAIN_LINK_SPACING + TILE) return;
+      const effectiveMinLinks = easySecondPart ? easySecondPartConfig.minLinks ?? minLinks : minLinks;
+      if (availableDrop < effectiveMinLinks * HANGING_CHAIN_LINK_SPACING + TILE) return;
       candidates.push({
         run,
         width,
         anchorX: Phaser.Math.Clamp(anchorX, run.startX + TILE * 0.24, run.endX - TILE * 0.24),
         availableDrop,
+        easySecondPart,
         score: this.wallPlacementNoise(run.rowIndex + 17, centerColumn + 89)
       });
     });
@@ -5033,13 +5050,15 @@ class PlayScene extends Phaser.Scene {
       .sort((a, b) => a.score - b.score)
       .slice(0, maxChains)
       .forEach((candidate, index) => {
-        const { run, anchorX, availableDrop } = candidate;
-        const maxLinksForGap = Math.max(minLinks, Math.floor((availableDrop - TILE * 0.6) / HANGING_CHAIN_LINK_SPACING));
+        const { run, anchorX, availableDrop, easySecondPart } = candidate;
+        const localMinLinks = easySecondPart ? easySecondPartConfig.minLinks ?? minLinks : minLinks;
+        const localMaxLinks = easySecondPart ? easySecondPartConfig.maxLinks ?? maxLinks : maxLinks;
+        const maxLinksForGap = Math.max(localMinLinks, Math.floor((availableDrop - TILE * 0.6) / HANGING_CHAIN_LINK_SPACING));
         const lengthNoise = this.wallPlacementNoise(run.rowIndex + 307, Math.floor(anchorX / TILE) + 19);
         const linkCount = Phaser.Math.Clamp(
-          Math.round(Phaser.Math.Linear(minLinks, maxLinks, lengthNoise)),
-          minLinks,
-          Math.min(maxLinks, maxLinksForGap)
+          Math.round(Phaser.Math.Linear(localMinLinks, localMaxLinks, lengthNoise)),
+          localMinLinks,
+          Math.min(localMaxLinks, maxLinksForGap)
         );
         this.createHangingChain(anchorX, run.topY + HANGING_CHAIN_ROOT_PLATFORM_DROP, linkCount, index, run);
       });

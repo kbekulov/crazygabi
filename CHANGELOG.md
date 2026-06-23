@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.42
+
+- Added more and longer hanging chains to the later Level 3 platforming section on Easy difficulty.
+
 ## v0.55.41
 
 - Added haystacks beneath the brass key locations in Levels 1, 2, and 3.
