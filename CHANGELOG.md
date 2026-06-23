@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.55.40
+
+- Made hanging chains thinner and lowered their root attachment point into the platform edge.
+- Let Gabi pump chain swing with left/right movement while climbing.
+- Fixed bottom-chain release so climbing down past the end drops Gabi off reliably.
+
 ## v0.55.39
 
 - Let Gabi reliably jump or drop off hanging chains without immediately re-grabbing the same chain.

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.39";
+const GAME_VERSION = "v0.55.40";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -61,6 +61,8 @@ const GABI_CHAIN_RELEASE_LOCK_MS = 380;
 const HANGING_CHAIN_IMPACT_MAX_ANGLE = (18 * Math.PI) / 180;
 const HANGING_CHAIN_IMPACT_SPRING = 18;
 const HANGING_CHAIN_IMPACT_DAMPING = 0.88;
+const HANGING_CHAIN_INPUT_FORCE = 8.5;
+const HANGING_CHAIN_INPUT_MAX_VELOCITY = 12;
 const GABI_DASH_DOUBLE_TAP_MS = 260;
 const GABI_DASH_DISTANCE = GABI_FRAME_WIDTH * GABI_SCALE * 5 * 0.8;
 const GABI_DASH_SPEED = 780;
@@ -100,7 +102,8 @@ const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
 const HANGING_CHAIN_DEPTH = FENCE_DEPTH + 0.28;
 const HANGING_CHAIN_ROOT_DEPTH = PLATFORM_DEPTH + 0.18;
-const HANGING_CHAIN_SCALE = 0.25;
+const HANGING_CHAIN_SCALE = 0.2;
+const HANGING_CHAIN_ROOT_PLATFORM_DROP = TILE * 0.58;
 const HANGING_CHAIN_ROOT_BOTTOM_ANCHOR = { x: 37, y: 65 };
 const HANGING_CHAIN_LINK_TOP_ANCHOR = { x: 28, y: 16 };
 const HANGING_CHAIN_LINK_BOTTOM_ANCHOR = { x: 28, y: 101 };
@@ -314,7 +317,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260622-chain-release-impulse";
+const ASSET_VERSION = "20260623-chain-swing-control";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -5029,7 +5032,7 @@ class PlayScene extends Phaser.Scene {
           minLinks,
           Math.min(maxLinks, maxLinksForGap)
         );
-        this.createHangingChain(anchorX, run.topY + TILE * 0.32, linkCount, index, run);
+        this.createHangingChain(anchorX, run.topY + HANGING_CHAIN_ROOT_PLATFORM_DROP, linkCount, index, run);
       });
   }
 
@@ -5148,6 +5151,7 @@ class PlayScene extends Phaser.Scene {
     if (left !== right) {
       this.chainClimb.side = left ? -1 : 1;
       this.setGabiFlip(this.chainClimb.side > 0);
+      this.applyChainSwingInput(this.chainClimb.chain, this.chainClimb.side, delta);
     }
 
     if (jump && !grabbedThisFrame) {
@@ -5171,7 +5175,7 @@ class PlayScene extends Phaser.Scene {
       return true;
     }
     const intendedY = this.player.y + verticalInput * GABI_CHAIN_CLIMB_SPEED * (delta / 1000);
-    if (verticalInput > 0 && intendedY >= bottomY - 1) {
+    if (verticalInput > 0 && intendedY >= maxY - 1) {
       this.stopChainClimb({ drop: true });
       return true;
     }
@@ -5278,6 +5282,16 @@ class PlayScene extends Phaser.Scene {
       (chain.impactAngle || 0) + impulse * 0.045,
       -HANGING_CHAIN_IMPACT_MAX_ANGLE,
       HANGING_CHAIN_IMPACT_MAX_ANGLE
+    );
+  }
+
+  applyChainSwingInput(chain, direction = 0, delta = 16) {
+    if (!chain || !direction) return;
+    const dt = Phaser.Math.Clamp(delta / 1000, 1 / 120, 1 / 30);
+    chain.impactVelocity = Phaser.Math.Clamp(
+      (chain.impactVelocity || 0) + direction * HANGING_CHAIN_INPUT_FORCE * dt,
+      -HANGING_CHAIN_INPUT_MAX_VELOCITY,
+      HANGING_CHAIN_INPUT_MAX_VELOCITY
     );
   }
 
