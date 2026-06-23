@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.55.41
+
+- Added haystacks beneath the brass key locations in Levels 1, 2, and 3.
+
 ## v0.55.40
 
 - Made hanging chains thinner and lowered their root attachment point into the platform edge.

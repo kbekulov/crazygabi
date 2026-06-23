@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.40";
+const GAME_VERSION = "v0.55.41";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -317,7 +317,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260623-chain-swing-control";
+const ASSET_VERSION = "20260623-key-haystacks";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -437,6 +437,9 @@ const LEVELS = [
     ],
     startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true,
+    haystacks: [
+      { x: 142 * TILE + TILE / 2, floorRow: 2 }
+    ],
     doorYOffset: -30,
     parallax: "parallax-city",
     platformTexture: "platform-strip",
@@ -494,6 +497,9 @@ const LEVELS = [
       floorRow: 18,
       speech: "This tunnel is dark, young lady. Please pick up that lantern over there to proceed."
     },
+    haystacks: [
+      { x: 267 * TILE + TILE / 2, floorRow: 8 }
+    ],
     introCopy: "Find the lantern, move carefully through the dark tunnel, and survive what waits just beyond the edge of the light.",
     questTasks: ["lantern", "key", "coins", "enemies"]
   },
@@ -533,6 +539,9 @@ const LEVELS = [
       maxLinks: 13,
       candidateRate: 0.44
     },
+    haystacks: [
+      { x: 142 * TILE + TILE / 2, floorRow: 5 }
+    ],
     lightRayAlpha: 0.94,
     lightRays: [
       { x: 82, y: -124, topWidth: 18, bottomWidth: 92, height: 1780, lean: 310, alpha: 0.36, thickness: 4, foreground: true, frontAlpha: 0.52, blinding: true, opacityMode: "dim" },
