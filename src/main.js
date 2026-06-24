@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.6";
+const GAME_VERSION = "v0.56.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -124,6 +124,7 @@ const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
 const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
 const KEY_GARDEN_LANTERN_DEPTH = 5.72;
+const KEY_REVEAL_PICKUP_DELAY = 3000;
 const KEY_GARDEN_ASSETS = [
   { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5, type: "feature" },
   { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1, type: "feature" },
@@ -204,6 +205,7 @@ const BIRD_ZOOM_OUT_SFX_KEY = "bird-zoom-out";
 const COLOSSUS_HOWL_SFX_KEY = "colossus-howl";
 const COLOSSUS_FOOTSTEP_SFX_KEY = "colossus-footstep";
 const GIANT_HAND_IMPACT_SFX_KEYS = ["giant-hand-impact-1", "giant-hand-impact-2", "giant-hand-impact-3"];
+const CHAIN_GRAB_SFX_KEY = "chain-grab";
 const KILL_SFX_VOLUME = 0.195;
 const MAGPIE_ATTACK_SFX_VOLUME = 0.19;
 const MAGPIE_AMBIENT_SFX_VOLUME = 0.17;
@@ -338,7 +340,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-garden-reveal-density-rays";
+const ASSET_VERSION = "20260624-chain-key-boss-focus";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2567,7 +2569,8 @@ class PlayScene extends Phaser.Scene {
         MISC_PICKUP_SFX_KEY,
         KILL_SFX_KEY,
         BIRD_ZOOM_IN_SFX_KEY,
-        BIRD_ZOOM_OUT_SFX_KEY
+        BIRD_ZOOM_OUT_SFX_KEY,
+        CHAIN_GRAB_SFX_KEY
       ].forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
 
       if (!queued) {
@@ -2709,7 +2712,8 @@ class PlayScene extends Phaser.Scene {
       [COLOSSUS_FOOTSTEP_SFX_KEY]: "./public/assets/sound/sfx/colossus_footstep.mp3",
       [GIANT_HAND_IMPACT_SFX_KEYS[0]]: "./public/assets/sound/sfx/giant_hand_impact_1.mp3",
       [GIANT_HAND_IMPACT_SFX_KEYS[1]]: "./public/assets/sound/sfx/giant_hand_impact_2.mp3",
-      [GIANT_HAND_IMPACT_SFX_KEYS[2]]: "./public/assets/sound/sfx/giant_hand_impact_3.mp3"
+      [GIANT_HAND_IMPACT_SFX_KEYS[2]]: "./public/assets/sound/sfx/giant_hand_impact_3.mp3",
+      [CHAIN_GRAB_SFX_KEY]: "./public/assets/sound/sfx/chains.mp3"
     }[key];
   }
 
@@ -3899,8 +3903,19 @@ class PlayScene extends Phaser.Scene {
     const camera = this.cameras?.main;
     const rig = this.distantColossus;
     if (!camera || !rig?.object?.active) return { x: 0, y: 0 };
-    const scaleX = rig.object.scaleX || 1;
-    const scaleY = rig.object.scaleY || 1;
+    const containerScaleX = rig.object.scaleX || 1;
+    const containerScaleY = rig.object.scaleY || 1;
+    const pngHead = rig.parts?.head;
+    if (pngHead?.active) {
+      const visualCenterX = pngHead.x + (0.5 - pngHead.originX) * pngHead.displayWidth;
+      const upperHeadY = pngHead.y + (0.36 - pngHead.originY) * pngHead.displayHeight;
+      return {
+        x: camera.scrollX + rig.object.x + visualCenterX * containerScaleX,
+        y: camera.scrollY + rig.object.y + upperHeadY * containerScaleY
+      };
+    }
+    const scaleX = containerScaleX;
+    const scaleY = containerScaleY;
     const head = rig.parts?.head;
     if (head?.active) {
       return {
@@ -5499,7 +5514,7 @@ class PlayScene extends Phaser.Scene {
 
     if (left !== right) {
       this.chainClimb.side = left ? -1 : 1;
-      this.setGabiFlip(this.chainClimb.side > 0);
+      this.setGabiFlip(this.chainClimb.side < 0);
       this.applyChainSwingInput(this.chainClimb.chain, this.chainClimb.side, delta);
     }
 
@@ -5614,9 +5629,10 @@ class PlayScene extends Phaser.Scene {
       target.point.x + side * GABI_CHAIN_SIDE_OFFSET,
       Phaser.Math.Clamp(this.player.y, target.chain.anchorY + GABI_CHAIN_TOP_DISMOUNT_Y, this.getChainBottomY(target.chain) - GABI_CHAIN_BOTTOM_DISMOUNT_Y)
     );
-    this.setGabiFlip(side > 0);
+    this.setGabiFlip(side < 0);
     this.currentGabiAnimation = null;
     this.setGabiAnimation("climb");
+    this.playLevelSfx(CHAIN_GRAB_SFX_KEY, 0.42);
   }
 
   applyChainGrabImpulse(chain, point, incomingVelocityX = 0, incomingVelocityY = 0) {
@@ -10530,7 +10546,8 @@ class PlayScene extends Phaser.Scene {
     if (this.keySprite.getData("requiresGardenBushReveal") && !this.keySprite.getData("gardenBushTouched")) return;
     this.keyRevealed = true;
     this.keySprite.enableBody(true, this.keyPoint.x, this.keyPoint.y, true, true);
-    this.keySprite.setDepth(this.keySprite.getData("gardenCoverDepth") ?? ITEM_DEPTH);
+    this.keySprite.setDepth(KEY_ITEM_DEPTH);
+    this.keySprite.setData("armedAt", this.time.now + KEY_REVEAL_PICKUP_DELAY);
     this.tweens.add({
       targets: this.keySprite,
       scale: ITEM_SCALE * 1.18,
@@ -10541,6 +10558,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   collectKey(_player, key) {
+    if ((key.getData("armedAt") || 0) > this.time.now) return;
     key.disableBody(true, true);
     state.hasKey = true;
     awardScore(500);
@@ -10559,6 +10577,7 @@ class PlayScene extends Phaser.Scene {
     key.setDepth(KEY_ITEM_DEPTH);
     key.setCircle(58, 59, 59);
     key.setData("bossExitKey", true);
+    key.setData("armedAt", this.time.now + KEY_REVEAL_PICKUP_DELAY);
     this.keyPoint = { x: targetX, y: targetY };
     this.keySprite = key;
     this.keyRevealed = true;

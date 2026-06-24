@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.7
+
+- Fixed Gabi's chain-climb facing and added a chain grab sound effect.
+- Added a short pickup delay after revealed keys appear.
+- Adjusted the Level 5 boss intro camera to focus on BU's head.
+
 ## v0.56.6
 
 - Made garden-hidden keys reveal only after Gabi passes through the hiding bush.
