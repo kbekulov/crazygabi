@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.4
+
+- Reworked key gardens with richer layered light beams, sparkles, and impact glows.
+- Replaced Level 1-3 key haystacks with interactive garden bushes and green-blue scatter effects.
+- Limited garden decoration types by level so underground routes use bushes and lanterns while city/cathedral routes can use larger garden pieces.
+
 ## v0.56.3
 
 - Replaced the generated key-garden placeholders with the real garden sprites from `public/assets/environment/garden`.

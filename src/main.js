@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.3";
+const GAME_VERSION = "v0.56.4";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -120,22 +120,24 @@ const HAYSTACK_Y_OFFSET = 10;
 const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
-const KEY_GARDEN_LIGHT_DEPTH = 8.95;
+const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
+const KEY_GARDEN_LIGHT_COUNT = [2, 5];
 const KEY_GARDEN_ASSETS = [
-  { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5 },
-  { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1 },
-  { key: "garden-bush-1", src: "./public/assets/environment/garden/bush_1.png", scale: 0.42, weight: 1.2 },
-  { key: "garden-bush-2", src: "./public/assets/environment/garden/bush_2.png", scale: 0.42, weight: 1.2 },
-  { key: "garden-bush-3", src: "./public/assets/environment/garden/bush_3.png", scale: 0.34, weight: 1.1 },
-  { key: "garden-bush-4", src: "./public/assets/environment/garden/bush_4.png", scale: 0.42, weight: 1.2 },
-  { key: "garden-bush-5", src: "./public/assets/environment/garden/bush_5.png", scale: 0.28, weight: 0.9 },
-  { key: "garden-bush-6", src: "./public/assets/environment/garden/bush_6.png", scale: 0.34, weight: 1.1 },
-  { key: "garden-fountain-1", src: "./public/assets/environment/garden/fountain_1.png", scale: 0.28, weight: 0.55 },
-  { key: "garden-fountain-2", src: "./public/assets/environment/garden/fountain_2.png", scale: 0.28, weight: 0.55 },
-  { key: "garden-lantern-1", src: "./public/assets/environment/garden/lantern_1.png", scale: 0.34, weight: 0.85 },
-  { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85 }
+  { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5, type: "feature" },
+  { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1, type: "feature" },
+  { key: "garden-bush-1", src: "./public/assets/environment/garden/bush_1.png", scale: 0.42, weight: 1.2, type: "bush" },
+  { key: "garden-bush-2", src: "./public/assets/environment/garden/bush_2.png", scale: 0.42, weight: 1.2, type: "bush" },
+  { key: "garden-bush-3", src: "./public/assets/environment/garden/bush_3.png", scale: 0.34, weight: 1.1, type: "bush" },
+  { key: "garden-bush-4", src: "./public/assets/environment/garden/bush_4.png", scale: 0.42, weight: 1.2, type: "bush" },
+  { key: "garden-bush-5", src: "./public/assets/environment/garden/bush_5.png", scale: 0.28, weight: 0.9, type: "bush" },
+  { key: "garden-bush-6", src: "./public/assets/environment/garden/bush_6.png", scale: 0.34, weight: 1.1, type: "bush" },
+  { key: "garden-fountain-1", src: "./public/assets/environment/garden/fountain_1.png", scale: 0.28, weight: 0.55, type: "feature" },
+  { key: "garden-fountain-2", src: "./public/assets/environment/garden/fountain_2.png", scale: 0.28, weight: 0.55, type: "feature" },
+  { key: "garden-lantern-1", src: "./public/assets/environment/garden/lantern_1.png", scale: 0.34, weight: 0.85, type: "lantern" },
+  { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85, type: "lantern" }
 ];
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
+const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
 const HAY_BURST_COOLDOWN_MS = 1000;
 const DIVE_JUMP_MIN_HORIZONTAL_SPEED = 70;
@@ -333,7 +335,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-real-garden-assets";
+const ASSET_VERSION = "20260624-garden-bush-lighting";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -453,9 +455,7 @@ const LEVELS = [
     ],
     startSpeech: "Ugh... the world looks different...",
     showStartingHouse: true,
-    haystacks: [
-      { x: 142 * TILE + TILE / 2, floorRow: 2 }
-    ],
+    keyGarden: true,
     doorYOffset: -30,
     parallax: "parallax-city",
     platformTexture: "platform-strip",
@@ -513,9 +513,7 @@ const LEVELS = [
       floorRow: 18,
       speech: "This tunnel is dark, young lady. Please pick up that lantern over there to proceed."
     },
-    haystacks: [
-      { x: 267 * TILE + TILE / 2, floorRow: 8 }
-    ],
+    keyGarden: true,
     introCopy: "Find the lantern, move carefully through the dark tunnel, and survive what waits just beyond the edge of the light.",
     questTasks: ["lantern", "key", "coins", "enemies"]
   },
@@ -562,9 +560,7 @@ const LEVELS = [
         candidateRate: 0.82
       }
     },
-    haystacks: [
-      { x: 142 * TILE + TILE / 2, floorRow: 5 }
-    ],
+    keyGarden: true,
     lightRayAlpha: 0.94,
     lightRays: [
       { x: 82, y: -124, topWidth: 18, bottomWidth: 92, height: 1780, lean: 310, alpha: 0.36, thickness: 4, foreground: true, frontAlpha: 0.52, blinding: true, opacityMode: "dim" },
@@ -2010,44 +2006,7 @@ function makeLightFxTextures(scene) {
     scene.textures.addCanvas("platform-cast-shadow", createPlatformCastShadowCanvas());
   }
 
-  if (!scene.textures.exists("key-garden-light")) {
-    scene.textures.addCanvas("key-garden-light", createKeyGardenLightCanvas());
-  }
-
   g.destroy();
-}
-
-function createKeyGardenLightCanvas() {
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 260;
-  const context = canvas.getContext("2d");
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  const vertical = context.createLinearGradient(0, 0, 0, canvas.height);
-  vertical.addColorStop(0, "rgba(255, 244, 196, 0.00)");
-  vertical.addColorStop(0.18, "rgba(255, 246, 205, 0.28)");
-  vertical.addColorStop(0.68, "rgba(255, 228, 158, 0.17)");
-  vertical.addColorStop(1, "rgba(255, 228, 158, 0.00)");
-  context.fillStyle = vertical;
-  context.beginPath();
-  context.moveTo(52, 0);
-  context.lineTo(76, 0);
-  context.lineTo(124, canvas.height);
-  context.lineTo(4, canvas.height);
-  context.closePath();
-  context.fill();
-
-  context.globalCompositeOperation = "destination-in";
-  const horizontal = context.createLinearGradient(0, 0, canvas.width, 0);
-  horizontal.addColorStop(0, "rgba(0, 0, 0, 0)");
-  horizontal.addColorStop(0.34, "rgba(0, 0, 0, 0.82)");
-  horizontal.addColorStop(0.5, "rgba(0, 0, 0, 1)");
-  horizontal.addColorStop(0.66, "rgba(0, 0, 0, 0.82)");
-  horizontal.addColorStop(1, "rgba(0, 0, 0, 0)");
-  context.fillStyle = horizontal;
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.globalCompositeOperation = "source-over";
-  return canvas;
 }
 
 function createLightImpactGlowCanvas() {
@@ -2249,6 +2208,7 @@ class PlayScene extends Phaser.Scene {
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.haystacks = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.gardenBushes = this.physics.add.group({ allowGravity: false, immovable: true });
     this.platformRuns = [];
     this.wallForegroundAnchors = new Set();
     this.enemyDirection = new Map();
@@ -2330,10 +2290,10 @@ class PlayScene extends Phaser.Scene {
     this.planWallForegroundTiles();
     this.buildLevel();
     this.createHaystacks();
-    this.createKeyGardenIndicators();
     this.createDiveIndicatorBirds();
     this.createDiveFieldLeaves();
     this.createLightRays();
+    this.createKeyGardenIndicators();
     this.createPlayer();
     this.createLanternOverlay();
     this.createOldLadyNpc();
@@ -2589,7 +2549,7 @@ class PlayScene extends Phaser.Scene {
         GIANT_HAND_IMPACT_SFX_KEYS.forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
       }
       if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
-      if (level.haystacks?.length) {
+      if (level.haystacks?.length || level.keyGarden) {
         audio(HAYSTACK_LAND_SFX_KEY, this.getSfxPath(HAYSTACK_LAND_SFX_KEY));
         audio(HAYSTACK_WALKIN_SFX_KEY, this.getSfxPath(HAYSTACK_WALKIN_SFX_KEY));
       }
@@ -4054,57 +4014,70 @@ class PlayScene extends Phaser.Scene {
 
   createKeyGardenIndicators(point = this.keyPoint) {
     if (!point || !this.platformRuns?.length) return;
-    const gardenAssets = KEY_GARDEN_ASSETS.filter((asset) => this.textures.exists(asset.key));
-    if (!gardenAssets.length) return;
     this.keyGardenKeys = this.keyGardenKeys || new Set();
     const id = `${Math.round(point.x)}:${Math.round(point.y)}`;
     if (this.keyGardenKeys.has(id)) return;
 
-    const run = this.findGardenPlatformRun(point);
-    if (!run) return;
+    const keyRun = this.findGardenPlatformRun(point);
+    if (!keyRun) return;
+    const gardenAssets = this.getAllowedGardenAssetsForLevel();
+    const bushAssets = gardenAssets.filter((asset) => asset.type === "bush");
+    if (!gardenAssets.length || !bushAssets.length) return;
+
     this.keyGardenKeys.add(id);
-    const floorY = run.topY + 2;
-    const centerX = Phaser.Math.Clamp(point.x, run.startX + 44, run.endX - 44);
-    const rowSeed = Math.max(1, Math.floor(floorY / TILE));
-    const columnSeed = Math.max(1, Math.floor(centerX / TILE));
-    const totalWeight = gardenAssets.reduce((sum, asset) => sum + asset.weight, 0);
-    const pickGardenAsset = (noise) => {
-      let cursor = noise * totalWeight;
-      for (const asset of gardenAssets) {
-        cursor -= asset.weight;
-        if (cursor <= 0) return asset;
+    const keyFloorY = keyRun.topY + 2;
+    const keyCenterX = Phaser.Math.Clamp(point.x, keyRun.startX + 46, keyRun.endX - 46);
+    const keyGardenCover = this.shouldHideKeyInGardenBushes();
+    let primaryCover = null;
+
+    if (keyGardenCover) {
+      const coverAsset = this.pickGardenAsset(bushAssets, this.wallPlacementNoise(Math.floor(keyFloorY / TILE) + 91, Math.floor(keyCenterX / TILE) + 43));
+      primaryCover = this.createGardenDecorSprite(coverAsset, keyCenterX, keyFloorY, {
+        seed: 991,
+        interactive: true,
+        scaleBoost: 1.18,
+        depthBias: 0.35
+      });
+      if (this.keySprite) {
+        const keyDepth = Math.max(3.25, (primaryCover?.depth ?? ITEM_DEPTH) - 0.04);
+        this.keySprite.setDepth(keyDepth);
+        this.keySprite.setData("gardenCoverDepth", keyDepth);
       }
-      return gardenAssets[gardenAssets.length - 1];
-    };
-    const offsets = [-118, -88, -58, -25, 18, 52, 86, 118];
+    }
 
-    offsets.forEach((offset, index) => {
-      const noise = this.wallPlacementNoise(rowSeed + index * 7, columnSeed + index * 13);
-      if (noise < 0.12) return;
-      const x = Phaser.Math.Clamp(
-        centerX + offset + (noise - 0.5) * 18,
-        run.startX + 14,
-        run.endX - 14
-      );
-      const asset = pickGardenAsset(this.wallPlacementNoise(rowSeed + 31, columnSeed + index * 19));
-      const sprite = this.add.image(x, floorY, asset.key);
-      sprite.setOrigin(0.5, 1);
-      sprite.setDepth(KEY_GARDEN_DEPTH + index * 0.002);
-      sprite.setScale(asset.scale * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(rowSeed + index * 5, columnSeed + 83)));
-      sprite.setFlipX(this.wallPlacementNoise(rowSeed + index * 11, columnSeed + 41) > 0.5);
-      this.platformVisuals?.add(sprite);
+    const runs = this.findGardenPlatformRuns(point, keyRun);
+    runs.forEach((run, clusterIndex) => {
+      const floorY = run.topY + 2;
+      const centerNoise = this.wallPlacementNoise(Math.floor(floorY / TILE) + clusterIndex * 17, Math.floor(point.x / TILE) + 29);
+      const centerX = clusterIndex === 0
+        ? keyCenterX
+        : Phaser.Math.Clamp(point.x + Phaser.Math.Linear(-260, 260, centerNoise), run.startX + 42, run.endX - 42);
+      const offsets = clusterIndex === 0
+        ? [-146, -112, -76, -42, -13, 25, 62, 96, 134]
+        : [-76, -34, 30, 72];
+      const clusterAssets = clusterIndex === 0
+        ? gardenAssets
+        : gardenAssets.filter((asset) => asset.type === "bush" || (asset.type === "lantern" && clusterIndex % 2 === 0));
+
+      offsets.forEach((offset, index) => {
+        const seed = clusterIndex * 101 + index * 13;
+        const noise = this.wallPlacementNoise(Math.floor(floorY / TILE) + seed, Math.floor(centerX / TILE) + seed);
+        if (clusterIndex > 0 && noise < 0.26) return;
+        const x = Phaser.Math.Clamp(centerX + offset + (noise - 0.5) * 34, run.startX + 18, run.endX - 18);
+        if (primaryCover && Math.abs(x - primaryCover.x) < 34 && Math.abs(floorY - primaryCover.y) < 10) return;
+        const assetPool = clusterIndex === 0 && Math.abs(offset) < 52
+          ? bushAssets
+          : clusterAssets;
+        const asset = this.pickGardenAsset(assetPool, this.wallPlacementNoise(seed + 31, Math.floor(x / TILE) + 19));
+        this.createGardenDecorSprite(asset, x, floorY, {
+          seed,
+          interactive: asset.type === "bush",
+          scaleBoost: clusterIndex === 0 ? 1 : 0.88
+        });
+      });
     });
 
-    [-24, 0, 24].forEach((angle, index) => {
-      const beam = this.add.image(centerX + (index - 1) * 20, floorY - 8, "key-garden-light");
-      beam.setOrigin(0.5, 1);
-      beam.setDepth(KEY_GARDEN_LIGHT_DEPTH + index * 0.002);
-      beam.setRotation(Phaser.Math.DegToRad(angle));
-      beam.setScale(index === 1 ? 0.92 : 0.78, 0.82);
-      beam.setAlpha(index === 1 ? 0.5 : 0.36);
-      beam.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
-      this.platformVisuals?.add(beam);
-    });
+    this.createGardenLightRays(keyCenterX, keyFloorY, id);
   }
 
   findGardenPlatformRun(point) {
@@ -4116,6 +4089,144 @@ class PlayScene extends Phaser.Scene {
         const bDistance = Math.abs(b.topY - point.y) + Math.abs(Phaser.Math.Clamp(point.x, b.startX, b.endX) - point.x) * 0.25;
         return aDistance - bDistance;
       })[0];
+  }
+
+  findGardenPlatformRuns(point, primaryRun) {
+    const seen = new Set();
+    const runs = [primaryRun];
+    seen.add(primaryRun.id);
+    [...(this.platformRuns || [])]
+      .filter((run) => !seen.has(run.id))
+      .filter((run) => run.endX - run.startX >= TILE * 3)
+      .filter((run) => Math.abs(run.topY - primaryRun.topY) <= TILE * 6)
+      .filter((run) => point.x >= run.startX - TILE * 9 && point.x <= run.endX + TILE * 9)
+      .sort((a, b) => {
+        const aDistance = Math.abs(a.topY - primaryRun.topY) + Math.abs(Phaser.Math.Clamp(point.x, a.startX, a.endX) - point.x) * 0.45;
+        const bDistance = Math.abs(b.topY - primaryRun.topY) + Math.abs(Phaser.Math.Clamp(point.x, b.startX, b.endX) - point.x) * 0.45;
+        return aDistance - bDistance;
+      })
+      .slice(0, 2)
+      .forEach((run) => {
+        seen.add(run.id);
+        runs.push(run);
+      });
+    return runs;
+  }
+
+  getAllowedGardenAssetsForLevel() {
+    return KEY_GARDEN_ASSETS.filter((asset) => {
+      if (!this.textures.exists(asset.key)) return false;
+      if (state.levelIndex === 0 || state.levelIndex === 3) return true;
+      if (state.levelIndex === 1 || state.levelIndex === 2) return asset.type === "bush" || asset.type === "lantern";
+      return asset.type === "bush";
+    });
+  }
+
+  shouldHideKeyInGardenBushes() {
+    return state.levelIndex >= 0 && state.levelIndex <= 2;
+  }
+
+  pickGardenAsset(assets, noise = 0) {
+    const pool = assets.filter((asset) => this.textures.exists(asset.key));
+    if (!pool.length) return null;
+    const totalWeight = pool.reduce((sum, asset) => sum + asset.weight, 0);
+    let cursor = noise * totalWeight;
+    for (const asset of pool) {
+      cursor -= asset.weight;
+      if (cursor <= 0) return asset;
+    }
+    return pool[pool.length - 1];
+  }
+
+  createGardenDecorSprite(asset, x, y, options = {}) {
+    if (!asset || !this.textures.exists(asset.key)) return null;
+    const sprite = options.interactive
+      ? this.gardenBushes.create(x, y, asset.key)
+      : this.add.image(x, y, asset.key);
+    const seed = options.seed ?? 0;
+    const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(x / TILE) + seed + 23);
+    const depth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
+    const scale = asset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
+    sprite.setOrigin(0.5, 1);
+    sprite.setDepth(depth);
+    sprite.setScale(scale);
+    sprite.setFlipX(this.wallPlacementNoise(seed + 11, Math.floor(y / TILE) + 37) > 0.5);
+    if (options.interactive && sprite.body) {
+      sprite.body.allowGravity = false;
+      sprite.body.immovable = true;
+      sprite.body.setSize(Math.max(36, sprite.width * 0.72), Math.max(24, sprite.height * 0.36));
+      sprite.body.setOffset(sprite.width * 0.14, sprite.height * 0.56);
+      sprite.setData("lastBurstAt", -Infinity);
+    } else {
+      this.platformVisuals?.add(sprite);
+    }
+    return sprite;
+  }
+
+  createGardenLightRays(centerX, floorY, id) {
+    if (!this.textures.exists("light-sparkle")) return;
+    const seedBase = id.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    const countNoise = this.wallPlacementNoise(seedBase + 7, seedBase + 31);
+    const count = Phaser.Math.Clamp(
+      Math.round(Phaser.Math.Linear(KEY_GARDEN_LIGHT_COUNT[0], KEY_GARDEN_LIGHT_COUNT[1], countNoise)),
+      KEY_GARDEN_LIGHT_COUNT[0],
+      KEY_GARDEN_LIGHT_COUNT[1]
+    );
+
+    for (let index = 0; index < count; index += 1) {
+      const noiseA = this.wallPlacementNoise(seedBase + index * 17, seedBase + 61);
+      const noiseB = this.wallPlacementNoise(seedBase + index * 29, seedBase + 97);
+      const noiseC = this.wallPlacementNoise(seedBase + index * 43, seedBase + 131);
+      const impactX = centerX + Phaser.Math.Linear(-170, 170, noiseA);
+      const height = Phaser.Math.Linear(320, 760, noiseB);
+      const lean = Phaser.Math.Linear(-230, 230, noiseC);
+      const topY = floorY - height - Phaser.Math.Linear(34, 120, noiseA);
+      const topX = impactX - lean;
+      const foreground = noiseB > 0.58;
+      const ray = {
+        x: topX,
+        y: topY,
+        topWidth: Phaser.Math.Linear(14, 46, noiseC),
+        bottomWidth: Phaser.Math.Linear(110, 300, noiseA),
+        height: floorY - topY + Phaser.Math.Linear(26, 90, noiseB),
+        lean,
+        alpha: Phaser.Math.Linear(0.18, 0.36, noiseB),
+        thickness: Phaser.Math.Clamp(Math.round(Phaser.Math.Linear(1, 4, noiseA)), 1, 4),
+        foreground,
+        frontAlpha: foreground ? Phaser.Math.Linear(0.08, 0.22, noiseC) : undefined,
+        opacityMode: noiseC > 0.68 ? "dim" : (noiseC < 0.24 ? "steady" : "pulse"),
+        beamBoost: Phaser.Math.Linear(1.05, 1.65, noiseA),
+        skipCrackGlow: true,
+        impacts: [
+          {
+            x: impactX,
+            y: floorY,
+            width: Phaser.Math.Linear(70, 190, noiseA),
+            alpha: Phaser.Math.Linear(0.18, 0.48, noiseB)
+          }
+        ],
+        seed: seedBase + index
+      };
+      const bounds = this.getLightRayBounds(ray);
+      const resolvedRay = {
+        ...ray,
+        ...bounds,
+        localX: ray.x - bounds.textureX,
+        localY: ray.y - bounds.textureY
+      };
+      const textureKey = `key-garden-ray-${state.levelIndex}-${this.keyGardenKeys.size}-${index}`;
+      if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
+      this.textures.addCanvas(textureKey, this.createLightRayCanvas(resolvedRay));
+      const layer = this.add.image(resolvedRay.textureX, resolvedRay.textureY, textureKey);
+      layer.setOrigin(0, 0);
+      layer.setScrollFactor(1);
+      layer.setDepth(foreground ? LIGHT_RAY_FRONT_DEPTH : LIGHT_RAY_DEPTH);
+      layer.setAlpha((this.level.lightRayAlpha ?? 0.82) * (foreground ? 0.7 : 0.88));
+      layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+      this.trackLightRayLayer(layer, resolvedRay, seedBase + index);
+      this.resolvedLightRays?.push(resolvedRay);
+      this.createLightImpactGlows(resolvedRay, seedBase + index);
+    }
   }
 
   createLightRays() {
@@ -6234,6 +6345,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
     this.physics.add.overlap(this.player, this.giantHands, this.hitGiantHand, null, this);
     this.physics.add.overlap(this.player, this.haystacks, this.landInHaystack, null, this);
+    this.physics.add.overlap(this.player, this.gardenBushes, this.passThroughGardenBush, null, this);
     this.physics.add.overlap(this.player, this.doors, this.enterDoor, null, this);
   }
 
@@ -7361,6 +7473,53 @@ class PlayScene extends Phaser.Scene {
         angle: Phaser.Math.Between(-210, 210),
         alpha: 0,
         duration: Phaser.Math.Between(620, 980),
+        ease: "Quad.easeOut",
+        onComplete: () => piece.destroy()
+      });
+    }
+  }
+
+  passThroughGardenBush(_player, bush) {
+    if (!bush?.active || !this.player?.body) return;
+    const now = this.time.now;
+    const touchSpeed = Phaser.Math.Distance.Between(
+      this.player.body.velocity.x,
+      this.player.body.velocity.y,
+      0,
+      0
+    );
+    if (touchSpeed < HAY_BURST_MIN_TOUCH_SPEED * 0.55) return;
+    if (now - (bush.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
+    bush.setData("lastBurstAt", now);
+    this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.32);
+    this.spawnGardenBurst(bush.x, bush.y - bush.displayHeight * 0.34);
+  }
+
+  spawnGardenBurst(x, y) {
+    const pieces = 38;
+    for (let index = 0; index < pieces; index += 1) {
+      const color = Phaser.Math.RND.pick(GARDEN_BURST_COLORS);
+      const width = Phaser.Math.Between(5, 18);
+      const height = Phaser.Math.Between(1, 4);
+      const piece = this.add.rectangle(
+        x + Phaser.Math.Between(-54, 54),
+        y + Phaser.Math.Between(-16, 14),
+        width,
+        height,
+        color,
+        Phaser.Math.FloatBetween(0.7, 0.96)
+      );
+      const direction = index % 2 === 0 ? -1 : 1;
+      const lift = Phaser.Math.Between(36, 124);
+      piece.setDepth(KEY_GARDEN_BURST_DEPTH + Phaser.Math.FloatBetween(0, 0.28));
+      piece.setRotation(Phaser.Math.FloatBetween(-1.2, 1.2));
+      this.tweens.add({
+        targets: piece,
+        x: piece.x + direction * Phaser.Math.Between(42, 144) + Phaser.Math.Between(-28, 28),
+        y: piece.y - lift,
+        angle: Phaser.Math.Between(-260, 260),
+        alpha: 0,
+        duration: Phaser.Math.Between(660, 1040),
         ease: "Quad.easeOut",
         onComplete: () => piece.destroy()
       });
@@ -10315,7 +10474,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.keySprite || !this.keyPoint || this.keyRevealed) return;
     this.keyRevealed = true;
     this.keySprite.enableBody(true, this.keyPoint.x, this.keyPoint.y, true, true);
-    this.keySprite.setDepth(ITEM_DEPTH);
+    this.keySprite.setDepth(this.keySprite.getData("gardenCoverDepth") ?? ITEM_DEPTH);
     this.tweens.add({
       targets: this.keySprite,
       scale: ITEM_SCALE * 1.18,
