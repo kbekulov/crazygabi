@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.6
+
+- Made garden-hidden keys reveal only after Gabi passes through the hiding bush.
+- Scaled garden decoration density to platform size and kept nearby platforms as lighter breadcrumb hints.
+- Strengthened garden light beams with layered shafts and brighter spotlight impacts.
+
 ## v0.56.5
 
 - Moved the Level 1 key garden to the neighboring left platform.

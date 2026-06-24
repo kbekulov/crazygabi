@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.5";
+const GAME_VERSION = "v0.56.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -121,7 +121,7 @@ const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
 const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
-const KEY_GARDEN_LIGHT_COUNT = [2, 5];
+const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
 const KEY_GARDEN_LANTERN_DEPTH = 5.72;
 const KEY_GARDEN_ASSETS = [
@@ -338,7 +338,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-garden-depth-key-shift";
+const ASSET_VERSION = "20260624-garden-reveal-density-rays";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -4039,26 +4039,31 @@ class PlayScene extends Phaser.Scene {
         seed: 991,
         interactive: true,
         scaleBoost: 1.18,
-        depthBias: 0.35
+        depthBias: 0.35,
+        revealsKey: true
       });
+      if (primaryCover) primaryCover.setData("revealsKey", true);
       if (this.keySprite) {
+        this.keyRevealed = false;
+        this.keySprite.disableBody(true, true);
         this.keySprite.setDepth(KEY_ITEM_DEPTH);
         this.keySprite.setData("gardenCoverDepth", KEY_ITEM_DEPTH);
+        this.keySprite.setData("requiresGardenBushReveal", true);
+        this.keySprite.setData("gardenBushTouched", false);
       }
     }
 
     const runs = this.findGardenPlatformRuns(point, keyRun);
     runs.forEach((run, clusterIndex) => {
       const floorY = run.topY + 2;
+      const runWidth = run.endX - run.startX;
       const centerNoise = this.wallPlacementNoise(Math.floor(floorY / TILE) + clusterIndex * 17, Math.floor(point.x / TILE) + 29);
       const centerX = clusterIndex === 0
         ? keyCenterX
         : Phaser.Math.Clamp(point.x + Phaser.Math.Linear(-260, 260, centerNoise), run.startX + 42, run.endX - 42);
-      const offsets = clusterIndex === 0
-        ? [-146, -112, -76, -42, -13, 25, 62, 96, 134]
-        : [-76, -34, 30, 72];
+      const offsets = this.getGardenClusterOffsets(runWidth, clusterIndex);
       const clusterAssets = clusterIndex === 0
-        ? gardenAssets
+        ? this.getGardenAssetsForRun(gardenAssets, runWidth, clusterIndex)
         : gardenAssets.filter((asset) => asset.type === "bush" || (asset.type === "lantern" && clusterIndex % 2 === 0));
 
       offsets.forEach((offset, index) => {
@@ -4069,7 +4074,7 @@ class PlayScene extends Phaser.Scene {
         if (primaryCover && Math.abs(x - primaryCover.x) < 34 && Math.abs(floorY - primaryCover.y) < 10) return;
         const assetPool = clusterIndex === 0 && Math.abs(offset) < 52
           ? bushAssets
-          : clusterAssets;
+          : this.getGardenAssetsForRun(clusterAssets, runWidth, clusterIndex);
         const asset = this.pickGardenAsset(assetPool, this.wallPlacementNoise(seed + 31, Math.floor(x / TILE) + 19));
         this.createGardenDecorSprite(asset, x, floorY, {
           seed,
@@ -4113,6 +4118,27 @@ class PlayScene extends Phaser.Scene {
         runs.push(run);
       });
     return runs;
+  }
+
+  getGardenClusterOffsets(runWidth, clusterIndex) {
+    const maxSpread = Math.max(42, runWidth / 2 - 34);
+    const count = clusterIndex === 0
+      ? Phaser.Math.Clamp(Math.floor(runWidth / 58), 3, 7)
+      : Phaser.Math.Clamp(Math.floor(runWidth / 78), 2, 4);
+    if (count <= 1) return [0];
+    return Array.from({ length: count }, (_value, index) => {
+      const progress = count === 1 ? 0.5 : index / (count - 1);
+      return Phaser.Math.Linear(-maxSpread, maxSpread, progress);
+    });
+  }
+
+  getGardenAssetsForRun(assets, runWidth, clusterIndex) {
+    const pool = assets.filter((asset) => {
+      if (asset.type !== "feature") return true;
+      if (state.levelIndex !== 0 && state.levelIndex !== 3) return false;
+      return clusterIndex === 0 && runWidth >= TILE * 11;
+    });
+    return pool.length ? pool : assets.filter((asset) => asset.type === "bush" || asset.type === "lantern");
   }
 
   getAllowedGardenAssetsForLevel() {
@@ -4191,46 +4217,66 @@ class PlayScene extends Phaser.Scene {
       const ray = {
         x: topX,
         y: topY,
-        topWidth: Phaser.Math.Linear(14, 46, noiseC),
-        bottomWidth: Phaser.Math.Linear(110, 300, noiseA),
+        topWidth: Phaser.Math.Linear(26, 78, noiseC),
+        bottomWidth: Phaser.Math.Linear(190, 430, noiseA),
         height: floorY - topY + Phaser.Math.Linear(26, 90, noiseB),
         lean,
-        alpha: Phaser.Math.Linear(0.18, 0.36, noiseB),
+        alpha: Phaser.Math.Linear(0.32, 0.56, noiseB),
         thickness: Phaser.Math.Clamp(Math.round(Phaser.Math.Linear(1, 4, noiseA)), 1, 4),
         foreground,
-        frontAlpha: foreground ? Phaser.Math.Linear(0.08, 0.22, noiseC) : undefined,
+        frontAlpha: foreground ? Phaser.Math.Linear(0.14, 0.32, noiseC) : undefined,
         opacityMode: noiseC > 0.68 ? "dim" : (noiseC < 0.24 ? "steady" : "pulse"),
-        beamBoost: Phaser.Math.Linear(1.05, 1.65, noiseA),
+        beamBoost: Phaser.Math.Linear(1.55, 2.55, noiseA),
         skipCrackGlow: true,
         impacts: [
           {
             x: impactX,
             y: floorY,
-            width: Phaser.Math.Linear(70, 190, noiseA),
-            alpha: Phaser.Math.Linear(0.18, 0.48, noiseB)
+            width: Phaser.Math.Linear(95, 230, noiseA),
+            alpha: Phaser.Math.Linear(0.34, 0.66, noiseB)
           }
         ],
         seed: seedBase + index
       };
-      const bounds = this.getLightRayBounds(ray);
-      const resolvedRay = {
-        ...ray,
-        ...bounds,
-        localX: ray.x - bounds.textureX,
-        localY: ray.y - bounds.textureY
-      };
-      const textureKey = `key-garden-ray-${state.levelIndex}-${this.keyGardenKeys.size}-${index}`;
-      if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
-      this.textures.addCanvas(textureKey, this.createLightRayCanvas(resolvedRay));
-      const layer = this.add.image(resolvedRay.textureX, resolvedRay.textureY, textureKey);
-      layer.setOrigin(0, 0);
-      layer.setScrollFactor(1);
-      layer.setDepth(foreground ? LIGHT_RAY_FRONT_DEPTH : LIGHT_RAY_DEPTH);
-      layer.setAlpha((this.level.lightRayAlpha ?? 0.82) * (foreground ? 0.7 : 0.88));
-      layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
-      this.trackLightRayLayer(layer, resolvedRay, seedBase + index);
-      this.resolvedLightRays?.push(resolvedRay);
-      this.createLightImpactGlows(resolvedRay, seedBase + index);
+      [
+        { suffix: "base", ray, alphaScale: foreground ? 0.92 : 1.05 },
+        {
+          suffix: "core",
+          alphaScale: foreground ? 0.74 : 0.88,
+          ray: {
+            ...ray,
+            topWidth: ray.topWidth * 0.42,
+            bottomWidth: ray.bottomWidth * 0.34,
+            alpha: ray.alpha * 0.82,
+            beamBoost: ray.beamBoost * 1.18,
+            impacts: ray.impacts.map((impact) => ({
+              ...impact,
+              width: impact.width * 0.46,
+              alpha: impact.alpha * 0.72
+            }))
+          }
+        }
+      ].forEach((variant, variantIndex) => {
+        const bounds = this.getLightRayBounds(variant.ray);
+        const resolvedRay = {
+          ...variant.ray,
+          ...bounds,
+          localX: variant.ray.x - bounds.textureX,
+          localY: variant.ray.y - bounds.textureY
+        };
+        const textureKey = `key-garden-ray-${state.levelIndex}-${this.keyGardenKeys.size}-${index}-${variant.suffix}`;
+        if (this.textures.exists(textureKey)) this.textures.remove(textureKey);
+        this.textures.addCanvas(textureKey, this.createLightRayCanvas(resolvedRay));
+        const layer = this.add.image(resolvedRay.textureX, resolvedRay.textureY, textureKey);
+        layer.setOrigin(0, 0);
+        layer.setScrollFactor(1);
+        layer.setDepth(foreground ? LIGHT_RAY_FRONT_DEPTH : LIGHT_RAY_DEPTH);
+        layer.setAlpha((this.level.lightRayAlpha ?? 0.82) * variant.alphaScale);
+        layer.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+        this.trackLightRayLayer(layer, resolvedRay, seedBase + index + variantIndex * 59);
+        this.resolvedLightRays?.push(resolvedRay);
+        this.createLightImpactGlows(resolvedRay, seedBase + index + variantIndex * 59);
+      });
     }
   }
 
@@ -7498,6 +7544,10 @@ class PlayScene extends Phaser.Scene {
     bush.setData("lastBurstAt", now);
     this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.32);
     this.spawnGardenBurst(bush.x, bush.y - bush.displayHeight * 0.34);
+    if (bush.getData("revealsKey") && !this.keyRevealed) {
+      this.keySprite?.setData("gardenBushTouched", true);
+      this.revealKey();
+    }
   }
 
   spawnGardenBurst(x, y) {
@@ -10477,6 +10527,7 @@ class PlayScene extends Phaser.Scene {
 
   revealKey() {
     if (!this.keySprite || !this.keyPoint || this.keyRevealed) return;
+    if (this.keySprite.getData("requiresGardenBushReveal") && !this.keySprite.getData("gardenBushTouched")) return;
     this.keyRevealed = true;
     this.keySprite.enableBody(true, this.keyPoint.x, this.keyPoint.y, true, true);
     this.keySprite.setDepth(this.keySprite.getData("gardenCoverDepth") ?? ITEM_DEPTH);
