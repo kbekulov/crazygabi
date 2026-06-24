@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.7";
+const GAME_VERSION = "v0.56.8";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -58,6 +58,7 @@ const GABI_CHAIN_BOTTOM_DISMOUNT_Y = 10;
 const GABI_CHAIN_JUMP_SPEED_Y = -430;
 const GABI_CHAIN_JUMP_SPEED_X = 230;
 const GABI_CHAIN_RELEASE_LOCK_MS = 380;
+const GABI_CHAIN_BODY_SWAY_DEGREES = 10;
 const HANGING_CHAIN_IMPACT_MAX_ANGLE = (18 * Math.PI) / 180;
 const HANGING_CHAIN_IMPACT_SPRING = 18;
 const HANGING_CHAIN_IMPACT_DAMPING = 0.88;
@@ -125,6 +126,7 @@ const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
 const KEY_GARDEN_LANTERN_DEPTH = 5.72;
 const KEY_REVEAL_PICKUP_DELAY = 3000;
+const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
 const KEY_GARDEN_ASSETS = [
   { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5, type: "feature" },
   { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1, type: "feature" },
@@ -340,7 +342,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-chain-key-boss-focus";
+const ASSET_VERSION = "20260624-level4-garden-chain-sway";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -642,6 +644,17 @@ const LEVELS = [
       exitPadding: 140,
       speed: MR_MAGPIE_SPEED
     },
+    decorativeGardens: [
+      {
+        row: 5,
+        startColumn: 180,
+        endColumn: 222,
+        density: 0.68,
+        featureRate: 0.46,
+        bushScaleBoost: 1.04,
+        featureScaleBoost: 0.96
+      }
+    ],
     parallax: "parallax-cathedral",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
@@ -2299,6 +2312,7 @@ class PlayScene extends Phaser.Scene {
     this.createDiveFieldLeaves();
     this.createLightRays();
     this.createKeyGardenIndicators();
+    this.createDecorativeGardens();
     this.createPlayer();
     this.createLanternOverlay();
     this.createOldLadyNpc();
@@ -4102,6 +4116,56 @@ class PlayScene extends Phaser.Scene {
     this.createGardenLightRays(keyCenterX, keyFloorY, id);
   }
 
+  createDecorativeGardens() {
+    if (!this.level.decorativeGardens?.length || !this.platformRuns?.length) return;
+    const gardenAssets = this.getAllowedGardenAssetsForLevel();
+    const bushAssets = gardenAssets.filter((asset) => asset.type === "bush");
+    const featureAssets = gardenAssets.filter((asset) => asset.type === "feature" || asset.type === "lantern");
+    if (!bushAssets.length) return;
+
+    this.level.decorativeGardens.forEach((garden, gardenIndex) => {
+      const targetY = garden.row * TILE;
+      const startX = garden.startColumn * TILE;
+      const endX = garden.endColumn * TILE;
+      const run = [...(this.platformRuns || [])]
+        .filter((candidate) => Math.abs(candidate.topY - targetY) <= TILE * 0.75)
+        .filter((candidate) => candidate.endX >= startX && candidate.startX <= endX)
+        .sort((a, b) => Math.abs(a.startX - startX) - Math.abs(b.startX - startX))[0];
+      if (!run) return;
+
+      const floorY = run.topY + 2;
+      const left = Math.max(run.startX + 30, startX + 18);
+      const right = Math.min(run.endX - 30, endX - 18);
+      const width = Math.max(0, right - left);
+      if (width < TILE * 2) return;
+
+      const density = garden.density ?? DECORATIVE_GARDEN_DEFAULT_DENSITY;
+      const count = Phaser.Math.Clamp(Math.round(width / 54 * density), 8, 30);
+      for (let index = 0; index < count; index += 1) {
+        const seed = gardenIndex * 211 + index * 31 + Math.floor(left / TILE);
+        const progress = count === 1 ? 0.5 : index / (count - 1);
+        const spacingNoise = this.wallPlacementNoise(seed + 7, Math.floor(floorY / TILE) + 19);
+        const x = Phaser.Math.Clamp(
+          Phaser.Math.Linear(left, right, progress) + Phaser.Math.Linear(-24, 24, spacingNoise),
+          left,
+          right
+        );
+        const featureNoise = this.wallPlacementNoise(seed + 37, Math.floor(x / TILE) + 83);
+        const pool = featureAssets.length && featureNoise < (garden.featureRate ?? 0.34)
+          ? featureAssets
+          : bushAssets;
+        const asset = this.pickGardenAsset(pool, this.wallPlacementNoise(seed + 61, Math.floor(x / TILE) + 3));
+        this.createGardenDecorSprite(asset, x, floorY, {
+          seed,
+          interactive: asset?.type === "bush",
+          scaleBoost: asset?.type === "bush"
+            ? (garden.bushScaleBoost ?? 1)
+            : (garden.featureScaleBoost ?? 1)
+        });
+      }
+    });
+  }
+
   findGardenPlatformRun(point) {
     return [...(this.platformRuns || [])]
       .filter((run) => point.x >= run.startX - TILE * 4 && point.x <= run.endX + TILE * 4)
@@ -5554,6 +5618,12 @@ class PlayScene extends Phaser.Scene {
     this.player.setPosition(nextX, nextY);
     this.player.body.reset(nextX, nextY);
     this.setGabiAnimation("climb");
+    const swayAngle = Phaser.Math.Clamp(
+      Phaser.Math.RadToDeg(updatedTarget.angle || 0) * 0.72,
+      -GABI_CHAIN_BODY_SWAY_DEGREES,
+      GABI_CHAIN_BODY_SWAY_DEGREES
+    );
+    this.player.setAngle(swayAngle);
     if (verticalInput === 0) {
       this.player.anims.pause();
     } else if (this.player.anims.isPaused) {
@@ -5599,10 +5669,11 @@ class PlayScene extends Phaser.Scene {
       const t = Math.abs(denominator) < 0.001 ? 0 : Phaser.Math.Clamp((y - start.y) / denominator, 0, 1);
       const x = Phaser.Math.Linear(start.x, end.x, t);
       const projectedY = Phaser.Math.Linear(start.y, end.y, t);
+      const angle = Math.atan2(end.x - start.x, end.y - start.y);
       const distance = Math.abs(projectedY - y);
-      if (!best || distance < best.distance) best = { x, y: projectedY, distance };
+      if (!best || distance < best.distance) best = { x, y: projectedY, distance, angle };
     }
-    return best || { x: bottom.x, y: bottom.y, distance: Math.abs(bottom.y - y) };
+    return best || { x: bottom.x, y: bottom.y, distance: Math.abs(bottom.y - y), angle: 0 };
   }
 
   getChainBottomY(chain) {

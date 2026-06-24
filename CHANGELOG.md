@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.56.8
+
+- Added a dense rooftop garden section after Level 4's elevator ascent.
+- Made Gabi's climb pose sway with the chain while staying anchored to it.
+
 ## v0.56.7
 
 - Fixed Gabi's chain-climb facing and added a chain grab sound effect.
