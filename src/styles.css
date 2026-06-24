@@ -1274,6 +1274,19 @@ button:active {
   padding-inline: 1rem;
 }
 
+.cheat-settings {
+  width: min(520px, 92vw);
+  margin: 18px auto 0;
+}
+
+.cheat-settings h2 {
+  margin: 0 0 4px;
+  color: #fff200;
+  font-size: clamp(1rem, 3vw, 1.35rem);
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+}
+
 @keyframes storyFromTop {
   from {
     opacity: 0;

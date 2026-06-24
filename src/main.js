@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.9";
+const GAME_VERSION = "v0.57.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -76,6 +76,8 @@ const MR_MAGPIE_SCALE = 0.34;
 const MR_MAGPIE_SPEED = 78;
 const AUTUMN_LEAF_FRAME_WIDTH = 326;
 const AUTUMN_LEAF_FRAME_HEIGHT = 326;
+const FLOWER_PETAL_FRAME_WIDTH = 385;
+const FLOWER_PETAL_FRAME_HEIGHT = 386;
 const AUTUMN_LEAF_MAX_COUNT = 21;
 const AUTUMN_LEAF_MIN_DEPTH = -10;
 const AUTUMN_LEAF_MAX_DEPTH = 31.5;
@@ -320,6 +322,13 @@ const BIRD_ATTACK_SPEECH_LINES = [
   "I summon customer complaints.",
   "Weather forecast: Birds."
 ];
+const PETAL_ATTACK_SPEECH_LINES = [
+  "Botany, but hostile.",
+  "Petals with opinions.",
+  "Garden etiquette declined.",
+  "Bloom and doom.",
+  "Floral consequences."
+];
 const ENEMY_NAMES = [
   "KYC WUDB Comment and Management Tool",
   "GSI Document Upload from Email to Pharos",
@@ -342,7 +351,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-chain-sway-garden-props";
+const ASSET_VERSION = "20260624-level6-garden";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -356,7 +365,8 @@ const DIFFICULTY_EASY = "easy";
 const DIFFICULTY_HARD = "hard";
 const DEFAULT_AUDIO_SETTINGS = {
   music: true,
-  sfx: true
+  sfx: true,
+  dash: true
 };
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const DIFFICULTY_PROFILES = {
@@ -444,6 +454,7 @@ const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
 const LEVEL_FIVE_WIDTH_TILES = 720;
+const LEVEL_SIX_WIDTH_TILES = 210;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -847,6 +858,65 @@ const LEVELS = [
     introTitle: "Level 5",
     introCopy: "Listen to Mr Magpie, take the winged leap, and glide toward whatever waits below.",
     questTasks: ["leap", "basket", "bird", "boss", "key", "coins", "enemies"]
+  },
+  {
+    name: "Level 6",
+    rows: createLevelSix(),
+    timeLimit: 360,
+    soundtrack: "bgm-lv1",
+    enemySprite: "robot-lv1",
+    actionAbility: "flower-petals",
+    requiresKeyForDoor: false,
+    birdSprite: "magpie-bird",
+    birdScale: 1.2,
+    birdSfx: MAGPIE_CALL_SFX_KEY,
+    ambientBirds: true,
+    startSpeech: "",
+    showStartingHouse: false,
+    showWater: true,
+    parallax: "parallax-garden",
+    platformTexture: "platform-strip",
+    fenceTexture: "platform-fence",
+    ambientLeaves: {
+      sprite: "flower-petal",
+      animation: "flower-petal-float",
+      minDelay: 180,
+      maxDelay: 460,
+      burstChance: 0.42,
+      scaleRange: [0.035, 0.058],
+      alphaRange: [0.52, 0.82],
+      windX: [48, 108],
+      windY: [16, 46],
+      spin: [-2.8, 2.8]
+    },
+    gardenDecor: {
+      clusters: [
+        { x: 18 * TILE, row: 15, density: 0.58, width: 7, allowStructures: true },
+        { x: 43 * TILE, row: 13, density: 0.62, width: 8, allowStructures: true },
+        { x: 76 * TILE, row: 11, density: 0.88, width: 12, allowStructures: true, core: true },
+        { x: 111 * TILE, row: 12, density: 0.68, width: 9, allowStructures: true },
+        { x: 148 * TILE, row: 10, density: 0.72, width: 10, allowStructures: true },
+        { x: 184 * TILE, row: 14, density: 0.64, width: 8, allowStructures: true }
+      ]
+    },
+    lightRayAlpha: 1,
+    lightRays: [
+      { x: 170, y: -100, topWidth: 48, bottomWidth: 260, height: 920, lean: 185, alpha: 0.32, thickness: 3, layerAlpha: 1.22, foreground: true, frontAlpha: 0.22, opacityMode: "pulse" },
+      { x: 390, y: -120, topWidth: 36, bottomWidth: 188, height: 820, lean: 72, alpha: 0.22, thickness: 2, layerAlpha: 1.08, opacityMode: "dim" },
+      { x: 720, y: -132, topWidth: 64, bottomWidth: 360, height: 980, lean: -80, alpha: 0.36, thickness: 4, layerAlpha: 1.3, foreground: true, frontAlpha: 0.28, blinding: true, opacityMode: "steady" },
+      { x: 1120, y: -112, topWidth: 42, bottomWidth: 220, height: 880, lean: 118, alpha: 0.27, thickness: 2, layerAlpha: 1.16, opacityMode: "pulse" },
+      { x: 1600, y: -128, topWidth: 78, bottomWidth: 430, height: 1040, lean: -130, alpha: 0.38, thickness: 4, layerAlpha: 1.32, foreground: true, frontAlpha: 0.27, opacityMode: "dim" },
+      { x: 2020, y: -96, topWidth: 38, bottomWidth: 190, height: 820, lean: 44, alpha: 0.24, thickness: 2, layerAlpha: 1.1, opacityMode: "steady" },
+      { x: 2600, y: -126, topWidth: 58, bottomWidth: 310, height: 960, lean: 150, alpha: 0.33, thickness: 3, layerAlpha: 1.24, foreground: true, frontAlpha: 0.2, opacityMode: "pulse" },
+      { x: 3180, y: -118, topWidth: 48, bottomWidth: 270, height: 900, lean: -52, alpha: 0.3, thickness: 3, layerAlpha: 1.18, opacityMode: "dim" },
+      { x: 3820, y: -136, topWidth: 76, bottomWidth: 450, height: 1040, lean: 88, alpha: 0.37, thickness: 4, layerAlpha: 1.34, foreground: true, frontAlpha: 0.28, blinding: true, opacityMode: "steady" },
+      { x: 4560, y: -110, topWidth: 44, bottomWidth: 235, height: 860, lean: -110, alpha: 0.28, thickness: 2, layerAlpha: 1.12, opacityMode: "pulse" },
+      { x: 5480, y: -118, topWidth: 62, bottomWidth: 340, height: 950, lean: 120, alpha: 0.34, thickness: 3, layerAlpha: 1.25, foreground: true, frontAlpha: 0.22, opacityMode: "dim" },
+      { x: 6200, y: -130, topWidth: 54, bottomWidth: 300, height: 980, lean: -70, alpha: 0.32, thickness: 3, layerAlpha: 1.2, opacityMode: "steady" }
+    ],
+    introTitle: "Level 6",
+    introCopy: "Search the botanical rooftops, find the flower, and reach the exit before the garden closes in.",
+    questTasks: ["flower", "petal", "coins", "enemies"]
   }
 ];
 
@@ -1332,6 +1402,82 @@ function createLevelFive() {
   return rows.map((row) => row.join(""));
 }
 
+function createLevelSix() {
+  const { rows, put, run } = createLevelRows(18, LEVEL_SIX_WIDTH_TILES);
+
+  run(16, 0, 24);
+  run(16, 30, 24);
+  run(16, 62, 28);
+  run(16, 101, 22);
+  run(16, 136, 30);
+  run(16, 178, 32);
+
+  run(13, 19, 8);
+  run(13, 43, 11);
+  run(13, 74, 13);
+  run(13, 115, 10);
+  run(13, 151, 13);
+  run(13, 185, 10);
+
+  run(10, 36, 9);
+  run(10, 63, 11);
+  run(10, 96, 10);
+  run(10, 132, 12);
+  run(10, 166, 10);
+
+  run(7, 54, 9);
+  run(7, 84, 8);
+  run(7, 120, 9);
+  run(7, 153, 8);
+  run(7, 178, 11);
+
+  run(4, 70, 9);
+  run(4, 106, 8);
+  run(4, 139, 10);
+  run(4, 172, 11);
+
+  [
+    [15, 4, "p"],
+    [15, 13, "g"],
+    [15, 21, "m"],
+    [15, 35, "g"],
+    [15, 49, "g"],
+    [15, 70, "m"],
+    [15, 82, "g"],
+    [15, 108, "g"],
+    [15, 116, "m"],
+    [15, 144, "g"],
+    [15, 158, "m"],
+    [15, 187, "g"],
+    [15, 198, "d"],
+    [12, 22, "g"],
+    [12, 46, "m"],
+    [12, 50, "g"],
+    [12, 78, "g"],
+    [12, 84, "m"],
+    [12, 119, "g"],
+    [12, 156, "m"],
+    [12, 160, "g"],
+    [12, 190, "g"],
+    [9, 40, "g"],
+    [9, 67, "g"],
+    [9, 101, "m"],
+    [9, 136, "g"],
+    [9, 171, "m"],
+    [6, 58, "g"],
+    [6, 88, "g"],
+    [6, 125, "m"],
+    [6, 157, "g"],
+    [6, 183, "m"],
+    [3, 74, "g"],
+    [3, 110, "f"],
+    [3, 144, "g"],
+    [3, 176, "g"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
+
 function createQuestProgress() {
   return {
     birdAttackUsed: false,
@@ -1356,6 +1502,7 @@ const state = {
   hasBirdControl: false,
   hasAcornBasket: false,
   hasLantern: false,
+  hasFlower: false,
   running: false,
   won: false,
   resetProgressOnCreate: true,
@@ -1487,12 +1634,15 @@ function updateEquippedHud() {
   } else if (state.hasLantern) {
     itemName = "LANTERN";
     itemImage = pixelatedEquippedImages.lantern || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`;
+  } else if (state.hasFlower) {
+    itemName = "FLOWER";
+    itemImage = pixelatedEquippedImages.flower || `./public/assets/environment/flower_item.png?v=${ASSET_VERSION}`;
   }
   hud.equippedName.textContent = itemName;
   hud.equippedIcon.src = itemImage;
   hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
   hud.equippedIcon.hidden = !itemImage;
-  if (hud.itemActionKey) hud.itemActionKey.hidden = !itemImage;
+  if (hud.itemActionKey) hud.itemActionKey.hidden = !state.hasAcornBasket;
 }
 
 function setBirdCooldownVisible(visible) {
@@ -1537,9 +1687,10 @@ function getLevelQuestDefinitions(level = getActiveLevel()) {
   const taskTypes = level.questTasks || [
     ...(levelHasQuestCell(level, "l") ? ["lantern"] : []),
     ...(levelHasQuestCell(level, "b") ? ["basket"] : []),
+    ...(levelHasQuestCell(level, "f") ? ["flower"] : []),
     ...(levelHasQuestCell(level, "k") ? ["key"] : []),
     ...(levelHasQuestCell(level, "g") || levelHasQuestCell(level, "c") ? ["coins"] : []),
-    ...(level.actionAbility === "command-birds" ? ["bird"] : []),
+    ...(level.actionAbility === "flower-petals" ? ["petal"] : level.actionAbility === "command-birds" ? ["bird"] : []),
     ...(level.manualDiveLedges?.length || level.haystacks?.length ? ["leap"] : []),
     ...(level.finalElevator ? ["elevator"] : []),
     ...(levelHasQuestCell(level, "m") ? ["enemies"] : [])
@@ -1547,10 +1698,12 @@ function getLevelQuestDefinitions(level = getActiveLevel()) {
   const definitions = {
     lantern: { label: "PICK UP THE LANTERN", complete: () => state.hasLantern },
     basket: { label: "CLAIM THE ACORN BASKET", complete: () => state.hasAcornBasket },
+    flower: { label: "FIND THE FLOWER", complete: () => state.hasFlower },
     key: { label: "FIND THE KEY", complete: () => state.hasKey },
     coins: { label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.levelGems >= state.totalGems },
     bird: { label: "USE BIRD ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) },
     boss: { label: "DEFEAT BU", complete: () => Boolean(state.questProgress?.bossDefeated) },
+    petal: { label: "USE PETAL ATTACK [SHIFT]", complete: () => Boolean(state.questProgress?.birdAttackUsed) },
     leap: { label: "DO A LEAP OF FAITH", complete: () => Boolean(state.questProgress?.leapOfFaith) },
     elevator: { label: "RIDE THE ELEVATOR", complete: () => Boolean(state.questProgress?.elevatorRidden) },
     enemies: { label: "DEFEAT ALL ENEMIES", complete: () => state.totalEnemies > 0 && state.enemiesDefeated >= state.totalEnemies }
@@ -1631,7 +1784,8 @@ function getAudioSettings() {
     const saved = JSON.parse(getCookieValue(AUDIO_SETTINGS_COOKIE) || "{}");
     return {
       music: saved.music !== false,
-      sfx: saved.sfx !== false
+      sfx: saved.sfx !== false,
+      dash: saved.dash !== false
     };
   } catch (_error) {
     return { ...DEFAULT_AUDIO_SETTINGS };
@@ -1653,6 +1807,10 @@ function isMusicEnabled() {
 
 function isSfxEnabled() {
   return state.audioSettings?.sfx !== false;
+}
+
+function isDashEnabled() {
+  return state.audioSettings?.dash !== false;
 }
 
 function setAudioSetting(key, enabled) {
@@ -1844,6 +2002,7 @@ function resetGameProgress() {
   state.hasBirdControl = false;
   state.hasAcornBasket = false;
   state.hasLantern = false;
+  state.hasFlower = false;
   state.running = false;
   state.won = false;
   state.resetProgressOnCreate = false;
@@ -2218,6 +2377,7 @@ class PlayScene extends Phaser.Scene {
     this.doubleJumps = this.physics.add.group({ allowGravity: false, immovable: true });
     this.acornBaskets = this.physics.add.group({ allowGravity: false, immovable: true });
     this.lanterns = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.flowers = this.physics.add.group({ allowGravity: false, immovable: true });
     this.heartDrops = this.physics.add.group({ allowGravity: false, immovable: true });
     this.enemies = this.physics.add.group({ allowGravity: true, immovable: false });
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -2260,6 +2420,7 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    this.flowerPromptActive = false;
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
@@ -2340,6 +2501,7 @@ class PlayScene extends Phaser.Scene {
     state.hasBirdControl = false;
     state.hasAcornBasket = false;
     state.hasLantern = false;
+    state.hasFlower = false;
     state.running = false;
     state.won = false;
     updateHud();
@@ -2358,6 +2520,9 @@ class PlayScene extends Phaser.Scene {
       pixelatedEquippedImages.acorn = pixelateStoryFrame(this.textures.get("falling-acorn").getSourceImage());
     }
     if (this.pixelatedLanternImage) pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
+    if (this.textures.exists("flower-item")) {
+      pixelatedEquippedImages.flower = pixelateStoryFrame(this.textures.get("flower-item").getSourceImage());
+    }
     this.levelReady = true;
     setGameAssetsReady(true);
     setLoadingVisible(false);
@@ -2475,7 +2640,7 @@ class PlayScene extends Phaser.Scene {
       sheet("gabi-glide-sheet", "./public/assets/character/main_char_sprite_glide.png", GABI_FRAME_WIDTH, GABI_FRAME_HEIGHT);
       sheet("gabi-air-dive-sheet", "./public/assets/character/main_char_air_dive.png", GABI_AIR_DIVE_FRAME_WIDTH, GABI_AIR_DIVE_FRAME_HEIGHT);
       sheet("gabi-dash-sheet", "./public/assets/character/main_char_sprite_dash.png", GABI_DASH_FRAME_WIDTH, GABI_DASH_FRAME_HEIGHT);
-      if (level.actionAbility === "command-birds") {
+      if (this.isCommandAttackLevel(level)) {
         sheet("gabi-point-sheet", "./public/assets/character/main_char_sprite_point.png", GABI_POINT_FRAME_WIDTH, GABI_POINT_FRAME_HEIGHT);
       }
       if (level.lanternPlayerSheet) {
@@ -2500,12 +2665,16 @@ class PlayScene extends Phaser.Scene {
         sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
         image("mr-magpie-jump", "./public/assets/character/mr_magpie_jump.png");
       }
-      if (level.finalElevator || level.actionAbility === "command-birds" || level.ambientBirds) {
+      if (level.finalElevator || this.isCommandAttackLevel(level) || level.ambientBirds) {
         const birdSprite = this.getBirdSpriteKey(level);
         sheet(birdSprite, this.getBirdSpritePath(birdSprite), BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
       }
       if (level.ambientLeaves) {
-        sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
+        if (level.ambientLeaves.sprite === "flower-petal") {
+          sheet("flower-petal", "./public/assets/environment/flower_petal.png", FLOWER_PETAL_FRAME_WIDTH, FLOWER_PETAL_FRAME_HEIGHT);
+        } else {
+          sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
+        }
       }
       spineAsset(level.distantColossus);
       colossusPartAssets(level.distantColossus);
@@ -2523,6 +2692,7 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-tunnel") image("parallax-tunnel", "./public/assets/environment/paralax_tunnel.png");
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.parallax === "parallax-park") image("parallax-park", "./public/assets/environment/paralax_park.png");
+      if (level.parallax === "parallax-garden") image("parallax-garden", "./public/assets/environment/paralax_garden.png");
       if (level.frontParallax === "parallax-park-frontlayer") {
         image("parallax-park-frontlayer", "./public/assets/environment/paralax_park_frontlayer.png");
       }
@@ -2551,6 +2721,11 @@ class PlayScene extends Phaser.Scene {
         image("acorn-basket", "./public/assets/environment/acorn_basket.png");
         image("falling-acorn", "./public/assets/environment/falling_acorn.png");
       }
+      if (level.actionAbility === "flower-petals" || this.levelHasCell(level, "f")) {
+        image("flower-item", "./public/assets/environment/flower_item.png");
+        sheet("flower-petal", "./public/assets/environment/flower_petal.png", FLOWER_PETAL_FRAME_WIDTH, FLOWER_PETAL_FRAME_HEIGHT);
+      }
+      if (level.gardenDecor) this.queueGardenAssets(image);
       if (level.lanternPlayerSheet || this.levelHasCell(level, "l")) image("lantern", "./public/assets/environment/lantern.png");
       (level.storyFrames || []).forEach((frame) => {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
@@ -2642,6 +2817,10 @@ class PlayScene extends Phaser.Scene {
     return (level.rows || []).some((row) => row.includes(cell));
   }
 
+  isCommandAttackLevel(level = this.level) {
+    return level?.actionAbility === "command-birds" || level?.actionAbility === "flower-petals";
+  }
+
   getEnemySpritePath(key = "robot-lv1") {
     return {
       "robot-lv1": "./public/assets/character/robot_lv1.png",
@@ -2667,6 +2846,37 @@ class PlayScene extends Phaser.Scene {
 
   getBirdScaleMultiplier() {
     return this.level?.birdScale || 1;
+  }
+
+  getAttackFlockSpriteKey() {
+    return this.level?.actionAbility === "flower-petals" ? "flower-petal" : this.getBirdSpriteKey();
+  }
+
+  getAttackFlockAnimationKey(key = this.getAttackFlockSpriteKey()) {
+    return key === "flower-petal" ? "flower-petal-float" : this.getBirdAnimationKey(key);
+  }
+
+  getAttackFlockScaleMultiplier(key = this.getAttackFlockSpriteKey()) {
+    if (key === "flower-petal") return this.level?.petalScale || 1;
+    return this.getBirdScaleMultiplier();
+  }
+
+  queueGardenAssets(image) {
+    const base = "./public/assets/environment/garden";
+    [
+      "arc_1",
+      "bench_1",
+      "bush_1",
+      "bush_2",
+      "bush_3",
+      "bush_4",
+      "bush_5",
+      "bush_6",
+      "fountain_1",
+      "fountain_2",
+      "lantern_1",
+      "lantern_2"
+    ].forEach((name) => image(`garden-${name}`, `${base}/${name}.png`));
   }
 
   getHazardPath(key = "falling-acorn") {
@@ -5119,6 +5329,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     });
+    if (this.textures.exists("flower-petal") && !this.anims.exists("flower-petal-float")) {
+      this.anims.create({
+        key: "flower-petal-float",
+        frames: this.anims.generateFrameNumbers("flower-petal", { frames: [0, 1, 2] }),
+        frameRate: 8,
+        repeat: -1
+      });
+    }
     if (this.textures.exists("mr-magpie") && !this.anims.exists("mr-magpie-idle")) {
       this.anims.create({
         key: "mr-magpie-idle",
@@ -5186,6 +5404,14 @@ class PlayScene extends Phaser.Scene {
           lantern.setCircle(70, 49, 55);
           this.tweens.add({ targets: lantern, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
+        if (cell === "f") {
+          const flower = this.flowers.create(x, y, "flower-item");
+          flower.setScale(0.055);
+          flower.setDepth(ITEM_DEPTH);
+          flower.setCircle(430, 80, 80);
+          this.flowerPoint = { x, y };
+          this.tweens.add({ targets: flower, y: y - 8, angle: 5, duration: 920, yoyo: true, repeat: -1, ease: "Sine.inOut" });
+        }
         if (cell === "m") {
           this.createEnemyAt(x, y, columnIndex % 2 ? -1 : 1);
         }
@@ -5238,6 +5464,7 @@ class PlayScene extends Phaser.Scene {
     this.createMovingPlatforms();
     this.createFinalElevator();
     this.createPlatformShadows();
+    this.createGardenDecorations();
   }
 
   createWallTileVisual(x, y, rowIndex, columnIndex) {
@@ -6023,6 +6250,59 @@ class PlayScene extends Phaser.Scene {
     this.updatePlatformShadows();
   }
 
+  createGardenDecorations() {
+    const config = this.level.gardenDecor;
+    if (!config?.clusters?.length) return;
+    const bushes = ["garden-bush_1", "garden-bush_2", "garden-bush_3", "garden-bush_4", "garden-bush_5", "garden-bush_6"];
+    const structures = ["garden-bench_1", "garden-arc_1", "garden-fountain_1", "garden-fountain_2"];
+    const lanterns = ["garden-lantern_1", "garden-lantern_2"];
+
+    config.clusters.forEach((cluster, clusterIndex) => {
+      const run = this.getNearestPlatformRun(cluster.x, cluster.row * TILE);
+      if (!run) return;
+      const width = Math.max(3, cluster.width || 7);
+      const density = Phaser.Math.Clamp(cluster.density ?? 0.6, 0.25, 1);
+      const startX = Phaser.Math.Clamp(cluster.x - width * TILE * 0.5, run.startX + 14, run.endX - 14);
+      const spacing = Math.max(18, TILE * 0.82);
+      const count = Math.max(2, Math.floor(width * density));
+      for (let index = 0; index < count; index += 1) {
+        const x = Phaser.Math.Clamp(startX + index * spacing + Phaser.Math.Between(-8, 9), run.startX + 16, run.endX - 16);
+        const front = (index + clusterIndex) % 3 === 0;
+        const key = bushes[(index + clusterIndex * 2) % bushes.length];
+        if (!this.textures.exists(key)) continue;
+        const bush = this.add.image(x, run.topY + (front ? 4 : -4), key);
+        bush.setOrigin(0.5, 1);
+        bush.setScale(Phaser.Math.FloatBetween(0.17, 0.24));
+        bush.setFlipX((index + clusterIndex) % 2 === 0);
+        bush.setDepth(front ? ITEM_DEPTH + 0.2 : FENCE_DEPTH - 0.18);
+        bush.setAlpha(Phaser.Math.FloatBetween(0.9, 1));
+        this.platformVisuals.add(bush);
+      }
+
+      const ornamentKeys = [
+        ...(cluster.allowStructures ? structures : []),
+        ...lanterns
+      ].filter((key) => this.textures.exists(key));
+      const ornamentCount = cluster.core ? 3 : cluster.allowStructures ? 2 : 1;
+      for (let index = 0; index < ornamentCount && ornamentKeys.length; index += 1) {
+        const key = ornamentKeys[(clusterIndex + index * 3) % ornamentKeys.length];
+        const x = Phaser.Math.Clamp(cluster.x + (index - (ornamentCount - 1) / 2) * TILE * 1.8, run.startX + 20, run.endX - 20);
+        const ornament = this.add.image(x, run.topY - 4, key);
+        ornament.setOrigin(0.5, 1);
+        ornament.setScale(key.includes("lantern") ? 0.18 : 0.21);
+        ornament.setDepth(FENCE_DEPTH - 0.05);
+        this.platformVisuals.add(ornament);
+      }
+    });
+  }
+
+  getNearestPlatformRun(x, y = 0) {
+    if (!this.platformRuns?.length) return null;
+    return this.platformRuns
+      .filter((run) => x >= run.startX - TILE * 3 && x <= run.endX + TILE * 3)
+      .sort((a, b) => Math.abs(a.topY - y) - Math.abs(b.topY - y))[0] || null;
+  }
+
   getPlatformShadowRuns() {
     const staticRuns = this.platformRuns.map((run, index) => ({
       ...run,
@@ -6478,6 +6758,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.doubleJumps, this.collectDoubleJump, null, this);
     this.physics.add.overlap(this.player, this.acornBaskets, this.collectAcornBasket, null, this);
     this.physics.add.overlap(this.player, this.lanterns, this.collectLantern, null, this);
+    this.physics.add.overlap(this.player, this.flowers, this.collectFlower, null, this);
     this.physics.add.overlap(this.player, this.heartDrops, this.collectHeart, null, this);
     this.physics.add.overlap(this.player, this.keys, this.collectKey, null, this);
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
@@ -6512,6 +6793,7 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    this.flowerPromptActive = false;
     this.nextQuakeAt = Infinity;
     this.quakeDropStartsAt = 0;
     this.quakeDropUntil = 0;
@@ -6747,7 +7029,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   isItemPromptActive() {
-    return Boolean(this.basketPromptActive || this.lanternPromptActive || this.wingPromptActive);
+    return Boolean(this.basketPromptActive || this.lanternPromptActive || this.wingPromptActive || this.flowerPromptActive);
   }
 
   handleItemPickupOk(time = this.time?.now || 0) {
@@ -6762,6 +7044,14 @@ class PlayScene extends Phaser.Scene {
       this.wingPromptActive = false;
       state.hasBirdControl = true;
       this.lastBirdAttackAt = -Infinity;
+      updateBirdCooldownHud(0);
+      setItemPickupVisible(false);
+      this.releaseBasketPromptControlLock();
+      return;
+    }
+
+    if (this.flowerPromptActive) {
+      this.flowerPromptActive = false;
       updateBirdCooldownHud(0);
       setItemPickupVisible(false);
       this.releaseBasketPromptControlLock();
@@ -6795,7 +7085,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   commandBirdAttack(time = 0) {
-    if (this.level.actionAbility !== "command-birds") return false;
+    if (!this.isCommandAttackLevel()) return false;
     if (!state.hasBirdControl) return false;
     if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
     if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
@@ -6810,7 +7100,10 @@ class PlayScene extends Phaser.Scene {
     this.spawnAttackBirdFlock(target, time);
     this.playBirdAttackCameraZoom(target);
     if (this.level.birdSfx) this.playLevelSfx(this.level.birdSfx, MAGPIE_ATTACK_SFX_VOLUME);
-    this.showGabiSpeech(Phaser.Math.RND.pick(BIRD_ATTACK_SPEECH_LINES));
+    const speechLines = this.level.actionAbility === "flower-petals"
+      ? PETAL_ATTACK_SPEECH_LINES
+      : BIRD_ATTACK_SPEECH_LINES;
+    this.showGabiSpeech(Phaser.Math.RND.pick(speechLines));
     return true;
   }
 
@@ -6959,7 +7252,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   updateBirdAttackCooldown(time = 0) {
-    if (this.level.actionAbility !== "command-birds" || !state.hasBirdControl) {
+    if (!this.isCommandAttackLevel() || !state.hasBirdControl) {
       setBirdCooldownVisible(false);
       return;
     }
@@ -7670,8 +7963,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   spawnAttackBirdFlock(target, time = 0) {
-    const birdSprite = this.getBirdSpriteKey();
-    const birdAnimation = this.getBirdAnimationKey(birdSprite);
+    const birdSprite = this.getAttackFlockSpriteKey();
+    const birdAnimation = this.getAttackFlockAnimationKey(birdSprite);
     if (!this.textures.exists(birdSprite) || !this.anims.exists(birdAnimation)) return;
     const camera = this.cameras.main;
     const directionX = target?.active ? (target.x >= this.player.x ? 1 : -1) : (this.player.flipX ? -1 : 1);
@@ -7697,6 +7990,7 @@ class PlayScene extends Phaser.Scene {
       hitTargets: new Set(),
       startedAt: time,
       startDistance,
+      spriteKey: birdSprite,
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
@@ -7707,13 +8001,17 @@ class PlayScene extends Phaser.Scene {
         baseX,
         baseY,
         birdSprite,
-        Phaser.Math.Between(0, 3)
+        birdSprite === "flower-petal" ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(0, 3)
       );
-      bird.setScale(Phaser.Math.FloatBetween(0.055, 0.088) * this.getBirdScaleMultiplier());
+      const scale = birdSprite === "flower-petal"
+        ? Phaser.Math.FloatBetween(0.04, 0.064) * this.getAttackFlockScaleMultiplier(birdSprite)
+        : Phaser.Math.FloatBetween(0.055, 0.088) * this.getAttackFlockScaleMultiplier(birdSprite);
+      bird.setScale(scale);
       bird.setDepth(BIRD_ATTACK_DEPTH);
       bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
       bird.setFlipX(directionX < 0);
       bird.play(birdAnimation, true);
+      bird.spin = birdSprite === "flower-petal" ? Phaser.Math.FloatBetween(-4.2, 4.2) : 0;
       bird.formationX = Phaser.Math.Between(-74, 74);
       bird.formationY = Phaser.Math.Between(-24, 24);
       bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
@@ -7827,6 +8125,7 @@ class PlayScene extends Phaser.Scene {
 
   canStartGabiDash(time = 0) {
     if (!this.player?.body || !state.running || state.won) return false;
+    if (!isDashEnabled()) return false;
     if (this.isItemPromptActive()) return false;
     if (this.gabiDash?.active) return false;
     if (this.chainClimb) return false;
@@ -8531,7 +8830,11 @@ class PlayScene extends Phaser.Scene {
         const wobbleY = Math.cos(age * 0.0028 + bird.phase * 0.7) * bird.wobble * 0.38;
         bird.x = flock.x + bird.formationX + wobbleX;
         bird.y = flock.y + bird.formationY + wobbleY;
-        bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        if (flock.spriteKey === "flower-petal") {
+          bird.rotation += (bird.spin || 0) * seconds;
+        } else {
+          bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        }
         return true;
       });
 
@@ -8846,20 +9149,26 @@ class PlayScene extends Phaser.Scene {
     const x = camera.scrollX + (fromLeft ? Phaser.Math.Between(-170, -34) : Phaser.Math.Between(20, VIEW_WIDTH - 40));
     const y = camera.scrollY + Phaser.Math.Between(-130, Math.max(-120, Math.floor(PLAY_HEIGHT * 0.42)));
     const leaf = this.add.sprite(x, y, config.sprite, Phaser.Math.Between(0, 2));
-    const scale = Phaser.Math.FloatBetween(0.048, 0.09);
+    const [minScale, maxScale] = config.scaleRange || [0.048, 0.09];
+    const [minAlpha, maxAlpha] = config.alphaRange || [0.45, 0.82];
+    const [minVx, maxVx] = config.windX || [78, 148];
+    const [minVy, maxVy] = config.windY || [28, 72];
+    const [minSpin, maxSpin] = config.spin || [-3.8, 3.8];
+    const scale = Phaser.Math.FloatBetween(minScale, maxScale);
     const mirrored = Phaser.Math.Between(0, 1) === 1 ? -1 : 1;
     leaf.setScale(scale * mirrored, scale * (Phaser.Math.Between(0, 1) === 1 ? -1 : 1));
     leaf.setFlipX(Phaser.Math.Between(0, 1) === 1);
     leaf.setFlipY(Phaser.Math.Between(0, 1) === 1);
     leaf.setDepth(Phaser.Math.FloatBetween(AUTUMN_LEAF_MIN_DEPTH, AUTUMN_LEAF_MAX_DEPTH));
-    leaf.setAlpha(Phaser.Math.FloatBetween(0.45, 0.82));
+    leaf.setAlpha(Phaser.Math.FloatBetween(minAlpha, maxAlpha));
     leaf.setAngle(Phaser.Math.Between(0, 359));
+    if (config.animation && this.anims.exists(config.animation)) leaf.play(config.animation, true);
     this.ambientLeaves.push({
       leaf,
       startedAt,
-      vx: Phaser.Math.FloatBetween(78, 148),
-      vy: Phaser.Math.FloatBetween(28, 72),
-      spin: Phaser.Math.FloatBetween(-3.8, 3.8),
+      vx: Phaser.Math.FloatBetween(minVx, maxVx),
+      vy: Phaser.Math.FloatBetween(minVy, maxVy),
+      spin: Phaser.Math.FloatBetween(minSpin, maxSpin),
       phase: Phaser.Math.FloatBetween(0, Math.PI * 2),
       gustFrequency: Phaser.Math.FloatBetween(2.1, 4.6),
       gustStrength: Phaser.Math.FloatBetween(16, 58),
@@ -10515,7 +10824,9 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    this.flowerPromptActive = false;
     state.hasBirdControl = false;
+    state.hasFlower = false;
     this.releaseBasketPromptControlLock();
     if (this.timerEvent) {
       this.timerEvent.remove(false);
@@ -10604,6 +10915,27 @@ class PlayScene extends Phaser.Scene {
       instruction: "Press [ ENTER ] to throw acorns.",
       image: this.pixelatedBasketImage || `./public/assets/environment/acorn_basket.png?v=${ASSET_VERSION}`
     });
+    updateHud();
+  }
+
+  collectFlower(_player, flower) {
+    flower.disableBody(true, true);
+    state.hasFlower = true;
+    state.hasBirdControl = true;
+    awardScore(500);
+    this.flowerPromptActive = true;
+    this.lastBirdAttackAt = -Infinity;
+    this.lockPlayerForBasketPrompt();
+    this.playLevelSfx(MISC_PICKUP_SFX_KEY, 0.5);
+    const flowerImage = this.textures.exists("flower-item")
+      ? pixelateStoryFrame(this.textures.get("flower-item").getSourceImage())
+      : `./public/assets/environment/flower_item.png?v=${ASSET_VERSION}`;
+    setItemPickupVisible(true, {
+      name: "Flower",
+      instruction: "Petals now answer you. Press [ SHIFT ] to use them offensively.",
+      image: flowerImage
+    });
+    updateBirdCooldownHud(0);
     updateHud();
   }
 
@@ -11189,6 +11521,7 @@ class PlayScene extends Phaser.Scene {
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
+    this.flowerPromptActive = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
     if (respawn) {
@@ -11218,7 +11551,8 @@ class PlayScene extends Phaser.Scene {
   }
 
   enterDoor() {
-    if (!state.running || !state.hasKey) return;
+    if (!state.running) return;
+    if (this.level.requiresKeyForDoor !== false && !state.hasKey) return;
     if (this.level.finalElevator && !this.finalElevatorCompleted) return;
     this.completeLevel();
   }
@@ -11286,6 +11620,7 @@ class PlayScene extends Phaser.Scene {
     state.hasBirdControl = false;
     state.hasAcornBasket = false;
     state.hasLantern = false;
+    state.hasFlower = false;
     state.totalEnemies = 0;
     state.enemiesDefeated = 0;
     state.questProgress = createQuestProgress();
@@ -11494,8 +11829,8 @@ function createSettingsToggle(key, label, description) {
 }
 
 function updateAudioSettingsPanel() {
-  hud.menuPanelContent
-    ?.querySelectorAll(".settings-toggle-row")
+  document
+    .querySelectorAll(".settings-toggle-row")
     .forEach((row) => {
       const key = row.dataset.setting;
       const enabled = state.audioSettings?.[key] !== false;
@@ -11508,12 +11843,27 @@ function updateAudioSettingsPanel() {
 }
 
 function showSettingsPanel() {
-  showMenuPanel("Settings", "Choose which audio layers should play. Your preferences are saved in this browser.", "settings");
+  showMenuPanel("Settings", "Choose which audio layers and movement assists should be active. Your preferences are saved in this browser.", "settings");
   hud.menuPanelContent.append(
     createSettingsToggle("music", "Music", "Menu themes, level soundtracks, music box tracks, and ambient loops."),
-    createSettingsToggle("sfx", "Sound Effects", "Pickups, attacks, dialogue sounds, impacts, and environmental effects.")
+    createSettingsToggle("sfx", "Sound Effects", "Pickups, attacks, dialogue sounds, impacts, and environmental effects."),
+    createSettingsToggle("dash", "Dash", "Double-tap left or right to dash when enabled.")
   );
   updateAudioSettingsPanel();
+}
+
+function createCheatSettingsControls() {
+  const wrapper = document.createElement("div");
+  wrapper.className = "cheat-settings";
+  const heading = document.createElement("h2");
+  heading.textContent = "Settings";
+  wrapper.append(
+    heading,
+    createSettingsToggle("music", "Music", "Toggle all music layers."),
+    createSettingsToggle("sfx", "Sound Effects", "Toggle pickups, attacks, impacts, and ambience."),
+    createSettingsToggle("dash", "Dash", "Toggle double-tap dash movement.")
+  );
+  return wrapper;
 }
 
 function showCreditsPanel() {
@@ -11552,6 +11902,8 @@ returnToMenuButton.type = "button";
 returnToMenuButton.textContent = "Return to Menu";
 returnToMenuButton.addEventListener("click", returnToMainMenu);
 hud.cheatLevels.appendChild(returnToMenuButton);
+hud.cheatLevels.after(createCheatSettingsControls());
+updateAudioSettingsPanel();
 
 window.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && !hud.mainMenu.hidden) {

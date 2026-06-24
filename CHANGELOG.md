@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.57.0
+
+- Added a Level 6 botanical garden route with a flower pickup and no key requirement.
+- Added flower-petal Shift attacks after the flower is collected.
+- Added ambient flower petals, garden decorations, magpies, and layered light beams to Level 6.
+- Added Settings controls to the in-game level-select menu, including a saved Dash toggle.
+
 ## v0.56.9
 
 - Mirrored Gabi's chain-climb sway direction.
@@ -114,7 +121,6 @@
 ## v0.55.32
 
 - Fixed BU's thrown crate so it spins around its center while flying toward the platform.
-
 ## v0.55.31
 
 - Added spacing between BU's hand crush and suitcase crate attacks so patterns do not overlap.
