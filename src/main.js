@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.8";
+const GAME_VERSION = "v0.56.9";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -124,7 +124,7 @@ const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
 const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
 const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
-const KEY_GARDEN_LANTERN_DEPTH = 5.72;
+const KEY_GARDEN_PROP_BACK_DEPTH = 3.55;
 const KEY_REVEAL_PICKUP_DELAY = 3000;
 const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
 const KEY_GARDEN_ASSETS = [
@@ -342,7 +342,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-level4-garden-chain-sway";
+const ASSET_VERSION = "20260624-chain-sway-garden-props";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -4253,7 +4253,8 @@ class PlayScene extends Phaser.Scene {
     const seed = options.seed ?? 0;
     const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(x / TILE) + seed + 23);
     const rawDepth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
-    const depth = asset.type === "lantern" ? KEY_GARDEN_LANTERN_DEPTH : rawDepth;
+    const isGardenProp = asset.type === "lantern" || asset.type === "feature";
+    const depth = isGardenProp ? KEY_GARDEN_PROP_BACK_DEPTH : rawDepth;
     const visualY = asset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
     const scale = asset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
     sprite.setOrigin(0.5, 1);
@@ -5619,7 +5620,7 @@ class PlayScene extends Phaser.Scene {
     this.player.body.reset(nextX, nextY);
     this.setGabiAnimation("climb");
     const swayAngle = Phaser.Math.Clamp(
-      Phaser.Math.RadToDeg(updatedTarget.angle || 0) * 0.72,
+      -Phaser.Math.RadToDeg(updatedTarget.angle || 0) * 0.72,
       -GABI_CHAIN_BODY_SWAY_DEGREES,
       GABI_CHAIN_BODY_SWAY_DEGREES
     );

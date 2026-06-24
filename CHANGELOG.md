@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.56.9
+
+- Mirrored Gabi's chain-climb sway direction.
+- Kept garden benches, arcs, fountains, and lanterns behind characters while preserving their higher platform placement.
+
 ## v0.56.8
 
 - Added a dense rooftop garden section after Level 4's elevator ascent.
