@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.1
+
+- Added a gameplay-loop recovery guard so update errors do not leave the game frozen while music continues.
+- Added a runtime watchdog that reloads the current level if successful gameplay ticks stop during play.
+- Fixed stale music restore state after returning to the browser tab.
+
 ## v0.56.0
 
 - Reworked level transitions to release previous level assets before loading the next route.

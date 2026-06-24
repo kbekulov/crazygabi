@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.0";
+const GAME_VERSION = "v0.56.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -317,7 +317,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-level-load-and-content";
+const ASSET_VERSION = "20260624-runtime-freeze-watchdog";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -387,6 +387,8 @@ const DIFFICULTY_PROFILES = {
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
 const CACHED_LEVEL_READY_DELAY_MS = 80;
+const RUNTIME_WATCHDOG_INTERVAL_MS = 1000;
+const RUNTIME_WATCHDOG_STALL_MS = 3200;
 const INTRO_RETRY_MS = 1000;
 const INTRO_FAILSAFE_MS = 6500;
 const MUSIC_TRACKS = [
@@ -2375,6 +2377,7 @@ class PlayScene extends Phaser.Scene {
     }
     if (this.pixelatedLanternImage) pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
     this.levelReady = true;
+    this.startRuntimeWatchdog();
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
@@ -6272,6 +6275,15 @@ class PlayScene extends Phaser.Scene {
   }
 
   update(time = 0, delta = 0) {
+    try {
+      this.updateGameLoop(time, delta);
+      this.markRuntimeTick(time);
+    } catch (error) {
+      this.handleUpdateLoopError(error);
+    }
+  }
+
+  updateGameLoop(time = 0, delta = 0) {
     if (!this.levelReady) {
       this.updateMenuBackdrop(delta);
       return;
@@ -6421,6 +6433,74 @@ class PlayScene extends Phaser.Scene {
     if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
     this.updateGabiAnimation(left || right, onFloor);
     this.enforceFinalElevatorRidePose();
+  }
+
+  markRuntimeTick(time = 0) {
+    this.lastSuccessfulUpdateAt = time;
+    this.lastSuccessfulUpdateWallClock = performance.now();
+    this.updateLoopErrorCount = 0;
+  }
+
+  handleUpdateLoopError(error) {
+    const now = performance.now();
+    const recentError = now - (this.lastUpdateLoopErrorAt || -Infinity) < 1000;
+    this.updateLoopErrorCount = recentError ? (this.updateLoopErrorCount || 0) + 1 : 1;
+    this.lastUpdateLoopErrorAt = now;
+    if (now - (this.lastUpdateLoopErrorLoggedAt || -Infinity) > 1000) {
+      console.error("Gameplay update recovered from an error", error);
+      this.lastUpdateLoopErrorLoggedAt = now;
+    }
+    try {
+      this.recoverTransientRuntimeState();
+    } catch (recoveryError) {
+      console.error("Gameplay recovery failed", recoveryError);
+    }
+    if (this.updateLoopErrorCount >= 6) {
+      this.reloadCurrentLevelAfterRuntimeStall("Repeated gameplay update errors");
+    }
+  }
+
+  recoverTransientRuntimeState() {
+    if (!this.levelReady) return;
+    this.physics?.world?.resume();
+    if (this.input?.keyboard) this.input.keyboard.enabled = true;
+    if (this.player?.body && state.running && !state.won && !this.isItemPromptActive()) {
+      this.player.body.enable = true;
+      this.player.body.moves = true;
+      this.player.body.setAllowGravity(true);
+    }
+    this.cancelBirdAttackCameraZoom?.();
+    this.cancelDiveCameraZoom?.({ restoreCamera: true });
+  }
+
+  startRuntimeWatchdog() {
+    this.stopRuntimeWatchdog();
+    this.lastSuccessfulUpdateWallClock = performance.now();
+    this.runtimeWatchdogTimer = window.setInterval(() => {
+      if (!this.levelReady || !state.running || state.won || document.hidden) {
+        this.lastSuccessfulUpdateWallClock = performance.now();
+        return;
+      }
+      const lastTickAt = this.lastSuccessfulUpdateWallClock || performance.now();
+      if (performance.now() - lastTickAt < RUNTIME_WATCHDOG_STALL_MS) return;
+      this.reloadCurrentLevelAfterRuntimeStall("Gameplay loop stopped ticking");
+    }, RUNTIME_WATCHDOG_INTERVAL_MS);
+  }
+
+  stopRuntimeWatchdog() {
+    window.clearInterval(this.runtimeWatchdogTimer);
+    this.runtimeWatchdogTimer = null;
+  }
+
+  reloadCurrentLevelAfterRuntimeStall(reason = "Gameplay runtime stalled") {
+    if (this.runtimeReloading || !this.scene.isActive("PlayScene")) return;
+    this.runtimeReloading = true;
+    console.warn(reason);
+    window.setTimeout(() => {
+      if (!this.scene.isActive("PlayScene")) return;
+      this.runtimeReloading = false;
+      this.requestLevelStart(state.levelIndex, { resetScore: false });
+    }, 0);
   }
 
   enforceFinalElevatorRidePose() {
@@ -10033,7 +10113,9 @@ class PlayScene extends Phaser.Scene {
     };
 
     this.handlePageVisible = () => {
-      if (!this.wasMusicPlayingBeforeHidden) return;
+      const shouldRestoreMusic = this.wasMusicPlayingBeforeHidden;
+      this.wasMusicPlayingBeforeHidden = false;
+      if (!shouldRestoreMusic) return;
       this.resumeAudioContext();
       if (this.levelReady && state.running && !state.won) {
         this.startActiveLevelMusic();
@@ -10097,6 +10179,8 @@ class PlayScene extends Phaser.Scene {
 
   cancelLevelRuntime() {
     this.clearIntroWatchdogs();
+    this.stopRuntimeWatchdog();
+    this.runtimeReloading = false;
     this.levelLoadId = (this.levelLoadId || 0) + 1;
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
