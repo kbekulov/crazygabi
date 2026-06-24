@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.4";
+const GAME_VERSION = "v0.56.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -122,6 +122,8 @@ const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
 const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
 const KEY_GARDEN_LIGHT_COUNT = [2, 5];
+const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
+const KEY_GARDEN_LANTERN_DEPTH = 5.72;
 const KEY_GARDEN_ASSETS = [
   { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5, type: "feature" },
   { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1, type: "feature" },
@@ -164,6 +166,7 @@ const STARTING_BILLBOARD_DEPTH = FENCE_DEPTH + 0.5;
 const STARTING_BILLBOARD_SCALE = 0.36;
 const BILLBOARD_INTERACT_DISTANCE = 92;
 const ITEM_DEPTH = 8;
+const KEY_ITEM_DEPTH = DARKNESS_DEPTH + 2;
 const LIGHT_RAY_FRONT_DEPTH = ITEM_DEPTH + 0.75;
 const LIGHT_SPARKLE_DEPTH = ITEM_DEPTH + 1;
 const LIGHT_RAY_BLINDING_DEPTH = LIGHT_SPARKLE_DEPTH + 0.55;
@@ -335,7 +338,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-garden-bush-lighting";
+const ASSET_VERSION = "20260624-garden-depth-key-shift";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -901,7 +904,7 @@ function createLevelOne() {
     [1, 109, "a"],
     [1, 121, "a"],
     [1, 134, "a"],
-    [1, 142, "k"],
+    [3, 132, "k"],
     [9, 137, "d"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
@@ -4039,9 +4042,8 @@ class PlayScene extends Phaser.Scene {
         depthBias: 0.35
       });
       if (this.keySprite) {
-        const keyDepth = Math.max(3.25, (primaryCover?.depth ?? ITEM_DEPTH) - 0.04);
-        this.keySprite.setDepth(keyDepth);
-        this.keySprite.setData("gardenCoverDepth", keyDepth);
+        this.keySprite.setDepth(KEY_ITEM_DEPTH);
+        this.keySprite.setData("gardenCoverDepth", KEY_ITEM_DEPTH);
       }
     }
 
@@ -4098,14 +4100,14 @@ class PlayScene extends Phaser.Scene {
     [...(this.platformRuns || [])]
       .filter((run) => !seen.has(run.id))
       .filter((run) => run.endX - run.startX >= TILE * 3)
-      .filter((run) => Math.abs(run.topY - primaryRun.topY) <= TILE * 6)
-      .filter((run) => point.x >= run.startX - TILE * 9 && point.x <= run.endX + TILE * 9)
+      .filter((run) => Math.abs(run.topY - primaryRun.topY) <= TILE * 8)
+      .filter((run) => point.x >= run.startX - TILE * 14 && point.x <= run.endX + TILE * 14)
       .sort((a, b) => {
         const aDistance = Math.abs(a.topY - primaryRun.topY) + Math.abs(Phaser.Math.Clamp(point.x, a.startX, a.endX) - point.x) * 0.45;
         const bDistance = Math.abs(b.topY - primaryRun.topY) + Math.abs(Phaser.Math.Clamp(point.x, b.startX, b.endX) - point.x) * 0.45;
         return aDistance - bDistance;
       })
-      .slice(0, 2)
+      .slice(0, 3)
       .forEach((run) => {
         seen.add(run.id);
         runs.push(run);
@@ -4145,10 +4147,13 @@ class PlayScene extends Phaser.Scene {
       : this.add.image(x, y, asset.key);
     const seed = options.seed ?? 0;
     const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(x / TILE) + seed + 23);
-    const depth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
+    const rawDepth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
+    const depth = asset.type === "lantern" ? KEY_GARDEN_LANTERN_DEPTH : rawDepth;
+    const visualY = asset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
     const scale = asset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
     sprite.setOrigin(0.5, 1);
     sprite.setDepth(depth);
+    sprite.setY(visualY);
     sprite.setScale(scale);
     sprite.setFlipX(this.wallPlacementNoise(seed + 11, Math.floor(y / TILE) + 37) > 0.5);
     if (options.interactive && sprite.body) {
@@ -5076,7 +5081,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "k") {
           const key = this.keys.create(x, y, "door-key");
           key.setScale(ITEM_SCALE);
-          key.setDepth(ITEM_DEPTH);
+          key.setDepth(KEY_ITEM_DEPTH);
           key.setCircle(58, 59, 59);
           this.keyPoint = { x, y };
           this.keySprite = key;
@@ -10500,7 +10505,7 @@ class PlayScene extends Phaser.Scene {
     const targetY = run ? run.topY - TILE / 2 : this.player.y - 24;
     const key = this.keys.create(this.player.x, this.player.y - 76, "door-key");
     key.setScale(ITEM_SCALE);
-    key.setDepth(ITEM_DEPTH);
+    key.setDepth(KEY_ITEM_DEPTH);
     key.setCircle(58, 59, 59);
     key.setData("bossExitKey", true);
     this.keyPoint = { x: targetX, y: targetY };

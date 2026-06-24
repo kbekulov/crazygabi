@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.56.5
+
+- Moved the Level 1 key garden to the neighboring left platform.
+- Kept keys above all world objects and lanterns above garden bushes.
+- Adjusted foreground garden bushes to sit lower while background bushes stay higher.
+- Spread garden hints across more nearby platforms around key locations.
+
 ## v0.56.4
 
 - Reworked key gardens with richer layered light beams, sparkles, and impact glows.
