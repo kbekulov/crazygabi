@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.1";
+const GAME_VERSION = "v0.56.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -119,6 +119,8 @@ const HAYSTACK_SCALE = 0.36;
 const HAYSTACK_Y_OFFSET = 10;
 const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
+const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
+const KEY_GARDEN_LIGHT_DEPTH = 8.95;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
 const HAY_BURST_COOLDOWN_MS = 1000;
@@ -317,7 +319,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-runtime-freeze-watchdog";
+const ASSET_VERSION = "20260624-v55-loading-gardens";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -333,18 +335,6 @@ const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true
 };
-const RETAINED_TEXTURE_KEYS = new Set([
-  "tile-ground",
-  "coin",
-  "key",
-  "light-ray",
-  "light-ray-impact",
-  "platform-shadow",
-  "parallax-city",
-  "gabi-sheet",
-  "grey-cat"
-]);
-const RETAINED_AUDIO_KEYS = new Set(["bgm-menu"]);
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const DIFFICULTY_PROFILES = {
   [DIFFICULTY_EASY]: {
@@ -386,9 +376,6 @@ const DIFFICULTY_PROFILES = {
 };
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
-const CACHED_LEVEL_READY_DELAY_MS = 80;
-const RUNTIME_WATCHDOG_INTERVAL_MS = 1000;
-const RUNTIME_WATCHDOG_STALL_MS = 3200;
 const INTRO_RETRY_MS = 1000;
 const INTRO_FAILSAFE_MS = 6500;
 const MUSIC_TRACKS = [
@@ -1978,6 +1965,34 @@ function makeTextures(scene) {
   g.generateTexture("acorn", 32, 32);
   g.clear();
 
+  g.fillStyle(0x1e542c).fillEllipse(16, 25, 30, 10);
+  g.fillStyle(0x3f9f3e).fillTriangle(4, 26, 8, 9, 13, 26);
+  g.fillTriangle(12, 26, 17, 5, 22, 26);
+  g.fillTriangle(20, 26, 25, 10, 29, 26);
+  g.fillStyle(0x8be35c).fillEllipse(16, 22, 18, 7);
+  g.generateTexture("key-garden-grass", 32, 32);
+  g.clear();
+
+  g.fillStyle(0x275f2d).fillRect(15, 12, 2, 14);
+  g.fillStyle(0x4ba64c).fillEllipse(12, 22, 10, 5).fillEllipse(20, 19, 11, 5);
+  g.fillStyle(0xf4d66c).fillCircle(16, 10, 6);
+  g.fillStyle(0xf07aac).fillCircle(11, 10, 4).fillCircle(21, 10, 4).fillCircle(16, 5, 4).fillCircle(16, 15, 4);
+  g.fillStyle(0xffef91).fillCircle(16, 10, 2);
+  g.generateTexture("key-garden-flower", 32, 32);
+  g.clear();
+
+  g.fillStyle(0x1d4a2c).fillEllipse(16, 20, 30, 18);
+  g.fillStyle(0x2e7b38).fillEllipse(11, 16, 16, 14).fillEllipse(22, 15, 14, 13);
+  g.fillStyle(0x72c95f).fillEllipse(17, 18, 16, 10);
+  g.generateTexture("key-garden-shrub", 32, 32);
+  g.clear();
+
+  g.fillStyle(0x8a5331).fillRoundedRect(13, 14, 6, 12, 2);
+  g.fillStyle(0xce5f3b).fillEllipse(16, 13, 19, 12);
+  g.fillStyle(0xf0d091).fillCircle(11, 10, 2).fillCircle(17, 8, 2).fillCircle(21, 13, 2);
+  g.generateTexture("key-garden-mushroom", 32, 32);
+  g.clear();
+
   g.fillStyle(0x4a4f62).fillRect(0, 0, 64, 64);
   g.fillStyle(0x596878).fillRect(0, 0, 64, 12);
   g.fillStyle(0x323746).fillRect(0, 50, 64, 14);
@@ -2009,7 +2024,44 @@ function makeLightFxTextures(scene) {
     scene.textures.addCanvas("platform-cast-shadow", createPlatformCastShadowCanvas());
   }
 
+  if (!scene.textures.exists("key-garden-light")) {
+    scene.textures.addCanvas("key-garden-light", createKeyGardenLightCanvas());
+  }
+
   g.destroy();
+}
+
+function createKeyGardenLightCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 260;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  const vertical = context.createLinearGradient(0, 0, 0, canvas.height);
+  vertical.addColorStop(0, "rgba(255, 244, 196, 0.00)");
+  vertical.addColorStop(0.18, "rgba(255, 246, 205, 0.28)");
+  vertical.addColorStop(0.68, "rgba(255, 228, 158, 0.17)");
+  vertical.addColorStop(1, "rgba(255, 228, 158, 0.00)");
+  context.fillStyle = vertical;
+  context.beginPath();
+  context.moveTo(52, 0);
+  context.lineTo(76, 0);
+  context.lineTo(124, canvas.height);
+  context.lineTo(4, canvas.height);
+  context.closePath();
+  context.fill();
+
+  context.globalCompositeOperation = "destination-in";
+  const horizontal = context.createLinearGradient(0, 0, canvas.width, 0);
+  horizontal.addColorStop(0, "rgba(0, 0, 0, 0)");
+  horizontal.addColorStop(0.34, "rgba(0, 0, 0, 0.82)");
+  horizontal.addColorStop(0.5, "rgba(0, 0, 0, 1)");
+  horizontal.addColorStop(0.66, "rgba(0, 0, 0, 0.82)");
+  horizontal.addColorStop(1, "rgba(0, 0, 0, 0)");
+  context.fillStyle = horizontal;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.globalCompositeOperation = "source-over";
+  return canvas;
 }
 
 function createLightImpactGlowCanvas() {
@@ -2139,9 +2191,6 @@ class PlayScene extends Phaser.Scene {
     state.levelIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     try {
-      this.releaseLevelAssetCache();
-      await wait(0);
-      if (!this.isActiveLevelLoad(loadId)) return;
       await this.loadLevelAssets(this.level, loadId);
       if (!this.isActiveLevelLoad(loadId)) return;
       const remainingTransitionMs = MIN_LEVEL_TRANSITION_MS - (performance.now() - transitionStartedAt);
@@ -2150,11 +2199,7 @@ class PlayScene extends Phaser.Scene {
         await wait(remainingTransitionMs);
       }
       if (!this.isActiveLevelLoad(loadId)) return;
-      try {
-        this.createLevelRuntime();
-      } catch (runtimeError) {
-        throw runtimeError;
-      }
+      this.createLevelRuntime();
     } catch (error) {
       console.error("Level load failed", error);
       if (!this.isActiveLevelLoad(loadId)) return;
@@ -2172,36 +2217,6 @@ class PlayScene extends Phaser.Scene {
 
   isActiveLevelLoad(loadId) {
     return this.scene.isActive("PlayScene") && this.levelLoadId === loadId;
-  }
-
-  releaseLevelAssetCache() {
-    const cache = this.levelAssetCache;
-    if (!cache) return;
-    (cache.textures || new Set()).forEach((key) => {
-      if (RETAINED_TEXTURE_KEYS.has(key) || !this.textures.exists(key)) return;
-      this.textures.remove(key);
-    });
-    (cache.audio || new Set()).forEach((key) => {
-      if (RETAINED_AUDIO_KEYS.has(key) || !this.cache.audio.exists(key)) return;
-      if (this.bgm?.key === key) {
-        if (this.bgm.isPlaying) this.bgm.stop();
-        this.bgm.destroy();
-        this.bgm = null;
-      }
-      if (this.ambientBgm?.key === key) {
-        if (this.ambientBgm.isPlaying) this.ambientBgm.stop();
-        this.ambientBgm.destroy();
-        this.ambientBgm = null;
-      }
-      this.cache.audio.remove(key);
-    });
-    (cache.json || new Set()).forEach((key) => {
-      if (this.cache.json.exists(key)) this.cache.json.remove(key);
-    });
-    (cache.text || new Set()).forEach((key) => {
-      if (this.cache.text.exists(key)) this.cache.text.remove(key);
-    });
-    this.levelAssetCache = null;
   }
 
   createLevelRuntime() {
@@ -2231,6 +2246,7 @@ class PlayScene extends Phaser.Scene {
     this.finalElevatorCredits = [];
     this.platformShadows = [];
     this.platformVisuals = this.add.group();
+    this.keyGardenKeys = new Set();
     this.hangingChains = [];
     this.chainClimb = null;
     this.chainGrabDisabledUntil = 0;
@@ -2328,6 +2344,7 @@ class PlayScene extends Phaser.Scene {
     this.planWallForegroundTiles();
     this.buildLevel();
     this.createHaystacks();
+    this.createKeyGardenIndicators();
     this.createDiveIndicatorBirds();
     this.createDiveFieldLeaves();
     this.createLightRays();
@@ -2377,7 +2394,6 @@ class PlayScene extends Phaser.Scene {
     }
     if (this.pixelatedLanternImage) pixelatedEquippedImages.lantern = this.pixelatedLanternImage;
     this.levelReady = true;
-    this.startRuntimeWatchdog();
     setGameAssetsReady(true);
     setLoadingVisible(false);
     this.prepareLevelIntro();
@@ -2390,7 +2406,6 @@ class PlayScene extends Phaser.Scene {
 
   showMainMenu() {
     this.levelReady = false;
-    this.releaseLevelAssetCache();
     hud.root.hidden = true;
     hud.message.hidden = true;
     setBirdCooldownVisible(false);
@@ -2449,32 +2464,22 @@ class PlayScene extends Phaser.Scene {
       }
 
       let queued = 0;
-      const assetCache = {
-        textures: new Set(),
-        audio: new Set(),
-        json: new Set(),
-        text: new Set()
-      };
       const image = (key, src) => {
-        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
       };
       const storyImage = (key, src) => {
-        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${STORY_ASSET_VERSION}`);
         queued += 1;
       };
       const sheet = (key, src, frameWidth, frameHeight) => {
-        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.spritesheet(key, `${src}?v=${ASSET_VERSION}`, { frameWidth, frameHeight });
         queued += 1;
       };
       const audio = (key, src) => {
-        assetCache.audio.add(key);
         if (this.cache.audio.exists(key)) return;
         this.load.audio(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
@@ -2484,8 +2489,6 @@ class PlayScene extends Phaser.Scene {
         if (typeof this.load.spineJson !== "function" || typeof this.load.spineAtlas !== "function") return;
         const dataKey = config.dataKey || "colossus-placeholder-data";
         const atlasKey = config.atlasKey || "colossus-placeholder-atlas";
-        assetCache.json.add(dataKey);
-        assetCache.text.add(atlasKey);
         if (!this.cache.json.exists(dataKey)) {
           this.load.spineJson(dataKey, `${config.skeleton}?v=${ASSET_VERSION}`);
           queued += 1;
@@ -2619,10 +2622,7 @@ class PlayScene extends Phaser.Scene {
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
-        window.setTimeout(() => {
-          if (this.isActiveLevelLoad(loadId)) this.levelAssetCache = assetCache;
-          resolve();
-        }, CACHED_LEVEL_READY_DELAY_MS);
+        resolve();
         return;
       }
 
@@ -2641,7 +2641,6 @@ class PlayScene extends Phaser.Scene {
         finished = true;
         cleanup();
         updateLoadingProgress(1, "Level ready.");
-        this.levelAssetCache = assetCache;
         resolve();
       };
       const fail = (file) => {
@@ -4064,6 +4063,62 @@ class PlayScene extends Phaser.Scene {
       this.cameras.main.startFollow(this.player, true, 0.12, 0.12);
       this.cameras.main.setDeadzone(170, 110);
     }
+  }
+
+  createKeyGardenIndicators(point = this.keyPoint) {
+    if (!point || !this.platformRuns?.length || !this.textures.exists("key-garden-grass")) return;
+    this.keyGardenKeys = this.keyGardenKeys || new Set();
+    const id = `${Math.round(point.x)}:${Math.round(point.y)}`;
+    if (this.keyGardenKeys.has(id)) return;
+
+    const run = this.findGardenPlatformRun(point);
+    if (!run) return;
+    this.keyGardenKeys.add(id);
+    const floorY = run.topY + 2;
+    const centerX = Phaser.Math.Clamp(point.x, run.startX + 44, run.endX - 44);
+    const rowSeed = Math.max(1, Math.floor(floorY / TILE));
+    const columnSeed = Math.max(1, Math.floor(centerX / TILE));
+    const decorKeys = ["key-garden-grass", "key-garden-flower", "key-garden-shrub", "key-garden-mushroom"];
+    const offsets = [-86, -62, -39, -16, 8, 34, 58, 82];
+
+    offsets.forEach((offset, index) => {
+      const noise = this.wallPlacementNoise(rowSeed + index * 7, columnSeed + index * 13);
+      if (noise < 0.16) return;
+      const x = Phaser.Math.Clamp(
+        centerX + offset + (noise - 0.5) * 18,
+        run.startX + 14,
+        run.endX - 14
+      );
+      const keyIndex = Math.floor(this.wallPlacementNoise(rowSeed + 31, columnSeed + index * 19) * decorKeys.length) % decorKeys.length;
+      const sprite = this.add.image(x, floorY, decorKeys[keyIndex]);
+      sprite.setOrigin(0.5, 1);
+      sprite.setDepth(KEY_GARDEN_DEPTH + index * 0.002);
+      sprite.setScale(Phaser.Math.Linear(0.74, 1.18, this.wallPlacementNoise(rowSeed + index * 5, columnSeed + 83)));
+      sprite.setFlipX(this.wallPlacementNoise(rowSeed + index * 11, columnSeed + 41) > 0.5);
+      this.platformVisuals?.add(sprite);
+    });
+
+    [-24, 0, 24].forEach((angle, index) => {
+      const beam = this.add.image(centerX + (index - 1) * 20, floorY - 8, "key-garden-light");
+      beam.setOrigin(0.5, 1);
+      beam.setDepth(KEY_GARDEN_LIGHT_DEPTH + index * 0.002);
+      beam.setRotation(Phaser.Math.DegToRad(angle));
+      beam.setScale(index === 1 ? 0.92 : 0.78, 0.82);
+      beam.setAlpha(index === 1 ? 0.5 : 0.36);
+      beam.setBlendMode(Phaser.BlendModes.SCREEN ?? Phaser.BlendModes.ADD);
+      this.platformVisuals?.add(beam);
+    });
+  }
+
+  findGardenPlatformRun(point) {
+    return [...(this.platformRuns || [])]
+      .filter((run) => point.x >= run.startX - TILE * 4 && point.x <= run.endX + TILE * 4)
+      .filter((run) => run.topY >= point.y - TILE * 2)
+      .sort((a, b) => {
+        const aDistance = Math.abs(a.topY - point.y) + Math.abs(Phaser.Math.Clamp(point.x, a.startX, a.endX) - point.x) * 0.25;
+        const bDistance = Math.abs(b.topY - point.y) + Math.abs(Phaser.Math.Clamp(point.x, b.startX, b.endX) - point.x) * 0.25;
+        return aDistance - bDistance;
+      })[0];
   }
 
   createLightRays() {
@@ -6275,15 +6330,6 @@ class PlayScene extends Phaser.Scene {
   }
 
   update(time = 0, delta = 0) {
-    try {
-      this.updateGameLoop(time, delta);
-      this.markRuntimeTick(time);
-    } catch (error) {
-      this.handleUpdateLoopError(error);
-    }
-  }
-
-  updateGameLoop(time = 0, delta = 0) {
     if (!this.levelReady) {
       this.updateMenuBackdrop(delta);
       return;
@@ -6433,74 +6479,6 @@ class PlayScene extends Phaser.Scene {
     if (this.player.y > this.levelHeight + 56) this.loseLife({ respawn: true });
     this.updateGabiAnimation(left || right, onFloor);
     this.enforceFinalElevatorRidePose();
-  }
-
-  markRuntimeTick(time = 0) {
-    this.lastSuccessfulUpdateAt = time;
-    this.lastSuccessfulUpdateWallClock = performance.now();
-    this.updateLoopErrorCount = 0;
-  }
-
-  handleUpdateLoopError(error) {
-    const now = performance.now();
-    const recentError = now - (this.lastUpdateLoopErrorAt || -Infinity) < 1000;
-    this.updateLoopErrorCount = recentError ? (this.updateLoopErrorCount || 0) + 1 : 1;
-    this.lastUpdateLoopErrorAt = now;
-    if (now - (this.lastUpdateLoopErrorLoggedAt || -Infinity) > 1000) {
-      console.error("Gameplay update recovered from an error", error);
-      this.lastUpdateLoopErrorLoggedAt = now;
-    }
-    try {
-      this.recoverTransientRuntimeState();
-    } catch (recoveryError) {
-      console.error("Gameplay recovery failed", recoveryError);
-    }
-    if (this.updateLoopErrorCount >= 6) {
-      this.reloadCurrentLevelAfterRuntimeStall("Repeated gameplay update errors");
-    }
-  }
-
-  recoverTransientRuntimeState() {
-    if (!this.levelReady) return;
-    this.physics?.world?.resume();
-    if (this.input?.keyboard) this.input.keyboard.enabled = true;
-    if (this.player?.body && state.running && !state.won && !this.isItemPromptActive()) {
-      this.player.body.enable = true;
-      this.player.body.moves = true;
-      this.player.body.setAllowGravity(true);
-    }
-    this.cancelBirdAttackCameraZoom?.();
-    this.cancelDiveCameraZoom?.({ restoreCamera: true });
-  }
-
-  startRuntimeWatchdog() {
-    this.stopRuntimeWatchdog();
-    this.lastSuccessfulUpdateWallClock = performance.now();
-    this.runtimeWatchdogTimer = window.setInterval(() => {
-      if (!this.levelReady || !state.running || state.won || document.hidden) {
-        this.lastSuccessfulUpdateWallClock = performance.now();
-        return;
-      }
-      const lastTickAt = this.lastSuccessfulUpdateWallClock || performance.now();
-      if (performance.now() - lastTickAt < RUNTIME_WATCHDOG_STALL_MS) return;
-      this.reloadCurrentLevelAfterRuntimeStall("Gameplay loop stopped ticking");
-    }, RUNTIME_WATCHDOG_INTERVAL_MS);
-  }
-
-  stopRuntimeWatchdog() {
-    window.clearInterval(this.runtimeWatchdogTimer);
-    this.runtimeWatchdogTimer = null;
-  }
-
-  reloadCurrentLevelAfterRuntimeStall(reason = "Gameplay runtime stalled") {
-    if (this.runtimeReloading || !this.scene.isActive("PlayScene")) return;
-    this.runtimeReloading = true;
-    console.warn(reason);
-    window.setTimeout(() => {
-      if (!this.scene.isActive("PlayScene")) return;
-      this.runtimeReloading = false;
-      this.requestLevelStart(state.levelIndex, { resetScore: false });
-    }, 0);
   }
 
   enforceFinalElevatorRidePose() {
@@ -10179,8 +10157,6 @@ class PlayScene extends Phaser.Scene {
 
   cancelLevelRuntime() {
     this.clearIntroWatchdogs();
-    this.stopRuntimeWatchdog();
-    this.runtimeReloading = false;
     this.levelLoadId = (this.levelLoadId || 0) + 1;
     this.activeIntroToken = (this.activeIntroToken || 0) + 1;
     this.introInProgress = false;
@@ -10375,6 +10351,7 @@ class PlayScene extends Phaser.Scene {
     this.keySprite = key;
     this.keyRevealed = true;
     this.bossExitKeySpawned = true;
+    this.createKeyGardenIndicators(this.keyPoint);
     this.tweens.add({ targets: key, angle: 8, duration: 650, yoyo: true, repeat: -1, ease: "Sine.inOut" });
     this.tweens.add({
       targets: key,

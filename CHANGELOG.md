@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.2
+
+- Restored the v55-style level loading flow after the later loading/watchdog changes caused freezes.
+- Added small garden-style key indicators with three-direction light beams near key locations.
+- Kept the extra later-route platforms, pickups, hearts, and enemies for Levels 3 and 5.
+
 ## v0.56.1
 
 - Added a gameplay-loop recovery guard so update errors do not leave the game frozen while music continues.
