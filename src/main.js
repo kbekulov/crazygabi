@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.55.42";
+const GAME_VERSION = "v0.56.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -317,7 +317,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260623-easy-level3-chains";
+const ASSET_VERSION = "20260624-level-load-and-content";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -333,6 +333,18 @@ const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true
 };
+const RETAINED_TEXTURE_KEYS = new Set([
+  "tile-ground",
+  "coin",
+  "key",
+  "light-ray",
+  "light-ray-impact",
+  "platform-shadow",
+  "parallax-city",
+  "gabi-sheet",
+  "grey-cat"
+]);
+const RETAINED_AUDIO_KEYS = new Set(["bgm-menu"]);
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const DIFFICULTY_PROFILES = {
   [DIFFICULTY_EASY]: {
@@ -374,6 +386,7 @@ const DIFFICULTY_PROFILES = {
 };
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
 const MIN_LEVEL_TRANSITION_MS = 1400;
+const CACHED_LEVEL_READY_DELAY_MS = 80;
 const INTRO_RETRY_MS = 1000;
 const INTRO_FAILSAFE_MS = 6500;
 const MUSIC_TRACKS = [
@@ -1046,6 +1059,11 @@ function createLevelThree() {
   run(8, 196, 4, "=");
   run(5, 202, 14);
   run(8, 210, 4, "=");
+  run(15, 162, 7);
+  run(17, 173, 8);
+  run(14, 184, 7);
+  run(16, 195, 9);
+  run(12, 205, 7);
 
   [
     [3, 4, "p"],
@@ -1093,7 +1111,18 @@ function createLevelThree() {
     [4, 145, "g"],
     [7, 158, "m"],
     [10, 169, "m"],
+    [14, 166, "g"],
+    [14, 168, "m"],
+    [16, 176, "g"],
+    [16, 179, "m"],
     [7, 180, "m"],
+    [13, 187, "g"],
+    [13, 190, "m"],
+    [15, 199, "g"],
+    [15, 202, "m"],
+    [11, 208, "g"],
+    [11, 210, "m"],
+    [7, 186, "h"],
     [4, 193, "g"],
     [4, 205, "g"],
     [4, 207, "m"],
@@ -1217,6 +1246,13 @@ function createLevelFive() {
   run(151, 538, 18);
   run(154, 598, 16);
   run(150, 648, 18);
+  run(157, 72, 10);
+  run(153, 132, 10);
+  run(149, 214, 12);
+  run(157, 264, 12);
+  run(147, 372, 14);
+  run(148, 468, 12);
+  run(149, 590, 12);
   [
     [153, 276, 8],
     [152, 414, 9],
@@ -1233,28 +1269,42 @@ function createLevelFive() {
     [159, 90, "b"],
     [154, 109, "g"],
     [159, 118, "g"],
+    [156, 76, "m"],
+    [156, 80, "g"],
+    [152, 136, "m"],
+    [152, 140, "g"],
     [151, 153, "g"],
     [151, 156, "h"],
     [159, 168, "g"],
     [155, 197, "g"],
     [155, 199, "h"],
+    [148, 218, "g"],
+    [148, 222, "m"],
     [159, 228, "g"],
     [150, 244, "g"],
+    [156, 268, "g"],
+    [156, 272, "m"],
     [153, 299, "g"],
     [153, 303, "h"],
     [159, 292, "g"],
     [149, 347, "g"],
+    [146, 378, "g"],
+    [146, 383, "m"],
     [159, 356, "g"],
     [155, 392, "g"],
     [151, 420, "h"],
     [159, 424, "g"],
     [151, 439, "g"],
+    [147, 472, "h"],
+    [147, 476, "m"],
     [159, 468, "g"],
     [154, 492, "g"],
     [154, 496, "h"],
     [159, 522, "g"],
     [150, 548, "g"],
     [159, 584, "g"],
+    [148, 594, "g"],
+    [148, 599, "m"],
     [153, 606, "g"],
     [153, 612, "h"],
     [159, 636, "g"],
@@ -2087,6 +2137,9 @@ class PlayScene extends Phaser.Scene {
     state.levelIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
     this.level = LEVELS[state.levelIndex] || LEVELS[0];
     try {
+      this.releaseLevelAssetCache();
+      await wait(0);
+      if (!this.isActiveLevelLoad(loadId)) return;
       await this.loadLevelAssets(this.level, loadId);
       if (!this.isActiveLevelLoad(loadId)) return;
       const remainingTransitionMs = MIN_LEVEL_TRANSITION_MS - (performance.now() - transitionStartedAt);
@@ -2095,7 +2148,11 @@ class PlayScene extends Phaser.Scene {
         await wait(remainingTransitionMs);
       }
       if (!this.isActiveLevelLoad(loadId)) return;
-      this.createLevelRuntime();
+      try {
+        this.createLevelRuntime();
+      } catch (runtimeError) {
+        throw runtimeError;
+      }
     } catch (error) {
       console.error("Level load failed", error);
       if (!this.isActiveLevelLoad(loadId)) return;
@@ -2113,6 +2170,36 @@ class PlayScene extends Phaser.Scene {
 
   isActiveLevelLoad(loadId) {
     return this.scene.isActive("PlayScene") && this.levelLoadId === loadId;
+  }
+
+  releaseLevelAssetCache() {
+    const cache = this.levelAssetCache;
+    if (!cache) return;
+    (cache.textures || new Set()).forEach((key) => {
+      if (RETAINED_TEXTURE_KEYS.has(key) || !this.textures.exists(key)) return;
+      this.textures.remove(key);
+    });
+    (cache.audio || new Set()).forEach((key) => {
+      if (RETAINED_AUDIO_KEYS.has(key) || !this.cache.audio.exists(key)) return;
+      if (this.bgm?.key === key) {
+        if (this.bgm.isPlaying) this.bgm.stop();
+        this.bgm.destroy();
+        this.bgm = null;
+      }
+      if (this.ambientBgm?.key === key) {
+        if (this.ambientBgm.isPlaying) this.ambientBgm.stop();
+        this.ambientBgm.destroy();
+        this.ambientBgm = null;
+      }
+      this.cache.audio.remove(key);
+    });
+    (cache.json || new Set()).forEach((key) => {
+      if (this.cache.json.exists(key)) this.cache.json.remove(key);
+    });
+    (cache.text || new Set()).forEach((key) => {
+      if (this.cache.text.exists(key)) this.cache.text.remove(key);
+    });
+    this.levelAssetCache = null;
   }
 
   createLevelRuntime() {
@@ -2300,6 +2387,7 @@ class PlayScene extends Phaser.Scene {
 
   showMainMenu() {
     this.levelReady = false;
+    this.releaseLevelAssetCache();
     hud.root.hidden = true;
     hud.message.hidden = true;
     setBirdCooldownVisible(false);
@@ -2358,22 +2446,32 @@ class PlayScene extends Phaser.Scene {
       }
 
       let queued = 0;
+      const assetCache = {
+        textures: new Set(),
+        audio: new Set(),
+        json: new Set(),
+        text: new Set()
+      };
       const image = (key, src) => {
+        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
       };
       const storyImage = (key, src) => {
+        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${STORY_ASSET_VERSION}`);
         queued += 1;
       };
       const sheet = (key, src, frameWidth, frameHeight) => {
+        assetCache.textures.add(key);
         if (this.textures.exists(key)) return;
         this.load.spritesheet(key, `${src}?v=${ASSET_VERSION}`, { frameWidth, frameHeight });
         queued += 1;
       };
       const audio = (key, src) => {
+        assetCache.audio.add(key);
         if (this.cache.audio.exists(key)) return;
         this.load.audio(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
@@ -2383,6 +2481,8 @@ class PlayScene extends Phaser.Scene {
         if (typeof this.load.spineJson !== "function" || typeof this.load.spineAtlas !== "function") return;
         const dataKey = config.dataKey || "colossus-placeholder-data";
         const atlasKey = config.atlasKey || "colossus-placeholder-atlas";
+        assetCache.json.add(dataKey);
+        assetCache.text.add(atlasKey);
         if (!this.cache.json.exists(dataKey)) {
           this.load.spineJson(dataKey, `${config.skeleton}?v=${ASSET_VERSION}`);
           queued += 1;
@@ -2516,7 +2616,10 @@ class PlayScene extends Phaser.Scene {
 
       if (!queued) {
         updateLoadingProgress(1, "Level ready.");
-        resolve();
+        window.setTimeout(() => {
+          if (this.isActiveLevelLoad(loadId)) this.levelAssetCache = assetCache;
+          resolve();
+        }, CACHED_LEVEL_READY_DELAY_MS);
         return;
       }
 
@@ -2535,6 +2638,7 @@ class PlayScene extends Phaser.Scene {
         finished = true;
         cleanup();
         updateLoadingProgress(1, "Level ready.");
+        this.levelAssetCache = assetCache;
         resolve();
       };
       const fail = (file) => {

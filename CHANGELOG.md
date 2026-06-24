@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.56.0
+
+- Reworked level transitions to release previous level assets before loading the next route.
+- Added a safer cached-load handoff to reduce stuck starts after several level changes.
+- Added more platforms, pickups, hearts, and enemies to the later parts of Levels 3 and 5.
+
 ## v0.55.42
 
 - Added more and longer hanging chains to the later Level 3 platforming section on Easy difficulty.
