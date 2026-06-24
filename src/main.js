@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.56.2";
+const GAME_VERSION = "v0.56.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -121,6 +121,20 @@ const HAYSTACK_DEPTH = 4.7;
 const HAY_BURST_DEPTH = HAYSTACK_DEPTH + 0.5;
 const KEY_GARDEN_DEPTH = HAYSTACK_DEPTH + 0.12;
 const KEY_GARDEN_LIGHT_DEPTH = 8.95;
+const KEY_GARDEN_ASSETS = [
+  { key: "garden-arc-1", src: "./public/assets/environment/garden/arc_1.png", scale: 0.34, weight: 0.5 },
+  { key: "garden-bench-1", src: "./public/assets/environment/garden/bench_1.png", scale: 0.34, weight: 1 },
+  { key: "garden-bush-1", src: "./public/assets/environment/garden/bush_1.png", scale: 0.42, weight: 1.2 },
+  { key: "garden-bush-2", src: "./public/assets/environment/garden/bush_2.png", scale: 0.42, weight: 1.2 },
+  { key: "garden-bush-3", src: "./public/assets/environment/garden/bush_3.png", scale: 0.34, weight: 1.1 },
+  { key: "garden-bush-4", src: "./public/assets/environment/garden/bush_4.png", scale: 0.42, weight: 1.2 },
+  { key: "garden-bush-5", src: "./public/assets/environment/garden/bush_5.png", scale: 0.28, weight: 0.9 },
+  { key: "garden-bush-6", src: "./public/assets/environment/garden/bush_6.png", scale: 0.34, weight: 1.1 },
+  { key: "garden-fountain-1", src: "./public/assets/environment/garden/fountain_1.png", scale: 0.28, weight: 0.55 },
+  { key: "garden-fountain-2", src: "./public/assets/environment/garden/fountain_2.png", scale: 0.28, weight: 0.55 },
+  { key: "garden-lantern-1", src: "./public/assets/environment/garden/lantern_1.png", scale: 0.34, weight: 0.85 },
+  { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85 }
+];
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
 const HAY_BURST_COOLDOWN_MS = 1000;
@@ -319,7 +333,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-v55-loading-gardens";
+const ASSET_VERSION = "20260624-real-garden-assets";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1965,34 +1979,6 @@ function makeTextures(scene) {
   g.generateTexture("acorn", 32, 32);
   g.clear();
 
-  g.fillStyle(0x1e542c).fillEllipse(16, 25, 30, 10);
-  g.fillStyle(0x3f9f3e).fillTriangle(4, 26, 8, 9, 13, 26);
-  g.fillTriangle(12, 26, 17, 5, 22, 26);
-  g.fillTriangle(20, 26, 25, 10, 29, 26);
-  g.fillStyle(0x8be35c).fillEllipse(16, 22, 18, 7);
-  g.generateTexture("key-garden-grass", 32, 32);
-  g.clear();
-
-  g.fillStyle(0x275f2d).fillRect(15, 12, 2, 14);
-  g.fillStyle(0x4ba64c).fillEllipse(12, 22, 10, 5).fillEllipse(20, 19, 11, 5);
-  g.fillStyle(0xf4d66c).fillCircle(16, 10, 6);
-  g.fillStyle(0xf07aac).fillCircle(11, 10, 4).fillCircle(21, 10, 4).fillCircle(16, 5, 4).fillCircle(16, 15, 4);
-  g.fillStyle(0xffef91).fillCircle(16, 10, 2);
-  g.generateTexture("key-garden-flower", 32, 32);
-  g.clear();
-
-  g.fillStyle(0x1d4a2c).fillEllipse(16, 20, 30, 18);
-  g.fillStyle(0x2e7b38).fillEllipse(11, 16, 16, 14).fillEllipse(22, 15, 14, 13);
-  g.fillStyle(0x72c95f).fillEllipse(17, 18, 16, 10);
-  g.generateTexture("key-garden-shrub", 32, 32);
-  g.clear();
-
-  g.fillStyle(0x8a5331).fillRoundedRect(13, 14, 6, 12, 2);
-  g.fillStyle(0xce5f3b).fillEllipse(16, 13, 19, 12);
-  g.fillStyle(0xf0d091).fillCircle(11, 10, 2).fillCircle(17, 8, 2).fillCircle(21, 13, 2);
-  g.generateTexture("key-garden-mushroom", 32, 32);
-  g.clear();
-
   g.fillStyle(0x4a4f62).fillRect(0, 0, 64, 64);
   g.fillStyle(0x596878).fillRect(0, 0, 64, 12);
   g.fillStyle(0x323746).fillRect(0, 50, 64, 14);
@@ -2523,6 +2509,7 @@ class PlayScene extends Phaser.Scene {
         image("chain-link-main", "./public/assets/environment/chain_link_main.png");
         sheet("gabi-climb-sheet", "./public/assets/character/main_char_sprite_climb.png", GABI_CLIMB_FRAME_WIDTH, GABI_CLIMB_FRAME_HEIGHT);
       }
+      KEY_GARDEN_ASSETS.forEach((asset) => image(asset.key, asset.src));
       if (level.platformTexture === "platform-underground") {
         sheet("platform-underground", "./public/assets/environment/platform_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
         sheet("platform-fence-underground", "./public/assets/environment/platform_fence_underground.png", PLATFORM_FRAME_WIDTH, PLATFORM_FRAME_HEIGHT);
@@ -4066,7 +4053,9 @@ class PlayScene extends Phaser.Scene {
   }
 
   createKeyGardenIndicators(point = this.keyPoint) {
-    if (!point || !this.platformRuns?.length || !this.textures.exists("key-garden-grass")) return;
+    if (!point || !this.platformRuns?.length) return;
+    const gardenAssets = KEY_GARDEN_ASSETS.filter((asset) => this.textures.exists(asset.key));
+    if (!gardenAssets.length) return;
     this.keyGardenKeys = this.keyGardenKeys || new Set();
     const id = `${Math.round(point.x)}:${Math.round(point.y)}`;
     if (this.keyGardenKeys.has(id)) return;
@@ -4078,22 +4067,30 @@ class PlayScene extends Phaser.Scene {
     const centerX = Phaser.Math.Clamp(point.x, run.startX + 44, run.endX - 44);
     const rowSeed = Math.max(1, Math.floor(floorY / TILE));
     const columnSeed = Math.max(1, Math.floor(centerX / TILE));
-    const decorKeys = ["key-garden-grass", "key-garden-flower", "key-garden-shrub", "key-garden-mushroom"];
-    const offsets = [-86, -62, -39, -16, 8, 34, 58, 82];
+    const totalWeight = gardenAssets.reduce((sum, asset) => sum + asset.weight, 0);
+    const pickGardenAsset = (noise) => {
+      let cursor = noise * totalWeight;
+      for (const asset of gardenAssets) {
+        cursor -= asset.weight;
+        if (cursor <= 0) return asset;
+      }
+      return gardenAssets[gardenAssets.length - 1];
+    };
+    const offsets = [-118, -88, -58, -25, 18, 52, 86, 118];
 
     offsets.forEach((offset, index) => {
       const noise = this.wallPlacementNoise(rowSeed + index * 7, columnSeed + index * 13);
-      if (noise < 0.16) return;
+      if (noise < 0.12) return;
       const x = Phaser.Math.Clamp(
         centerX + offset + (noise - 0.5) * 18,
         run.startX + 14,
         run.endX - 14
       );
-      const keyIndex = Math.floor(this.wallPlacementNoise(rowSeed + 31, columnSeed + index * 19) * decorKeys.length) % decorKeys.length;
-      const sprite = this.add.image(x, floorY, decorKeys[keyIndex]);
+      const asset = pickGardenAsset(this.wallPlacementNoise(rowSeed + 31, columnSeed + index * 19));
+      const sprite = this.add.image(x, floorY, asset.key);
       sprite.setOrigin(0.5, 1);
       sprite.setDepth(KEY_GARDEN_DEPTH + index * 0.002);
-      sprite.setScale(Phaser.Math.Linear(0.74, 1.18, this.wallPlacementNoise(rowSeed + index * 5, columnSeed + 83)));
+      sprite.setScale(asset.scale * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(rowSeed + index * 5, columnSeed + 83)));
       sprite.setFlipX(this.wallPlacementNoise(rowSeed + index * 11, columnSeed + 41) > 0.5);
       this.platformVisuals?.add(sprite);
     });

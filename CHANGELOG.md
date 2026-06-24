@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.56.3
+
+- Replaced the generated key-garden placeholders with the real garden sprites from `public/assets/environment/garden`.
+- Added the garden PNGs to level loading so each key location can use the proper decorative assets.
+
 ## v0.56.2
 
 - Restored the v55-style level loading flow after the later loading/watchdog changes caused freezes.
