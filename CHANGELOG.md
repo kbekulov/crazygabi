@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.57.1
+
+- Fixed Level 6's starting spawn so Gabi lands safely on the opening platform.
+- Added a spawn snap guard to keep level starts aligned above nearby platforms.
+
 ## v0.57.0
 
 - Added a Level 6 botanical garden route with a flower pickup and no key requirement.

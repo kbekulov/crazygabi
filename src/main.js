@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.0";
+const GAME_VERSION = "v0.57.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -351,7 +351,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260624-level6-garden";
+const ASSET_VERSION = "20260625-level6-spawn";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1437,7 +1437,7 @@ function createLevelSix() {
   run(4, 172, 11);
 
   [
-    [15, 4, "p"],
+    [14, 4, "p"],
     [15, 13, "g"],
     [15, 21, "m"],
     [15, 35, "g"],
@@ -5460,6 +5460,7 @@ class PlayScene extends Phaser.Scene {
       });
     });
     this.createPlatformVisuals();
+    this.snapSpawnPointToPlatform();
     this.createHangingChains();
     this.createMovingPlatforms();
     this.createFinalElevator();
@@ -5628,6 +5629,19 @@ class PlayScene extends Phaser.Scene {
         this.addPlatformRun(start, columnIndex - start, rowIndex);
       }
     });
+  }
+
+  snapSpawnPointToPlatform() {
+    if (!this.platformRuns?.length || !this.spawnPoint) return;
+    const spawnX = this.spawnPoint.x;
+    const nearestRun = [...this.platformRuns]
+      .filter((run) => spawnX >= run.startX - TILE && spawnX <= run.endX + TILE && run.topY >= this.spawnPoint.y)
+      .sort((a, b) => Math.abs(a.topY - this.spawnPoint.y) - Math.abs(b.topY - this.spawnPoint.y))[0];
+    if (!nearestRun) return;
+    this.spawnPoint = {
+      x: Phaser.Math.Clamp(spawnX, nearestRun.startX + TILE, nearestRun.endX - TILE),
+      y: nearestRun.topY - TILE * 1.35
+    };
   }
 
   createHangingChains() {
