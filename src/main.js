@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.1";
+const GAME_VERSION = "v0.57.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -351,7 +351,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level6-spawn";
+const ASSET_VERSION = "20260625-level6-garden-layering";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -891,12 +891,17 @@ const LEVELS = [
     },
     gardenDecor: {
       clusters: [
-        { x: 18 * TILE, row: 15, density: 0.58, width: 7, allowStructures: true },
-        { x: 43 * TILE, row: 13, density: 0.62, width: 8, allowStructures: true },
-        { x: 76 * TILE, row: 11, density: 0.88, width: 12, allowStructures: true, core: true },
-        { x: 111 * TILE, row: 12, density: 0.68, width: 9, allowStructures: true },
-        { x: 148 * TILE, row: 10, density: 0.72, width: 10, allowStructures: true },
-        { x: 184 * TILE, row: 14, density: 0.64, width: 8, allowStructures: true }
+        { x: 12 * TILE, row: 15, density: 0.46, width: 6, allowStructures: true },
+        { x: 22 * TILE, row: 12, density: 0.5, width: 6, allowStructures: false },
+        { x: 47 * TILE, row: 12, density: 0.58, width: 8, allowStructures: true },
+        { x: 69 * TILE, row: 9, density: 0.54, width: 7, allowStructures: false },
+        { x: 80 * TILE, row: 12, density: 0.82, width: 11, allowStructures: true, core: true },
+        { x: 108 * TILE, row: 9, density: 0.58, width: 7, allowStructures: false },
+        { x: 119 * TILE, row: 12, density: 0.62, width: 8, allowStructures: true },
+        { x: 142 * TILE, row: 3, density: 0.52, width: 7, allowStructures: false },
+        { x: 157 * TILE, row: 9, density: 0.68, width: 9, allowStructures: true },
+        { x: 183 * TILE, row: 6, density: 0.56, width: 7, allowStructures: false },
+        { x: 190 * TILE, row: 12, density: 0.58, width: 7, allowStructures: true }
       ]
     },
     lightRayAlpha: 1,
@@ -4433,7 +4438,7 @@ class PlayScene extends Phaser.Scene {
   getAllowedGardenAssetsForLevel() {
     return KEY_GARDEN_ASSETS.filter((asset) => {
       if (!this.textures.exists(asset.key)) return false;
-      if (state.levelIndex === 0 || state.levelIndex === 3) return true;
+      if (state.levelIndex === 0 || state.levelIndex === 3 || state.levelIndex === 5) return true;
       if (state.levelIndex === 1 || state.levelIndex === 2) return asset.type === "bush" || asset.type === "lantern";
       return asset.type === "bush";
     });
@@ -6267,9 +6272,11 @@ class PlayScene extends Phaser.Scene {
   createGardenDecorations() {
     const config = this.level.gardenDecor;
     if (!config?.clusters?.length) return;
-    const bushes = ["garden-bush_1", "garden-bush_2", "garden-bush_3", "garden-bush_4", "garden-bush_5", "garden-bush_6"];
-    const structures = ["garden-bench_1", "garden-arc_1", "garden-fountain_1", "garden-fountain_2"];
-    const lanterns = ["garden-lantern_1", "garden-lantern_2"];
+    const gardenAssets = this.getAllowedGardenAssetsForLevel();
+    const bushAssets = gardenAssets.filter((asset) => asset.type === "bush");
+    const featureAssets = gardenAssets.filter((asset) => asset.type === "feature");
+    const lanternAssets = gardenAssets.filter((asset) => asset.type === "lantern");
+    if (!bushAssets.length) return;
 
     config.clusters.forEach((cluster, clusterIndex) => {
       const run = this.getNearestPlatformRun(cluster.x, cluster.row * TILE);
@@ -6277,35 +6284,43 @@ class PlayScene extends Phaser.Scene {
       const width = Math.max(3, cluster.width || 7);
       const density = Phaser.Math.Clamp(cluster.density ?? 0.6, 0.25, 1);
       const startX = Phaser.Math.Clamp(cluster.x - width * TILE * 0.5, run.startX + 14, run.endX - 14);
-      const spacing = Math.max(18, TILE * 0.82);
-      const count = Math.max(2, Math.floor(width * density));
+      const endX = Phaser.Math.Clamp(cluster.x + width * TILE * 0.5, run.startX + 14, run.endX - 14);
+      const count = Phaser.Math.Clamp(Math.round(width * density), 2, Math.max(3, Math.floor(width * 0.85)));
       for (let index = 0; index < count; index += 1) {
-        const x = Phaser.Math.Clamp(startX + index * spacing + Phaser.Math.Between(-8, 9), run.startX + 16, run.endX - 16);
-        const front = (index + clusterIndex) % 3 === 0;
-        const key = bushes[(index + clusterIndex * 2) % bushes.length];
-        if (!this.textures.exists(key)) continue;
-        const bush = this.add.image(x, run.topY + (front ? 4 : -4), key);
-        bush.setOrigin(0.5, 1);
-        bush.setScale(Phaser.Math.FloatBetween(0.17, 0.24));
-        bush.setFlipX((index + clusterIndex) % 2 === 0);
-        bush.setDepth(front ? ITEM_DEPTH + 0.2 : FENCE_DEPTH - 0.18);
-        bush.setAlpha(Phaser.Math.FloatBetween(0.9, 1));
-        this.platformVisuals.add(bush);
+        const seed = clusterIndex * 157 + index * 29 + Math.floor(run.topY / TILE);
+        const progress = count === 1 ? 0.5 : index / (count - 1);
+        const noise = this.wallPlacementNoise(seed + 17, Math.floor(cluster.x / TILE) + 71);
+        const x = Phaser.Math.Clamp(
+          Phaser.Math.Linear(startX, endX, progress) + Phaser.Math.Linear(-18, 18, noise),
+          run.startX + 16,
+          run.endX - 16
+        );
+        const asset = this.pickGardenAsset(bushAssets, this.wallPlacementNoise(seed + 43, Math.floor(x / TILE) + 19));
+        this.createGardenDecorSprite(asset, x, run.topY + 2, {
+          seed,
+          interactive: true,
+          scaleBoost: cluster.core ? 1.08 : 0.92
+        });
       }
 
-      const ornamentKeys = [
-        ...(cluster.allowStructures ? structures : []),
-        ...lanterns
-      ].filter((key) => this.textures.exists(key));
-      const ornamentCount = cluster.core ? 3 : cluster.allowStructures ? 2 : 1;
-      for (let index = 0; index < ornamentCount && ornamentKeys.length; index += 1) {
-        const key = ornamentKeys[(clusterIndex + index * 3) % ornamentKeys.length];
-        const x = Phaser.Math.Clamp(cluster.x + (index - (ornamentCount - 1) / 2) * TILE * 1.8, run.startX + 20, run.endX - 20);
-        const ornament = this.add.image(x, run.topY - 4, key);
-        ornament.setOrigin(0.5, 1);
-        ornament.setScale(key.includes("lantern") ? 0.18 : 0.21);
-        ornament.setDepth(FENCE_DEPTH - 0.05);
-        this.platformVisuals.add(ornament);
+      const ornamentAssets = [
+        ...(cluster.allowStructures ? featureAssets : []),
+        ...lanternAssets
+      ];
+      const ornamentCount = Phaser.Math.Clamp(cluster.core ? 3 : cluster.allowStructures ? 2 : 1, 0, ornamentAssets.length);
+      for (let index = 0; index < ornamentCount; index += 1) {
+        const seed = clusterIndex * 211 + index * 53 + Math.floor(cluster.x / TILE);
+        const asset = this.pickGardenAsset(ornamentAssets, this.wallPlacementNoise(seed + 13, Math.floor(run.topY / TILE) + 37));
+        const x = Phaser.Math.Clamp(
+          cluster.x + (index - (ornamentCount - 1) / 2) * TILE * 2.2 + Phaser.Math.Linear(-12, 12, this.wallPlacementNoise(seed + 31, index + 7)),
+          run.startX + 20,
+          run.endX - 20
+        );
+        this.createGardenDecorSprite(asset, x, run.topY + 2, {
+          seed,
+          interactive: false,
+          scaleBoost: asset?.type === "lantern" ? 0.78 : 0.86
+        });
       }
     });
   }

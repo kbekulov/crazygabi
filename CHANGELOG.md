@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.57.2
+
+- Reworked Level 6 garden placement to use the established garden layering and height rules.
+- Spread garden bushes and props across more Level 6 platforms.
+
 ## v0.57.1
 
 - Fixed Level 6's starting spawn so Gabi lands safely on the opening platform.
