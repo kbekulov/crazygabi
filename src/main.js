@@ -1619,7 +1619,7 @@ function configureMainMenuScene() {
     petal.style.setProperty("--petal-top", `${Phaser.Math.Between(-12, 88)}%`);
     petal.style.setProperty("--petal-start", `${Phaser.Math.Between(-18, 105)}%`);
     petal.style.setProperty("--petal-drift", `${Phaser.Math.Between(-220, 220)}px`);
-    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.34, 0.78).toFixed(2));
+    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.055, 0.13).toFixed(3));
     petal.style.setProperty("--petal-spin", `${Phaser.Math.Between(180, 820)}deg`);
     petal.style.setProperty("--petal-frame", String(Phaser.Math.Between(0, 2)));
     petal.style.setProperty("--petal-flip", Phaser.Math.Between(0, 1) ? "1" : "-1");
