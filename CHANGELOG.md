@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.58.0
+
+- Added hard-mode enemy damage respawns on non-boss levels.
+- Added Level 2 night lanterns with circular light pockets and sparkles.
+- Updated flower cooldown icons and BGM metadata.
+
 ## v0.57.10
 
 - Recreated the cat NPC safely when repeated level switches remove its physics body.

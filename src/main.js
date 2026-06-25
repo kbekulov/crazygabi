@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.10";
+const GAME_VERSION = "v0.58.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -161,6 +161,11 @@ const DIVE_INDICATOR_TRIGGER_DISTANCE = 150;
 const DIVE_INDICATOR_SCALE = 0.105;
 const DIVE_INDICATOR_IDLE_ANGLE = -20;
 const DARKNESS_DEPTH = 30;
+const NIGHT_LANTERN_GLOW_KEY = "night-lantern-glow";
+const NIGHT_LANTERN_RADIUS = 170;
+const NIGHT_LANTERN_FRINGE = 72;
+const NIGHT_LANTERN_GLOW_DEPTH = DARKNESS_DEPTH + 0.18;
+const NIGHT_LANTERN_SPARKLE_DEPTH = DARKNESS_DEPTH + 0.22;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
 const WATER_SPEED = 6;
@@ -352,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level-transition-cat-reset";
+const ASSET_VERSION = "20260626-night-lanterns-hard-damage";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -528,6 +533,15 @@ const LEVELS = [
       fringe: 76,
       yOffset: -18
     },
+    nightLevel: true,
+    nightLanterns: [
+      { column: 54, floorRow: 14, asset: "garden-lantern-1", radius: 150 },
+      { column: 91, floorRow: 18, asset: "garden-lantern-2", radius: 168 },
+      { column: 128, floorRow: 17, asset: "garden-lantern-1", radius: 158 },
+      { column: 181, floorRow: 10, asset: "garden-lantern-2", radius: 176 },
+      { column: 230, floorRow: 8, asset: "garden-lantern-1", radius: 160 },
+      { column: 280, floorRow: 12, asset: "garden-lantern-2", radius: 170 }
+    ],
     oldLady: {
       column: 11,
       floorRow: 18,
@@ -2533,6 +2547,9 @@ class PlayScene extends Phaser.Scene {
     this.birdFlockGroups = [];
     this.birdAttackFlocks = [];
     this.diveIndicatorBirds = [];
+    this.nightLanternLights = [];
+    this.playerLanternGlow = null;
+    this.nextNightLanternSparkleAt = 0;
     this.nextBirdFlockAt = 0;
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
@@ -2580,6 +2597,7 @@ class PlayScene extends Phaser.Scene {
     this.createKeyGardenIndicators();
     this.createDecorativeGardens();
     this.createPlayer();
+    this.createNightLanternLights();
     this.createLanternOverlay();
     this.createOldLadyNpc();
     this.createCatNpc();
@@ -4842,6 +4860,103 @@ class PlayScene extends Phaser.Scene {
     this.lightRayLayer = this.lightRayLayers[0]?.layer || null;
   }
 
+  createNightLanternLights() {
+    this.nightLanternLights = [];
+    this.playerLanternGlow = null;
+    this.nextNightLanternSparkleAt = 0;
+    if (!this.level.nightLevel) return;
+    this.ensureNightLanternGlowTexture();
+
+    (this.level.nightLanterns || []).forEach((config, index) => {
+      const assetKey = config.asset || (index % 2 ? "garden-lantern-2" : "garden-lantern-1");
+      if (!this.textures.exists(assetKey)) return;
+      const x = (config.column ?? 0) * TILE + TILE / 2;
+      const floorY = (config.floorRow ?? 0) * TILE;
+      const lantern = this.add.image(x, floorY + 2, assetKey);
+      lantern.setOrigin(0.5, 1);
+      lantern.setScale((config.scale ?? 0.34) * Phaser.Math.Linear(0.92, 1.08, this.wallPlacementNoise(index + 13, config.column ?? 0)));
+      lantern.setDepth(KEY_GARDEN_PROP_BACK_DEPTH);
+      this.platformVisuals?.add(lantern);
+
+      const radius = config.radius ?? NIGHT_LANTERN_RADIUS;
+      const light = {
+        x,
+        y: floorY - (config.yOffset ?? 82),
+        radius,
+        fringe: config.fringe ?? NIGHT_LANTERN_FRINGE,
+        foreground: index % 3 === 1,
+        phase: this.wallPlacementNoise(index + 31, index + 77) * Math.PI * 2
+      };
+      const glow = this.add.image(light.x, light.y, NIGHT_LANTERN_GLOW_KEY);
+      glow.setScale(radius / 128);
+      glow.setDepth(NIGHT_LANTERN_GLOW_DEPTH);
+      glow.setBlendMode(Phaser.BlendModes.ADD);
+      glow.setAlpha(0.46);
+      this.nightLanternLights.push({ ...light, lantern, glow });
+    });
+
+    if (this.player) {
+      this.playerLanternGlow = this.add.image(this.player.x, this.player.y, NIGHT_LANTERN_GLOW_KEY);
+      this.playerLanternGlow.setScale((this.level.darkness?.radius ?? NIGHT_LANTERN_RADIUS) / 128);
+      this.playerLanternGlow.setDepth(NIGHT_LANTERN_GLOW_DEPTH + 0.04);
+      this.playerLanternGlow.setBlendMode(Phaser.BlendModes.ADD);
+      this.playerLanternGlow.setAlpha(0);
+    }
+  }
+
+  ensureNightLanternGlowTexture() {
+    if (this.textures.exists(NIGHT_LANTERN_GLOW_KEY)) return;
+    const size = 256;
+    const center = size / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, size, size);
+    context.globalCompositeOperation = "lighter";
+
+    [
+      { radius: 124, alpha: 0.24 },
+      { radius: 82, alpha: 0.34 },
+      { radius: 34, alpha: 0.42 }
+    ].forEach((pass) => {
+      const gradient = context.createRadialGradient(center, center, 1, center, center, pass.radius);
+      gradient.addColorStop(0, this.lightRayRgba(pass.alpha));
+      gradient.addColorStop(0.35, this.lightRayRgba(pass.alpha * 0.56));
+      gradient.addColorStop(0.72, this.lightRayRgba(pass.alpha * 0.16));
+      gradient.addColorStop(1, "rgba(255, 239, 198, 0)");
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(center, center, pass.radius, 0, Math.PI * 2);
+      context.fill();
+    });
+
+    for (let streak = 0; streak < 10; streak += 1) {
+      const angle = (Math.PI * 2 * streak) / 10 + (streak % 2) * 0.17;
+      const inner = 18 + (streak % 3) * 8;
+      const outer = 86 + (streak % 4) * 13;
+      const alpha = 0.028 + (streak % 3) * 0.012;
+      const gradient = context.createLinearGradient(
+        center + Math.cos(angle) * inner,
+        center + Math.sin(angle) * inner,
+        center + Math.cos(angle) * outer,
+        center + Math.sin(angle) * outer
+      );
+      gradient.addColorStop(0, "rgba(255, 247, 220, 0)");
+      gradient.addColorStop(0.4, this.lightRayRgba(alpha));
+      gradient.addColorStop(1, "rgba(255, 247, 220, 0)");
+      context.strokeStyle = gradient;
+      context.lineWidth = 10 + (streak % 4) * 3;
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(center + Math.cos(angle) * inner, center + Math.sin(angle) * inner);
+      context.lineTo(center + Math.cos(angle) * outer, center + Math.sin(angle) * outer);
+      context.stroke();
+    }
+
+    this.textures.addCanvas(NIGHT_LANTERN_GLOW_KEY, canvas);
+  }
+
   trackLightRayLayer(layer, ray, seed = 0) {
     const opacityMode = ray.opacityMode || "pulse";
     const noise = this.wallPlacementNoise(seed + 11, seed + 43);
@@ -5187,118 +5302,109 @@ class PlayScene extends Phaser.Scene {
 
   updateLanternOverlay() {
     if (!this.lanternOverlay || !this.player || !this.lanternOverlayConfig) return;
-
-    if (this.level.darkness?.requiresLantern !== false && !state.hasLantern) {
-      this.updateLanternThresholdDarkness();
-      return;
-    }
-
     const { alpha, radius, fringe, yOffset } = this.lanternOverlayConfig;
     const camera = this.cameras.main;
-    const centerX = Phaser.Math.Clamp(this.player.x - camera.scrollX + (this.player.flipX ? -18 : 18), -radius, VIEW_WIDTH + radius);
-    const centerY = Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, radius, PLAY_HEIGHT - radius);
-    const clearRadius = Math.max(0, radius - fringe);
     const graphics = this.lanternOverlay;
+    const lights = this.getVisibleLanternLightCircles();
 
     graphics.clear();
     for (let y = 0; y < PLAY_HEIGHT; y += 4) {
       const midY = y + 2;
-      const dy = midY - centerY;
-      if (Math.abs(dy) >= radius) {
-        graphics.fillStyle(0x000000, 1);
-        graphics.fillRect(0, y, VIEW_WIDTH, 4);
-        continue;
-      }
-
-      const outerHalfWidth = Math.sqrt(Math.max(0, radius * radius - dy * dy));
-      const outerLeft = Phaser.Math.Clamp(centerX - outerHalfWidth, 0, VIEW_WIDTH);
-      const outerRight = Phaser.Math.Clamp(centerX + outerHalfWidth, 0, VIEW_WIDTH);
-
-      graphics.fillStyle(0x000000, 1);
-      graphics.fillRect(0, y, outerLeft, 4);
-      graphics.fillRect(outerRight, y, VIEW_WIDTH - outerRight, 4);
-
-      for (let x = outerLeft; x < outerRight; x += 4) {
+      for (let x = 0; x < VIEW_WIDTH; x += 4) {
         const midX = x + 2;
-        const dx = midX - centerX;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        if (distance <= clearRadius) continue;
-        const progress = Phaser.Math.Clamp((distance - clearRadius) / Math.max(1, fringe), 0, 1);
-        graphics.fillStyle(0x000000, alpha * progress * progress);
+        const baseAlpha = this.getLanternDarknessBaseAlpha(midX, midY, camera, alpha);
+        if (baseAlpha <= 0.002) continue;
+        const lightFactor = this.getLanternDarknessLightFactor(midX, midY, lights);
+        const fillAlpha = baseAlpha * lightFactor;
+        if (fillAlpha <= 0.002) continue;
+        graphics.fillStyle(0x000000, fillAlpha);
         graphics.fillRect(x, y, 4, 4);
       }
     }
 
-    for (let offset = 0; offset < fringe; offset += 5) {
-      const progress = 1 - offset / fringe;
-      const ringAlpha = Phaser.Math.Clamp(alpha * progress * progress * 0.72, 0, alpha);
-      graphics.lineStyle(6, 0x000000, ringAlpha);
-      graphics.strokeCircle(centerX, centerY, radius - offset);
+    if (state.hasLantern) {
+      const playerLight = lights.find((light) => light.kind === "player");
+      if (playerLight) {
+        for (let offset = 0; offset < fringe; offset += 5) {
+          const progress = 1 - offset / fringe;
+          const ringAlpha = Phaser.Math.Clamp(alpha * progress * progress * 0.48, 0, alpha);
+          graphics.lineStyle(5, 0x000000, ringAlpha);
+          graphics.strokeCircle(playerLight.x, playerLight.y, radius - offset);
+        }
+      }
     }
   }
 
-  updateLanternThresholdDarkness() {
-    if (this.level.darkness?.thresholdMode === "diagonal") {
-      this.updateDiagonalLanternThresholdDarkness();
-      return;
+  getLanternDarknessBaseAlpha(screenX, screenY, camera, alpha) {
+    if (this.level.darkness?.requiresLantern === false || state.hasLantern) return alpha;
+    if (this.level.darkness?.thresholdMode !== "diagonal") {
+      const startX = this.level.darkness?.startX ?? 0;
+      const fadeWidth = this.level.darkness?.thresholdFade ?? 180;
+      const screenStart = startX - camera.scrollX;
+      if (screenX < screenStart - fadeWidth) return 0;
+      if (screenX >= screenStart) return alpha;
+      const progress = Phaser.Math.Clamp((screenX - (screenStart - fadeWidth)) / Math.max(1, fadeWidth), 0, 1);
+      return alpha * progress * progress;
     }
 
-    const camera = this.cameras.main;
-    const startX = this.level.darkness?.startX ?? 0;
-    const fadeWidth = this.level.darkness?.thresholdFade ?? 180;
-    const screenStart = startX - camera.scrollX;
-    const graphics = this.lanternOverlay;
-
-    graphics.clear();
-    if (screenStart >= VIEW_WIDTH) return;
-
-    const fadeStart = Phaser.Math.Clamp(screenStart - fadeWidth, 0, VIEW_WIDTH);
-    const fadeEnd = Phaser.Math.Clamp(screenStart, 0, VIEW_WIDTH);
-
-    for (let x = fadeStart; x < fadeEnd; x += 4) {
-      const progress = Phaser.Math.Clamp((x - fadeStart) / Math.max(1, fadeEnd - fadeStart), 0, 1);
-      graphics.fillStyle(0x000000, progress * progress);
-      graphics.fillRect(x, 0, 4, PLAY_HEIGHT);
-    }
-
-    graphics.fillStyle(0x000000, 1);
-    graphics.fillRect(fadeEnd, 0, VIEW_WIDTH - fadeEnd, PLAY_HEIGHT);
-  }
-
-  updateDiagonalLanternThresholdDarkness() {
-    const camera = this.cameras.main;
     const darkness = this.level.darkness || {};
     const startX = darkness.lineStartX ?? 0;
     const startY = darkness.lineStartY ?? 0;
     const endX = darkness.lineEndX ?? VIEW_WIDTH;
     const endY = darkness.lineEndY ?? PLAY_HEIGHT;
     const fadeWidth = darkness.thresholdFade ?? 64;
-    const alpha = darkness.alpha ?? 1;
-    const graphics = this.lanternOverlay;
     const dx = Math.max(1, endX - startX);
+    const worldX = camera.scrollX + screenX;
+    const t = Phaser.Math.Clamp((worldX - startX) / dx, -0.35, 1.35);
+    const worldBoundaryY = Phaser.Math.Linear(startY, endY, t);
+    const screenBoundaryY = worldBoundaryY - camera.scrollY;
+    const solidBottom = Phaser.Math.Clamp(screenBoundaryY - fadeWidth * 0.5, 0, PLAY_HEIGHT);
+    const fadeBottom = Phaser.Math.Clamp(screenBoundaryY + fadeWidth * 0.5, 0, PLAY_HEIGHT);
+    if (screenY < solidBottom) return alpha;
+    if (screenY >= fadeBottom) return 0;
+    const progress = 1 - Phaser.Math.Clamp((screenY - solidBottom) / Math.max(1, fadeBottom - solidBottom), 0, 1);
+    return alpha * progress * progress;
+  }
 
-    graphics.clear();
-    for (let x = 0; x < VIEW_WIDTH; x += 4) {
-      const worldX = camera.scrollX + x;
-      const t = Phaser.Math.Clamp((worldX - startX) / dx, -0.35, 1.35);
-      const worldBoundaryY = Phaser.Math.Linear(startY, endY, t);
-      const screenBoundaryY = worldBoundaryY - camera.scrollY;
-      const solidBottom = Phaser.Math.Clamp(screenBoundaryY - fadeWidth * 0.5, 0, PLAY_HEIGHT);
-      const fadeBottom = Phaser.Math.Clamp(screenBoundaryY + fadeWidth * 0.5, 0, PLAY_HEIGHT);
-
-      if (solidBottom > 0) {
-        graphics.fillStyle(0x000000, alpha);
-        graphics.fillRect(x, 0, 4, solidBottom);
-      }
-
-      if (fadeBottom > solidBottom) {
-        for (let y = solidBottom; y < fadeBottom; y += 4) {
-          const progress = 1 - Phaser.Math.Clamp((y - solidBottom) / Math.max(1, fadeBottom - solidBottom), 0, 1);
-          graphics.fillStyle(0x000000, alpha * progress * progress);
-          graphics.fillRect(x, y, 4, 4);
-        }
-      }
+  getVisibleLanternLightCircles() {
+    const camera = this.cameras.main;
+    const lights = [];
+    if (this.level.nightLevel) {
+      (this.nightLanternLights || []).forEach((light) => {
+        lights.push({
+          kind: "static",
+          x: light.x - camera.scrollX,
+          y: light.y - camera.scrollY,
+          radius: light.radius,
+          fringe: light.fringe
+        });
+      });
     }
+    if (state.hasLantern) {
+      const { radius, fringe, yOffset } = this.lanternOverlayConfig;
+      lights.push({
+        kind: "player",
+        x: Phaser.Math.Clamp(this.player.x - camera.scrollX + (this.player.flipX ? -18 : 18), -radius, VIEW_WIDTH + radius),
+        y: Phaser.Math.Clamp(this.player.y - camera.scrollY + yOffset, -radius, PLAY_HEIGHT + radius),
+        radius,
+        fringe
+      });
+    }
+    return lights;
+  }
+
+  getLanternDarknessLightFactor(screenX, screenY, lights) {
+    let factor = 1;
+    lights.forEach((light) => {
+      const dx = screenX - light.x;
+      const dy = screenY - light.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance >= light.radius) return;
+      const clearRadius = Math.max(0, light.radius - light.fringe);
+      const progress = Phaser.Math.Clamp((distance - clearRadius) / Math.max(1, light.fringe), 0, 1);
+      factor = Math.min(factor, progress * progress);
+    });
+    return factor;
   }
 
   createStartingHouse() {
@@ -7138,6 +7244,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBossReveal(time);
     this.updateBossHealthBar(delta);
     this.updateLightRays(time);
+    this.updateNightLanternLights(time);
     this.updateWater(delta);
     this.updateHangingChains(time, delta);
     this.updateLanternOverlay();
@@ -10711,6 +10818,74 @@ class PlayScene extends Phaser.Scene {
     this.updateLightSparkles(time);
   }
 
+  updateNightLanternLights(time = 0) {
+    if (!this.level.nightLevel) return;
+    (this.nightLanternLights || []).forEach((light, index) => {
+      const pulse = 0.42 + Math.sin(time * 0.0012 + light.phase) * 0.045 + Math.sin(time * 0.00047 + index) * 0.025;
+      light.glow?.setAlpha(Phaser.Math.Clamp(pulse, 0.34, 0.52));
+      light.glow?.setScale((light.radius / 128) * (1 + Math.sin(time * 0.001 + light.phase) * 0.018));
+    });
+
+    if (this.playerLanternGlow) {
+      const visible = Boolean(state.hasLantern && this.player?.active);
+      this.playerLanternGlow.setVisible(visible);
+      if (visible) {
+        const radius = this.level.darkness?.radius ?? NIGHT_LANTERN_RADIUS;
+        this.playerLanternGlow.setPosition(this.player.x + (this.player.flipX ? -18 : 18), this.player.y + (this.level.darkness?.yOffset ?? -18));
+        this.playerLanternGlow.setScale((radius / 128) * (1 + Math.sin(time * 0.0015) * 0.014));
+        this.playerLanternGlow.setAlpha(0.48 + Math.sin(time * 0.0011) * 0.04);
+      }
+    }
+
+    if (!this.textures.exists("light-sparkle") || time < this.nextNightLanternSparkleAt) return;
+    const lightPool = [...(this.nightLanternLights || [])];
+    if (state.hasLantern && this.player?.active) {
+      lightPool.push({
+        x: this.player.x + (this.player.flipX ? -18 : 18),
+        y: this.player.y + (this.level.darkness?.yOffset ?? -18),
+        radius: this.level.darkness?.radius ?? NIGHT_LANTERN_RADIUS,
+        foreground: true
+      });
+    }
+    const visibleLights = lightPool.filter((light) => {
+      const camera = this.cameras.main;
+      return light.x > camera.scrollX - light.radius &&
+        light.x < camera.scrollX + VIEW_WIDTH + light.radius &&
+        light.y > camera.scrollY - light.radius &&
+        light.y < camera.scrollY + PLAY_HEIGHT + light.radius;
+    });
+    if (!visibleLights.length) return;
+    const sparkleCount = Phaser.Math.Between(5, 12);
+    for (let index = 0; index < sparkleCount; index += 1) {
+      const light = Phaser.Utils.Array.GetRandom(visibleLights);
+      this.spawnNightLanternSparkle(light);
+    }
+    this.nextNightLanternSparkleAt = time + Phaser.Math.Between(170, 360);
+  }
+
+  spawnNightLanternSparkle(light) {
+    const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+    const distance = Math.sqrt(Phaser.Math.FloatBetween(0.02, 0.92)) * (light.radius || NIGHT_LANTERN_RADIUS) * 0.86;
+    const sparkle = this.add.image(light.x + Math.cos(angle) * distance, light.y + Math.sin(angle) * distance, "light-sparkle");
+    const scale = Phaser.Math.FloatBetween(0.08, 0.22);
+    sparkle.setScale(scale);
+    sparkle.setDepth(light.foreground ? NIGHT_LANTERN_SPARKLE_DEPTH + 0.18 : NIGHT_LANTERN_SPARKLE_DEPTH);
+    sparkle.setBlendMode(Phaser.BlendModes.ADD);
+    sparkle.setAlpha(0);
+    this.tweens.add({
+      targets: sparkle,
+      alpha: Phaser.Math.FloatBetween(0.18, 0.46),
+      scale: scale * Phaser.Math.FloatBetween(1.08, 1.42),
+      y: sparkle.y + Phaser.Math.FloatBetween(-7, 9),
+      x: sparkle.x + Phaser.Math.FloatBetween(-6, 6),
+      duration: Phaser.Math.Between(320, 560),
+      yoyo: true,
+      hold: Phaser.Math.Between(40, 170),
+      ease: "Sine.inOut",
+      onComplete: () => sparkle.destroy()
+    });
+  }
+
   updateLightSparkles(time = 0) {
     if (!this.resolvedLightRays?.length || time < this.nextLightSparkleAt) return;
     const sparkleCount = Phaser.Math.Between(20, 60);
@@ -11098,6 +11273,14 @@ class PlayScene extends Phaser.Scene {
     this.distantColossus = null;
     this.clearDiveIndicatorBirds();
     this.clearDiveFieldLeaves();
+    this.nightLanternLights?.forEach((light) => {
+      light.glow?.destroy?.();
+      light.lantern?.destroy?.();
+    });
+    this.nightLanternLights = [];
+    this.playerLanternGlow?.destroy?.();
+    this.playerLanternGlow = null;
+    this.nextNightLanternSparkleAt = 0;
     this.stopDiveWindSfx();
     this.clearDiveWindLines();
     this.ambientLeaves?.forEach((entry) => entry.leaf?.destroy?.());
@@ -11472,7 +11655,7 @@ class PlayScene extends Phaser.Scene {
       updateHud();
       return;
     }
-    this.loseLife();
+    this.loseLife({ damageSource: "enemy" });
   }
 
   hitGiantHand(player, hand) {
@@ -11800,16 +11983,20 @@ class PlayScene extends Phaser.Scene {
     acorn.setData("pace", Phaser.Math.Between(...getDifficultyScaledRange(this.level.acornPace, "hazardPaceMultiplier", 80)));
   }
 
-  loseLife({ respawn = false } = {}) {
+  loseLife({ respawn = false, damageSource = null } = {}) {
     if (!state.running) return;
     const now = this.time?.now || 0;
     if (!respawn && now < (this.damageInvulnerableUntil || 0)) return;
+    const hardEnemyRespawn = damageSource === "enemy" &&
+      state.difficulty === DIFFICULTY_HARD &&
+      !this.level?.bossHealthGate;
+    const shouldRespawn = respawn || hardEnemyRespawn;
     this.damageInvulnerableUntil = now + DAMAGE_INVULNERABLE_MS;
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
     state.lives -= 1;
     updateHud();
-    this.cameras.main.shake(respawn ? 180 : 120, respawn ? 0.012 : 0.006);
+    this.cameras.main.shake(shouldRespawn ? 180 : 120, shouldRespawn ? 0.012 : 0.006);
     if (state.lives <= 0) {
       this.showGameOverScreen({
         copy: "Gabi ran out of chances. The city was too demanding."
@@ -11817,7 +12004,7 @@ class PlayScene extends Phaser.Scene {
       return;
     }
     if (Number.isFinite(state.timeLeft)) state.timeLeft = Math.max(getDifficultyProfile().respawnMinTime ?? 45, state.timeLeft);
-    if (respawn) {
+    if (shouldRespawn) {
       this.resetFinalElevator();
       this.resetMysteriousMan();
       this.resetPlayerToSpawn();
@@ -11834,7 +12021,7 @@ class PlayScene extends Phaser.Scene {
     this.flowerPromptActive = false;
     setItemPickupVisible(false);
     this.releaseBasketPromptControlLock();
-    if (respawn) {
+    if (shouldRespawn) {
       this.thrownItems.clear(true, true);
       if (!state.hasKey) this.resetKeyReveal();
       this.resetCatNpc();
