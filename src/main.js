@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.3";
+const GAME_VERSION = "v0.57.4";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level6-wing-petals";
+const ASSET_VERSION = "20260625-petal-chaos";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -8026,29 +8026,43 @@ class PlayScene extends Phaser.Scene {
       rotation: Phaser.Math.Clamp(Math.atan2(baseVy, Math.abs(baseSpeed)) * 0.18, -0.16, 0.16) * directionX,
       birds: []
     };
-    const count = Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
+    const isPetalFlock = birdSprite === "flower-petal";
+    const count = isPetalFlock
+      ? Phaser.Math.Between(BIRD_MAX_FLOCK_SIZE + 10, BIRD_MAX_FLOCK_SIZE + 22)
+      : Phaser.Math.Between(BIRD_MIN_FLOCK_SIZE, BIRD_MAX_FLOCK_SIZE);
 
     for (let index = 0; index < count; index += 1) {
       const bird = this.add.sprite(
         baseX,
         baseY,
         birdSprite,
-        birdSprite === "flower-petal" ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(0, 3)
+        isPetalFlock ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(0, 3)
       );
-      const scale = birdSprite === "flower-petal"
+      const scale = isPetalFlock
         ? Phaser.Math.FloatBetween(0.02, 0.032) * this.getAttackFlockScaleMultiplier(birdSprite)
         : Phaser.Math.FloatBetween(0.055, 0.088) * this.getAttackFlockScaleMultiplier(birdSprite);
-      bird.setScale(scale);
+      const mirrorX = isPetalFlock && Phaser.Math.Between(0, 1) === 1 ? -1 : 1;
+      const mirrorY = isPetalFlock && Phaser.Math.Between(0, 1) === 1 ? -1 : 1;
+      bird.setScale(scale * mirrorX, scale * mirrorY);
       bird.setDepth(BIRD_ATTACK_DEPTH);
-      bird.setAlpha(Phaser.Math.FloatBetween(0.58, 0.86));
-      bird.setFlipX(directionX < 0);
+      bird.setAlpha(isPetalFlock ? Phaser.Math.FloatBetween(0.48, 0.9) : Phaser.Math.FloatBetween(0.58, 0.86));
+      bird.setFlipX(isPetalFlock ? Phaser.Math.Between(0, 1) === 1 : directionX < 0);
+      bird.setFlipY(isPetalFlock && Phaser.Math.Between(0, 1) === 1);
       bird.play(birdAnimation, true);
-      bird.spin = birdSprite === "flower-petal" ? Phaser.Math.FloatBetween(-4.2, 4.2) : 0;
-      bird.formationX = Phaser.Math.Between(-74, 74);
-      bird.formationY = Phaser.Math.Between(-24, 24);
-      bird.wobble = Phaser.Math.FloatBetween(2.2, 6.5);
+      bird.spin = isPetalFlock ? Phaser.Math.FloatBetween(-10.5, 10.5) : 0;
+      const clustered = isPetalFlock && Phaser.Math.FloatBetween(0, 1) < 0.68;
+      bird.formationX = isPetalFlock
+        ? (clustered ? Phaser.Math.Between(-52, 52) : Phaser.Math.Between(-160, 160))
+        : Phaser.Math.Between(-74, 74);
+      bird.formationY = isPetalFlock
+        ? (clustered ? Phaser.Math.Between(-30, 30) : Phaser.Math.Between(-92, 92))
+        : Phaser.Math.Between(-24, 24);
+      bird.wobble = isPetalFlock ? Phaser.Math.FloatBetween(8, 28) : Phaser.Math.FloatBetween(2.2, 6.5);
       bird.phase = Phaser.Math.FloatBetween(0, Math.PI * 2);
-      bird.rotation = flock.rotation;
+      bird.driftX = isPetalFlock ? Phaser.Math.FloatBetween(-18, 18) : 0;
+      bird.driftY = isPetalFlock ? Phaser.Math.FloatBetween(-24, 24) : 0;
+      bird.flutter = isPetalFlock ? Phaser.Math.FloatBetween(0.65, 1.8) : 1;
+      bird.rotation = isPetalFlock ? Phaser.Math.FloatBetween(-Math.PI, Math.PI) : flock.rotation;
       bird.x = flock.x + bird.formationX;
       bird.y = flock.y + bird.formationY;
       flock.birds.push(bird);
@@ -8900,11 +8914,21 @@ class PlayScene extends Phaser.Scene {
       const age = Math.max(0, time - flock.startedAt);
       flock.birds = flock.birds.filter((bird) => {
         if (!bird?.active) return false;
-        const wobbleX = Math.sin(age * 0.0022 + bird.phase) * bird.wobble;
-        const wobbleY = Math.cos(age * 0.0028 + bird.phase * 0.7) * bird.wobble * 0.38;
-        bird.x = flock.x + bird.formationX + wobbleX;
-        bird.y = flock.y + bird.formationY + wobbleY;
-        bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        if (flock.spriteKey === "flower-petal") {
+          const flutter = bird.flutter || 1;
+          const wobbleX = Math.sin(age * 0.0048 * flutter + bird.phase) * bird.wobble;
+          const wobbleY = Math.cos(age * 0.0062 * flutter + bird.phase * 0.7) * bird.wobble * 0.8;
+          const driftAge = age / 1000;
+          bird.x = flock.x + bird.formationX + wobbleX + (bird.driftX || 0) * driftAge;
+          bird.y = flock.y + bird.formationY + wobbleY + (bird.driftY || 0) * Math.sin(driftAge * 1.7 + bird.phase);
+          bird.rotation += (bird.spin || 0) * seconds;
+        } else {
+          const wobbleX = Math.sin(age * 0.0022 + bird.phase) * bird.wobble;
+          const wobbleY = Math.cos(age * 0.0028 + bird.phase * 0.7) * bird.wobble * 0.38;
+          bird.x = flock.x + bird.formationX + wobbleX;
+          bird.y = flock.y + bird.formationY + wobbleY;
+          bird.rotation = Phaser.Math.Linear(bird.rotation, flock.rotation, 0.05);
+        }
         return true;
       });
 

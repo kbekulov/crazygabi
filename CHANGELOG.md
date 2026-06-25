@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.57.4
+
+- Reworked Level 6 petal attacks into a larger wind-chaos swarm with varied rotation and density.
+
 ## v0.57.3
 
 - Added a wing pickup to Level 6 so its vertical route can be completed.
