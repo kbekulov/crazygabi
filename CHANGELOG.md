@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.57.3
+
+- Added a wing pickup to Level 6 so its vertical route can be completed.
+- Reduced flower petal visuals and made bush scatter particles smaller.
+
 ## v0.57.2
 
 - Reworked Level 6 garden placement to use the established garden layering and height rules.

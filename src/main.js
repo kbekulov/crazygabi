@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.2";
+const GAME_VERSION = "v0.57.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -127,6 +127,7 @@ const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
 const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
 const KEY_GARDEN_PROP_BACK_DEPTH = 3.55;
+const GARDEN_BURST_PARTICLE_SCALE = 0.75;
 const KEY_REVEAL_PICKUP_DELAY = 3000;
 const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
 const KEY_GARDEN_ASSETS = [
@@ -351,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level6-garden-layering";
+const ASSET_VERSION = "20260625-level6-wing-petals";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -883,7 +884,7 @@ const LEVELS = [
       minDelay: 180,
       maxDelay: 460,
       burstChance: 0.42,
-      scaleRange: [0.035, 0.058],
+      scaleRange: [0.0175, 0.029],
       alphaRange: [0.52, 0.82],
       windX: [48, 108],
       windY: [16, 46],
@@ -921,7 +922,7 @@ const LEVELS = [
     ],
     introTitle: "Level 6",
     introCopy: "Search the botanical rooftops, find the flower, and reach the exit before the garden closes in.",
-    questTasks: ["flower", "petal", "coins", "enemies"]
+    questTasks: ["wing", "flower", "petal", "coins", "enemies"]
   }
 ];
 
@@ -1443,6 +1444,7 @@ function createLevelSix() {
 
   [
     [14, 4, "p"],
+    [15, 9, "j"],
     [15, 13, "g"],
     [15, 21, "m"],
     [15, 35, "g"],
@@ -1703,6 +1705,7 @@ function getLevelQuestDefinitions(level = getActiveLevel()) {
   const definitions = {
     lantern: { label: "PICK UP THE LANTERN", complete: () => state.hasLantern },
     basket: { label: "CLAIM THE ACORN BASKET", complete: () => state.hasAcornBasket },
+    wing: { label: "FIND THE WING", complete: () => state.hasDoubleJump },
     flower: { label: "FIND THE FLOWER", complete: () => state.hasFlower },
     key: { label: "FIND THE KEY", complete: () => state.hasKey },
     coins: { label: "COLLECT ALL COINS", complete: () => state.totalGems > 0 && state.levelGems >= state.totalGems },
@@ -7964,8 +7967,8 @@ class PlayScene extends Phaser.Scene {
     const pieces = 38;
     for (let index = 0; index < pieces; index += 1) {
       const color = Phaser.Math.RND.pick(GARDEN_BURST_COLORS);
-      const width = Phaser.Math.Between(5, 18);
-      const height = Phaser.Math.Between(1, 4);
+      const width = Math.max(1, Math.round(Phaser.Math.Between(5, 18) * GARDEN_BURST_PARTICLE_SCALE));
+      const height = Math.max(1, Math.round(Phaser.Math.Between(1, 4) * GARDEN_BURST_PARTICLE_SCALE));
       const piece = this.add.rectangle(
         x + Phaser.Math.Between(-54, 54),
         y + Phaser.Math.Between(-16, 14),
@@ -8033,7 +8036,7 @@ class PlayScene extends Phaser.Scene {
         birdSprite === "flower-petal" ? Phaser.Math.Between(0, 2) : Phaser.Math.Between(0, 3)
       );
       const scale = birdSprite === "flower-petal"
-        ? Phaser.Math.FloatBetween(0.04, 0.064) * this.getAttackFlockScaleMultiplier(birdSprite)
+        ? Phaser.Math.FloatBetween(0.02, 0.032) * this.getAttackFlockScaleMultiplier(birdSprite)
         : Phaser.Math.FloatBetween(0.055, 0.088) * this.getAttackFlockScaleMultiplier(birdSprite);
       bird.setScale(scale);
       bird.setDepth(BIRD_ATTACK_DEPTH);
