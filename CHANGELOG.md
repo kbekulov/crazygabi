@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.57.8
+
+- Hardened level switching cleanup to prevent stale timers, tweens, loader callbacks, and audio objects from touching old scenes.
+- Retired previous level-only cached assets before loading the next level to reduce memory pressure during long play sessions.
+- Added the flower cooldown UI icon for Level 6's petal attack.
+
 ## v0.57.7
 
 - Added runtime diagnostics for intermittent level-loading crashes and freezes.

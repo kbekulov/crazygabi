@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.7";
+const GAME_VERSION = "v0.57.8";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-load-diagnostics";
+const ASSET_VERSION = "20260625-level-transition-hardening";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1721,6 +1721,15 @@ function setBirdCooldownVisible(visible) {
   hud.birdCooldown.hidden = !visible;
 }
 
+function setBirdCooldownVariant(variant = "bird") {
+  if (!hud.birdCooldown) return;
+  hud.birdCooldown.dataset.variant = variant === "flower" ? "flower" : "bird";
+  hud.birdCooldown.setAttribute(
+    "aria-label",
+    variant === "flower" ? "Flower petal attack cooldown" : "Bird attack cooldown"
+  );
+}
+
 function updateBirdCooldownHud(progress = 0) {
   if (!hud.birdCooldown) return;
   const value = Phaser.Math.Clamp(progress || 0, 0, 1);
@@ -2318,6 +2327,12 @@ class PlayScene extends Phaser.Scene {
     super("PlayScene");
     this.bgm = null;
     this.ambientBgm = null;
+    this.levelTransitionInProgress = false;
+    this.pendingLevelRequest = null;
+    this.activeLevelTextureKeys = new Set();
+    this.activeLevelAudioKeys = new Set();
+    this.activeLevelJsonKeys = new Set();
+    this.activeLevelTextKeys = new Set();
   }
 
   preload() {
@@ -2372,6 +2387,7 @@ class PlayScene extends Phaser.Scene {
     const transitionStartedAt = performance.now();
     const loadId = (this.levelLoadId || 0) + 1;
     this.levelLoadId = loadId;
+    this.levelTransitionInProgress = true;
     this.levelReady = false;
     setGameAssetsReady(false);
     setMainMenuVisible(false);
@@ -2394,6 +2410,7 @@ class PlayScene extends Phaser.Scene {
       }
       if (!this.isActiveLevelLoad(loadId)) return;
       this.createLevelRuntime();
+      this.finishLevelTransition(loadId, { force: true });
     } catch (error) {
       console.error("Level load failed", error);
       if (!this.isActiveLevelLoad(loadId)) return;
@@ -2406,11 +2423,23 @@ class PlayScene extends Phaser.Scene {
       setGameOverVisible(true, {
         copy: "This level did not finish loading. Restart or return to the menu."
       });
+      this.finishLevelTransition(loadId);
     }
   }
 
   isActiveLevelLoad(loadId) {
     return this.scene.isActive("PlayScene") && this.levelLoadId === loadId;
+  }
+
+  finishLevelTransition(loadId = this.levelLoadId, { force = false } = {}) {
+    if (!force && !this.isActiveLevelLoad(loadId)) return;
+    this.levelTransitionInProgress = false;
+    const pending = this.pendingLevelRequest;
+    this.pendingLevelRequest = null;
+    if (!pending) return;
+    this.time.delayedCall(0, () => {
+      this.requestLevelStart(pending.levelIndex, { resetScore: pending.resetScore });
+    });
   }
 
   createLevelRuntime() {
@@ -2661,27 +2690,33 @@ class PlayScene extends Phaser.Scene {
 
   loadLevelAssets(level, loadId) {
     return new Promise((resolve, reject) => {
-      if (typeof this.load.isLoading === "function" && this.load.isLoading()) {
-        this.load.reset();
-      }
+      if (typeof this.load.isLoading === "function" && this.load.isLoading()) this.safeResetLoader();
 
       let queued = 0;
+      const requiredTextureKeys = new Set();
+      const requiredAudioKeys = new Set();
+      const requiredJsonKeys = new Set();
+      const requiredTextKeys = new Set();
       const image = (key, src) => {
+        requiredTextureKeys.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
       };
       const storyImage = (key, src) => {
+        requiredTextureKeys.add(key);
         if (this.textures.exists(key)) return;
         this.load.image(key, `${src}?v=${STORY_ASSET_VERSION}`);
         queued += 1;
       };
       const sheet = (key, src, frameWidth, frameHeight) => {
+        requiredTextureKeys.add(key);
         if (this.textures.exists(key)) return;
         this.load.spritesheet(key, `${src}?v=${ASSET_VERSION}`, { frameWidth, frameHeight });
         queued += 1;
       };
       const audio = (key, src) => {
+        requiredAudioKeys.add(key);
         if (this.cache.audio.exists(key)) return;
         this.load.audio(key, `${src}?v=${ASSET_VERSION}`);
         queued += 1;
@@ -2691,6 +2726,8 @@ class PlayScene extends Phaser.Scene {
         if (typeof this.load.spineJson !== "function" || typeof this.load.spineAtlas !== "function") return;
         const dataKey = config.dataKey || "colossus-placeholder-data";
         const atlasKey = config.atlasKey || "colossus-placeholder-atlas";
+        requiredJsonKeys.add(dataKey);
+        requiredTextKeys.add(atlasKey);
         if (!this.cache.json.exists(dataKey)) {
           this.load.spineJson(dataKey, `${config.skeleton}?v=${ASSET_VERSION}`);
           queued += 1;
@@ -2834,7 +2871,20 @@ class PlayScene extends Phaser.Scene {
         CHAIN_GRAB_SFX_KEY
       ].forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
 
+      this.releaseRetiredLevelAssets({
+        textures: requiredTextureKeys,
+        audio: requiredAudioKeys,
+        json: requiredJsonKeys,
+        text: requiredTextKeys
+      });
+
       if (!queued) {
+        this.rememberActiveLevelAssets({
+          textures: requiredTextureKeys,
+          audio: requiredAudioKeys,
+          json: requiredJsonKeys,
+          text: requiredTextKeys
+        });
         updateLoadingProgress(1, "Level ready.");
         resolve();
         return;
@@ -2855,15 +2905,19 @@ class PlayScene extends Phaser.Scene {
         finished = true;
         cleanup();
         updateLoadingProgress(1, "Level ready.");
+        this.rememberActiveLevelAssets({
+          textures: requiredTextureKeys,
+          audio: requiredAudioKeys,
+          json: requiredJsonKeys,
+          text: requiredTextKeys
+        });
         resolve();
       };
       const fail = (file) => {
         if (finished) return;
         finished = true;
         cleanup();
-        if (typeof this.load.isLoading === "function" && this.load.isLoading()) {
-          this.load.reset();
-        }
+        if (typeof this.load.isLoading === "function" && this.load.isLoading()) this.safeResetLoader();
         reject(new Error(`Could not load ${file?.key || "level asset"}`));
       };
       const stale = () => {
@@ -2882,6 +2936,88 @@ class PlayScene extends Phaser.Scene {
         fail({ key: `${level.name} timed out` });
       }, LEVEL_LOAD_TIMEOUT_MS);
       this.load.start();
+    });
+  }
+
+  safeResetLoader() {
+    try {
+      this.load?.reset?.();
+    } catch (error) {
+      logRuntimeDiagnostic("loader-reset-failed", error, {
+        source: "PlayScene.safeResetLoader"
+      });
+    }
+  }
+
+  getProtectedAssetKeys() {
+    return {
+      textures: new Set([
+        "__DEFAULT",
+        "__MISSING",
+        "tile-ground",
+        "tile-ground-top",
+        "tile-platform",
+        "tile-platform-top",
+        "tile-window",
+        "tile-door",
+        "tree",
+        "acorn",
+        "cloud",
+        "parallax-city",
+        "gabi-sheet",
+        "grey-cat"
+      ]),
+      audio: new Set(["bgm-menu"]),
+      json: new Set(),
+      text: new Set()
+    };
+  }
+
+  rememberActiveLevelAssets({ textures, audio, json, text }) {
+    this.activeLevelTextureKeys = new Set(textures || []);
+    this.activeLevelAudioKeys = new Set(audio || []);
+    this.activeLevelJsonKeys = new Set(json || []);
+    this.activeLevelTextKeys = new Set(text || []);
+  }
+
+  releaseRetiredLevelAssets({ textures, audio, json, text }) {
+    const protectedKeys = this.getProtectedAssetKeys();
+    const removeTextures = [...(this.activeLevelTextureKeys || [])]
+      .filter((key) => !textures.has(key) && !protectedKeys.textures.has(key));
+    const removeAudio = [...(this.activeLevelAudioKeys || [])]
+      .filter((key) => !audio.has(key) && !protectedKeys.audio.has(key));
+    const removeJson = [...(this.activeLevelJsonKeys || [])]
+      .filter((key) => !json.has(key) && !protectedKeys.json.has(key));
+    const removeText = [...(this.activeLevelTextKeys || [])]
+      .filter((key) => !text.has(key) && !protectedKeys.text.has(key));
+
+    removeTextures.forEach((key) => {
+      try {
+        if (this.textures.exists(key)) this.textures.remove(key);
+      } catch (error) {
+        logRuntimeDiagnostic("texture-release-failed", error, { key });
+      }
+    });
+    removeAudio.forEach((key) => {
+      try {
+        if (this.cache.audio.exists(key)) this.cache.audio.remove(key);
+      } catch (error) {
+        logRuntimeDiagnostic("audio-release-failed", error, { key });
+      }
+    });
+    removeJson.forEach((key) => {
+      try {
+        if (this.cache.json.exists(key)) this.cache.json.remove(key);
+      } catch (error) {
+        logRuntimeDiagnostic("json-release-failed", error, { key });
+      }
+    });
+    removeText.forEach((key) => {
+      try {
+        if (this.cache.text.exists(key)) this.cache.text.remove(key);
+      } catch (error) {
+        logRuntimeDiagnostic("text-release-failed", error, { key });
+      }
     });
   }
 
@@ -7352,6 +7488,7 @@ class PlayScene extends Phaser.Scene {
       setBirdCooldownVisible(false);
       return;
     }
+    setBirdCooldownVariant(this.level?.actionAbility === "flower-petals" ? "flower" : "bird");
     setBirdCooldownVisible(state.running && !state.won);
     const remaining = Math.max(0, BIRD_ATTACK_COOLDOWN - (time - this.lastBirdAttackAt));
     updateBirdCooldownHud(remaining / BIRD_ATTACK_COOLDOWN);
@@ -10632,7 +10769,7 @@ class PlayScene extends Phaser.Scene {
     }
     this.bossSoundtrackActive = false;
     if (!isMusicEnabled()) {
-      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.safeStopSound(this.bgm);
       this.stopAmbientMusic({ destroy: false });
       return;
     }
@@ -10645,7 +10782,7 @@ class PlayScene extends Phaser.Scene {
         this.startAmbientMusic();
         return;
       }
-      this.sound.stopAll();
+      this.safeStopAllSounds();
       if (this.bgm && this.bgm.key === soundtrack) {
         this.bgm.setVolume(volume);
         this.bgm.play();
@@ -10667,7 +10804,7 @@ class PlayScene extends Phaser.Scene {
     if (!soundtrack) return;
     this.bossSoundtrackActive = true;
     if (!isMusicEnabled()) {
-      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.safeStopSound(this.bgm);
       return;
     }
     const volume = this.getSoundtrackVolume(soundtrack, 0.35);
@@ -10677,7 +10814,7 @@ class PlayScene extends Phaser.Scene {
         this.bgm.setVolume(volume);
         return;
       }
-      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.safeStopSound(this.bgm);
       if (this.bgm && this.bgm.key !== soundtrack) {
         this.bgm.destroy();
         this.bgm = null;
@@ -10719,7 +10856,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   stopAmbientMusic({ destroy = false } = {}) {
-    if (this.ambientBgm?.isPlaying) this.ambientBgm.stop();
+    this.safeStopSound(this.ambientBgm);
     if (destroy && this.ambientBgm) {
       this.ambientBgm.destroy();
       this.ambientBgm = null;
@@ -10739,7 +10876,7 @@ class PlayScene extends Phaser.Scene {
 
   startMenuMusic() {
     if (!isMusicEnabled()) {
-      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.safeStopSound(this.bgm);
       this.stopAmbientMusic({ destroy: true });
       return;
     }
@@ -10749,7 +10886,7 @@ class PlayScene extends Phaser.Scene {
         this.stopAmbientMusic({ destroy: true });
         return;
       }
-      this.sound.stopAll();
+      this.safeStopAllSounds();
       this.stopAmbientMusic({ destroy: true });
       if (this.bgm && this.bgm.key !== "bgm-menu") {
         this.bgm.destroy();
@@ -10768,7 +10905,7 @@ class PlayScene extends Phaser.Scene {
     const volume = this.getSoundtrackVolume(track.key, 0.32);
     const play = () => {
       this.resumeAudioContext();
-      this.sound.stopAll();
+      this.safeStopAllSounds();
       this.stopAmbientMusic({ destroy: true });
       if (this.bgm && this.bgm.key !== track.key) {
         this.bgm.destroy();
@@ -10798,7 +10935,7 @@ class PlayScene extends Phaser.Scene {
   applyAudioSettings() {
     if (!isSfxEnabled()) this.stopDiveWindSfx();
     if (!isMusicEnabled()) {
-      if (this.bgm?.isPlaying) this.bgm.stop();
+      this.safeStopSound(this.bgm);
       this.stopAmbientMusic({ destroy: false });
       return;
     }
@@ -10952,13 +11089,25 @@ class PlayScene extends Phaser.Scene {
       this.timerEvent.remove(false);
       this.timerEvent = null;
     }
+    this.time?.removeAllEvents?.();
+    this.tweens?.killAll?.();
   }
 
   stopGameAudio() {
     this.stopDiveWindSfx();
-    if (this.bgm?.isPlaying) this.bgm.stop();
-    if (this.ambientBgm?.isPlaying) this.ambientBgm.stop();
-    if (this.sound?.context?.state === "running") this.sound.context.suspend();
+    this.safeStopSound(this.bgm);
+    this.safeStopSound(this.ambientBgm);
+    if (this.sound?.context?.state === "running") this.sound.context.suspend().catch?.(() => {});
+  }
+
+  safeStopSound(sound) {
+    try {
+      if (sound?.isPlaying && typeof sound.stop === "function") sound.stop();
+    } catch (error) {
+      logRuntimeDiagnostic("sound-stop-failed", error, {
+        key: sound?.key || null
+      });
+    }
   }
 
   resumeAudioContext() {
@@ -11709,7 +11858,7 @@ class PlayScene extends Phaser.Scene {
     state.running = false;
     this.resetPlayerMotion({ freeze: true });
     this.setGabiAnimation("idle");
-    this.sound.stopAll();
+    this.safeStopAllSounds();
     this.stopAmbientMusic({ destroy: true });
     setCheatMenuVisible(false);
     setStoryIntroVisible(false);
@@ -11721,6 +11870,11 @@ class PlayScene extends Phaser.Scene {
   requestLevelStart(levelIndex = 0, { resetScore = true } = {}) {
     const safeIndex = Phaser.Math.Clamp(levelIndex, 0, LEVELS.length - 1);
     const level = LEVELS[safeIndex] || LEVELS[0];
+    if (this.levelTransitionInProgress) {
+      this.pendingLevelRequest = { levelIndex: safeIndex, resetScore };
+      return;
+    }
+    this.levelTransitionInProgress = true;
     this.cancelLevelRuntime();
     setGameAssetsReady(false);
     hud.message.hidden = true;
@@ -11757,9 +11911,17 @@ class PlayScene extends Phaser.Scene {
       this.timerEvent.remove(false);
       this.timerEvent = null;
     }
-    this.sound.stopAll();
+    this.safeStopAllSounds();
     this.stopAmbientMusic({ destroy: true });
     this.scene.restart();
+  }
+
+  safeStopAllSounds() {
+    try {
+      this.sound?.stopAll?.();
+    } catch (error) {
+      logRuntimeDiagnostic("sound-stop-all-failed", error);
+    }
   }
 }
 
@@ -11860,7 +12022,7 @@ function returnToMainMenu() {
   resetGameProgress();
   state.autoStartLevel = false;
   state.resetProgressOnCreate = false;
-  scene.sound.stopAll();
+  scene.safeStopAllSounds?.();
   scene.stopAmbientMusic?.({ destroy: true });
   scene.scene.restart();
 }

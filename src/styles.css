@@ -310,6 +310,14 @@ button:active {
   filter: drop-shadow(2px 2px 0 #000);
 }
 
+.bird-cooldown[data-variant="flower"] .bird-cooldown-icon-empty {
+  background-image: url("../public/assets/environment/flower_cooldown_empty.png?v=20260625-flower-cooldown-assets");
+}
+
+.bird-cooldown[data-variant="flower"] .bird-cooldown-icon-full {
+  background-image: url("../public/assets/environment/flower_cooldown_full.png?v=20260625-flower-cooldown-assets");
+}
+
 .hud-keycap {
   display: inline-grid;
   min-width: clamp(50px, 4.8vw, 66px);
