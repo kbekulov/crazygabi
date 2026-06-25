@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.57.6
+
+- Fixed Level 6 using the Level 1 soundtrack by restoring the correct music mapping.
+
 ## v0.57.5
 
 - Added the Level 6 soundtrack and wired it into Level 6 and the Music Box.

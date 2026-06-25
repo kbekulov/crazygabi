@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.5";
+const GAME_VERSION = "v0.57.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level6-bgm";
+const ASSET_VERSION = "20260625-level6-bgm-fix";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -463,7 +463,7 @@ const LEVELS = [
     name: "Level 1",
     rows: createLevelOne(),
     timeLimit: TIME_LIMIT,
-    soundtrack: "bgm-lv6",
+    soundtrack: "bgm-lv1",
     acornDelay: [450, 1800],
     acornPace: [185, 295],
     fallingHazard: "falling-acorn",
@@ -865,7 +865,7 @@ const LEVELS = [
     name: "Level 6",
     rows: createLevelSix(),
     timeLimit: 360,
-    soundtrack: "bgm-lv1",
+    soundtrack: "bgm-lv6",
     enemySprite: "robot-lv1",
     actionAbility: "flower-petals",
     requiresKeyForDoor: false,
