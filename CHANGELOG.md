@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.57.10
+
+- Recreated the cat NPC safely when repeated level switches remove its physics body.
+- Cleared stale key and door references during level teardown.
+
+## v0.57.9
+
+- Preserved spritesheet textures that back global animations during level cache cleanup.
+
 ## v0.57.8
 
 - Hardened level switching cleanup to prevent stale timers, tweens, loader callbacks, and audio objects from touching old scenes.

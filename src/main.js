@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.8";
+const GAME_VERSION = "v0.57.10";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level-transition-hardening";
+const ASSET_VERSION = "20260625-level-transition-cat-reset";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2488,6 +2488,10 @@ class PlayScene extends Phaser.Scene {
     this.doors = this.physics.add.staticGroup();
     this.haystacks = this.physics.add.group({ allowGravity: false, immovable: true });
     this.gardenBushes = this.physics.add.group({ allowGravity: false, immovable: true });
+    this.keySprite = null;
+    this.keyPoint = null;
+    this.keyRevealed = false;
+    this.doorPoint = null;
     this.platformRuns = [];
     this.wallForegroundAnchors = new Set();
     this.enemyDirection = new Map();
@@ -2965,7 +2969,22 @@ class PlayScene extends Phaser.Scene {
         "cloud",
         "parallax-city",
         "gabi-sheet",
-        "grey-cat"
+        "gabi-wings-sheet",
+        "gabi-glide-sheet",
+        "gabi-air-dive-sheet",
+        "gabi-dash-sheet",
+        "gabi-climb-sheet",
+        "gabi-point-sheet",
+        "gabi-lantern-sheet",
+        "grey-cat",
+        "robot-lv1",
+        "robot-shadow-ghost-lv2",
+        "robot-ghost-lv3",
+        "old-lady",
+        "mr-magpie",
+        "white-bird",
+        "magpie-bird",
+        "flower-petal"
       ]),
       audio: new Set(["bgm-menu"]),
       json: new Set(),
@@ -6601,6 +6620,10 @@ class PlayScene extends Phaser.Scene {
   }
 
   createCatNpc() {
+    if (this.cat) {
+      this.cat.destroy();
+      this.cat = null;
+    }
     if (!this.level.catNpc) return;
     this.cat = this.physics.add.sprite(this.spawnPoint.x + 220, this.spawnPoint.y, "grey-cat", 8);
     this.cat.setScale(CAT_SCALE);
@@ -9582,7 +9605,19 @@ class PlayScene extends Phaser.Scene {
   }
 
   resetCatNpc() {
-    if (!this.cat) return;
+    if (!this.level.catNpc) {
+      if (this.cat) {
+        this.cat.destroy();
+        this.cat = null;
+      }
+      return;
+    }
+    if (!this.cat || !this.cat.active || !this.cat.body || typeof this.cat.body.reset !== "function") {
+      this.cat?.destroy?.();
+      this.cat = null;
+      this.createCatNpc();
+    }
+    if (!this.cat?.body) return;
     this.cat.enableBody(true, this.spawnPoint.x + CAT_START_OFFSET, this.spawnPoint.y, true, true);
     this.cat.body.allowGravity = false;
     this.cat.body.moves = false;
@@ -11032,6 +11067,8 @@ class PlayScene extends Phaser.Scene {
     this.speechBubble = null;
     this.catSpeechBubble?.destroy(true);
     this.catSpeechBubble = null;
+    this.cat?.destroy?.();
+    this.cat = null;
     this.mysteriousManSpeechBubble?.destroy(true);
     this.mysteriousManSpeechBubble = null;
     this.elevatorSignBubble?.destroy(true);
@@ -11078,6 +11115,10 @@ class PlayScene extends Phaser.Scene {
     this.gabiActionRestoreTimer = null;
     this.gabiActionUntil = 0;
     this.clearOldLadyNpc();
+    this.keySprite = null;
+    this.keyPoint = null;
+    this.keyRevealed = false;
+    this.doorPoint = null;
     this.basketPromptActive = false;
     this.lanternPromptActive = false;
     this.wingPromptActive = false;
@@ -11209,7 +11250,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   resetKeyReveal() {
-    if (!this.keySprite || !this.keyPoint || !this.level.catNpc) return;
+    if (!this.keySprite || !this.keyPoint || !this.level.catNpc || !this.keySprite.body) return;
     this.keyRevealed = false;
     this.keySprite.disableBody(true, true);
   }
