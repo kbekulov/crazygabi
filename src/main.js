@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.58.0";
+const GAME_VERSION = "v0.59.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-night-lanterns-hard-damage";
+const ASSET_VERSION = "20260626-main-menu-refresh";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1581,6 +1581,9 @@ const hud = {
   menuMusicBox: document.querySelector("#menu-music-box"),
   menuSettings: document.querySelector("#menu-settings"),
   menuCredits: document.querySelector("#menu-credits"),
+  menuGabiSprite: document.querySelector("#menu-gabi-sprite"),
+  menuCatSprite: document.querySelector("#menu-cat-sprite"),
+  menuPetals: document.querySelector("#main-menu-petals"),
   difficultyEasy: document.querySelector("#difficulty-easy"),
   difficultyHard: document.querySelector("#difficulty-hard"),
   menuPanel: document.querySelector("#menu-panel"),
@@ -1597,7 +1600,32 @@ hud.coinIcon.src = `./public/assets/environment/golden-coin.png?v=${ASSET_VERSIO
 hud.keyIcon.src = `./public/assets/environment/door_key.png?v=${ASSET_VERSION}`;
 document.title = `Crazy Gabi ${GAME_VERSION}`;
 if (hud.gameVersion) hud.gameVersion.textContent = GAME_VERSION;
+configureMainMenuScene();
 updateBestScore();
+
+function configureMainMenuScene() {
+  if (hud.menuGabiSprite) {
+    hud.menuGabiSprite.style.backgroundImage = `url("./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}")`;
+  }
+  if (hud.menuCatSprite) {
+    hud.menuCatSprite.style.backgroundImage = `url("./public/assets/character/grey_cat.png?v=${ASSET_VERSION}")`;
+  }
+  if (!hud.menuPetals || hud.menuPetals.children.length) return;
+  const petalCount = 26;
+  for (let index = 0; index < petalCount; index += 1) {
+    const petal = document.createElement("span");
+    petal.style.setProperty("--petal-delay", `${-Phaser.Math.FloatBetween(0, 13).toFixed(2)}s`);
+    petal.style.setProperty("--petal-duration", `${Phaser.Math.FloatBetween(7.5, 14.5).toFixed(2)}s`);
+    petal.style.setProperty("--petal-top", `${Phaser.Math.Between(-12, 88)}%`);
+    petal.style.setProperty("--petal-start", `${Phaser.Math.Between(-18, 105)}%`);
+    petal.style.setProperty("--petal-drift", `${Phaser.Math.Between(-220, 220)}px`);
+    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.34, 0.78).toFixed(2));
+    petal.style.setProperty("--petal-spin", `${Phaser.Math.Between(180, 820)}deg`);
+    petal.style.setProperty("--petal-frame", String(Phaser.Math.Between(0, 2)));
+    petal.style.setProperty("--petal-flip", Phaser.Math.Between(0, 1) ? "1" : "-1");
+    hud.menuPetals.appendChild(petal);
+  }
+}
 
 function setLoadingVisible(visible) {
   if (visible) randomizeLoadingRunner();
@@ -4879,9 +4907,10 @@ class PlayScene extends Phaser.Scene {
       this.platformVisuals?.add(lantern);
 
       const radius = config.radius ?? NIGHT_LANTERN_RADIUS;
+      const lanternHeight = (lantern.height || 0) * Math.abs(lantern.scaleY || 1);
       const light = {
         x,
-        y: floorY - (config.yOffset ?? 82),
+        y: floorY - (config.yOffset ?? 82) + lanternHeight * 0.75,
         radius,
         fringe: config.fringe ?? NIGHT_LANTERN_FRINGE,
         foreground: index % 3 === 1,
@@ -4895,13 +4924,7 @@ class PlayScene extends Phaser.Scene {
       this.nightLanternLights.push({ ...light, lantern, glow });
     });
 
-    if (this.player) {
-      this.playerLanternGlow = this.add.image(this.player.x, this.player.y, NIGHT_LANTERN_GLOW_KEY);
-      this.playerLanternGlow.setScale((this.level.darkness?.radius ?? NIGHT_LANTERN_RADIUS) / 128);
-      this.playerLanternGlow.setDepth(NIGHT_LANTERN_GLOW_DEPTH + 0.04);
-      this.playerLanternGlow.setBlendMode(Phaser.BlendModes.ADD);
-      this.playerLanternGlow.setAlpha(0);
-    }
+    this.playerLanternGlow = null;
   }
 
   ensureNightLanternGlowTexture() {
@@ -10825,17 +10848,6 @@ class PlayScene extends Phaser.Scene {
       light.glow?.setAlpha(Phaser.Math.Clamp(pulse, 0.34, 0.52));
       light.glow?.setScale((light.radius / 128) * (1 + Math.sin(time * 0.001 + light.phase) * 0.018));
     });
-
-    if (this.playerLanternGlow) {
-      const visible = Boolean(state.hasLantern && this.player?.active);
-      this.playerLanternGlow.setVisible(visible);
-      if (visible) {
-        const radius = this.level.darkness?.radius ?? NIGHT_LANTERN_RADIUS;
-        this.playerLanternGlow.setPosition(this.player.x + (this.player.flipX ? -18 : 18), this.player.y + (this.level.darkness?.yOffset ?? -18));
-        this.playerLanternGlow.setScale((radius / 128) * (1 + Math.sin(time * 0.0015) * 0.014));
-        this.playerLanternGlow.setAlpha(0.48 + Math.sin(time * 0.0011) * 0.04);
-      }
-    }
 
     if (!this.textures.exists("light-sparkle") || time < this.nextNightLanternSparkleAt) return;
     const lightPool = [...(this.nightLanternLights || [])];

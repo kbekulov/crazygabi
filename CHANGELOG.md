@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.59.0
+
+- Rebuilt the main menu around the new full-screen background art.
+- Added enlarged idle Gabi and cat animations to the menu.
+- Added drifting flower petals across the menu scene.
+- Kept Level 2 static lantern glow while returning Gabi's carried lantern to its cleaner light circle.
+
 ## v0.58.0
 
 - Added hard-mode enemy damage respawns on non-boss levels.
