@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.57.7
+
+- Added runtime diagnostics for intermittent level-loading crashes and freezes.
+
 ## v0.57.6
 
 - Fixed Level 6 using the Level 1 soundtrack by restoring the correct music mapping.

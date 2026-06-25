@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.6";
+const GAME_VERSION = "v0.57.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-level6-bgm-fix";
+const ASSET_VERSION = "20260625-load-diagnostics";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1607,6 +1607,69 @@ function updateLoadingProgress(progress, text = "Preparing assets...") {
   hud.loadingBar.style.width = `${Math.round(percentage * 100)}%`;
   hud.loadingText.textContent = `${text} ${Math.round(percentage * 100)}%`;
 }
+
+function serializeRuntimeError(error) {
+  if (!error) return null;
+  if (typeof error === "string") return { message: error };
+  return {
+    name: error.name || null,
+    message: error.message || String(error),
+    stack: error.stack || null
+  };
+}
+
+function getLevelLoadDiagnosticState() {
+  const scene = globalThis.__crazyGabiGame?.scene?.getScene("PlayScene");
+  return {
+    gameVersion: GAME_VERSION,
+    levelIndex: state.levelIndex,
+    levelName: LEVELS[state.levelIndex]?.name || null,
+    running: state.running,
+    won: state.won,
+    gameAssetsReady,
+    loadingHidden: hud.loading?.hidden ?? null,
+    loadingText: hud.loadingText?.textContent || null,
+    loadingBarWidth: hud.loadingBar?.style.width || null,
+    messageHidden: hud.message?.hidden ?? null,
+    messageTitle: hud.message?.querySelector("h1")?.textContent || null,
+    startDisabled: hud.startButton?.disabled ?? null,
+    storyHidden: hud.storyIntro?.hidden ?? null,
+    rootHidden: hud.root?.hidden ?? null,
+    sceneActive: Boolean(scene?.scene?.isActive?.()),
+    sceneLevelReady: scene?.levelReady ?? null,
+    sceneLoadId: scene?.levelLoadId ?? null,
+    sceneLevelName: scene?.level?.name || null,
+    textureCount: scene?.textures?.list ? Object.keys(scene.textures.list).length : null,
+    usedHeapSize: performance?.memory?.usedJSHeapSize || null,
+    totalHeapSize: performance?.memory?.totalJSHeapSize || null
+  };
+}
+
+function logRuntimeDiagnostic(kind, error, extra = {}) {
+  const payload = {
+    kind,
+    at: new Date().toISOString(),
+    error: serializeRuntimeError(error),
+    state: getLevelLoadDiagnosticState(),
+    ...extra
+  };
+  globalThis.__crazyGabiDiagnostics = globalThis.__crazyGabiDiagnostics || [];
+  globalThis.__crazyGabiDiagnostics.push(payload);
+  if (globalThis.__crazyGabiDiagnostics.length > 25) globalThis.__crazyGabiDiagnostics.shift();
+  console.error(`[CrazyGabi:${kind}] ${JSON.stringify(payload)}`);
+}
+
+window.addEventListener("error", (event) => {
+  logRuntimeDiagnostic("window-error", event.error || event.message, {
+    source: event.filename || null,
+    line: event.lineno || null,
+    column: event.colno || null
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  logRuntimeDiagnostic("unhandled-rejection", event.reason);
+});
 
 function setMessage(title, copy, button = "Start") {
   hud.message.querySelector("h1").textContent = title;
@@ -11727,6 +11790,7 @@ const game = new Phaser.Game({
   },
   scene: [PlayScene]
 });
+globalThis.__crazyGabiGame = game;
 
 hud.startButton.addEventListener("click", () => {
   if (!gameAssetsReady) return;
