@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.57.4";
+const GAME_VERSION = "v0.57.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -352,7 +352,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260625-petal-chaos";
+const ASSET_VERSION = "20260625-level6-bgm";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -418,7 +418,8 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv2", label: "Level 2 Theme", src: "./public/assets/sound/bgm_lv2.mp3" },
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" },
   { key: "bgm-lv5", label: "Level 5 Theme", src: "./public/assets/sound/bgm_lv5.mp3" },
-  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.52 }
+  { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.52 },
+  { key: "bgm-lv6", label: "Level 6 Theme", src: "./public/assets/sound/bgm_lv6.mp3" }
 ];
 const LOADING_RUNNERS = [
   {
@@ -462,7 +463,7 @@ const LEVELS = [
     name: "Level 1",
     rows: createLevelOne(),
     timeLimit: TIME_LIMIT,
-    soundtrack: "bgm-lv1",
+    soundtrack: "bgm-lv6",
     acornDelay: [450, 1800],
     acornPace: [185, 295],
     fallingHazard: "falling-acorn",

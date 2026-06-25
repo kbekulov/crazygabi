@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.57.5
+
+- Added the Level 6 soundtrack and wired it into Level 6 and the Music Box.
+
 ## v0.57.4
 
 - Reworked Level 6 petal attacks into a larger wind-chaos swarm with varied rotation and density.
