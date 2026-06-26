@@ -318,6 +318,11 @@ button:active {
   background-image: url("../public/assets/environment/flower_cooldown_full.png?v=20260625-flower-cooldown-assets");
 }
 
+.bird-cooldown[data-variant="flower"] .bird-cooldown-icon {
+  width: clamp(48px, 5.1vw, 68px);
+  height: clamp(48px, 5.1vw, 68px);
+}
+
 .hud-keycap {
   display: inline-grid;
   min-width: clamp(50px, 4.8vw, 66px);
@@ -1767,6 +1772,60 @@ button:active {
   image-rendering: pixelated;
 }
 
+.menu-panel {
+  place-items: center end;
+  padding: clamp(24px, 6vw, 74px);
+  overflow: hidden;
+  background: #050505;
+}
+
+.menu-panel::before,
+.menu-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.menu-panel::before {
+  z-index: 0;
+  background-image: url("../public/assets/menu/main_menu_bg_1.png");
+  background-size: cover;
+  background-position: center;
+  image-rendering: pixelated;
+}
+
+.menu-panel::after {
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0%, rgba(0, 0, 0, 0.22) 45%, rgba(0, 0, 0, 0.68) 78%, rgba(0, 0, 0, 0.86) 100%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.5), transparent 42%);
+}
+
+.menu-panel-card {
+  position: relative;
+  z-index: 2;
+  width: min(420px, 36vw);
+  max-height: min(82vh, 620px);
+  justify-items: stretch;
+  gap: 14px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  text-align: center;
+  overflow-y: auto;
+}
+
+.menu-panel-card h2,
+.menu-panel-card p {
+  text-align: center;
+}
+
+.menu-panel-card .menu-panel-content {
+  width: 100%;
+}
+
 .main-menu-layout {
   position: absolute;
   top: 50%;
@@ -1784,23 +1843,8 @@ button:active {
   justify-self: stretch;
 }
 
-.main-menu-actions > button,
-.main-menu-difficulty,
-.main-menu-best-score {
-  backdrop-filter: blur(2px);
-}
-
 .main-menu-actions > button {
   width: 100%;
-  border: 2px solid rgba(244, 220, 176, 0.62);
-  color: #f4dcb0;
-  background: rgba(6, 5, 4, 0.62);
-  box-shadow: 0 5px 0 rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(255, 240, 196, 0.1);
-  text-shadow: 2px 2px 0 #000;
-}
-
-.main-menu-actions > button:active {
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.72), inset 0 0 0 1px rgba(255, 240, 196, 0.1);
 }
 
 .main-menu-best-score,
@@ -1814,60 +1858,37 @@ button:active {
 
 .main-menu-characters {
   position: absolute;
-  left: clamp(44px, 8vw, 132px);
-  bottom: clamp(50px, 8vw, 104px);
+  inset: 0;
   z-index: 2;
-  width: clamp(390px, 46vw, 620px);
-  height: clamp(280px, 40vw, 430px);
   pointer-events: none;
 }
 
-.main-menu-gabi,
 .main-menu-cat {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  width: 238px;
-  height: 238px;
   background-repeat: no-repeat;
   image-rendering: pixelated;
   transform-origin: 50% 100%;
   filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.72));
 }
 
-.main-menu-gabi {
-  left: clamp(62px, 10vw, 148px);
-  bottom: 0;
-  z-index: 2;
-  background-position: 0 -476px;
-  animation: main-menu-gabi-idle 820ms steps(2) infinite;
-  transform: scale(1.36);
-}
-
 .main-menu-cat {
-  left: clamp(240px, 28vw, 386px);
-  bottom: 8px;
+  left: 30.4%;
+  bottom: 15.8%;
   z-index: 1;
-  background-position: 0 -476px;
+  width: 24.79%;
+  aspect-ratio: 1;
+  background-size: 400% 300%;
+  background-position: 0 100%;
   animation: main-menu-cat-idle 980ms steps(3) infinite;
   transform: scaleX(-1) scale(0.8);
 }
 
-@keyframes main-menu-gabi-idle {
-  from {
-    background-position: 0 -476px;
-  }
-  to {
-    background-position: -476px -476px;
-  }
-}
-
 @keyframes main-menu-cat-idle {
   from {
-    background-position: 0 -476px;
+    background-position: 0 100%;
   }
   to {
-    background-position: -714px -476px;
+    background-position: -300% 100%;
   }
 }
 
@@ -1887,6 +1908,7 @@ button:active {
   height: 386px;
   background-image: url("../public/assets/environment/flower_petal.png");
   background-repeat: no-repeat;
+  background-size: 300% 100%;
   background-position: calc(var(--petal-frame) * -386px) 0;
   image-rendering: pixelated;
   opacity: 0;
@@ -1935,16 +1957,17 @@ button:active {
     gap: 8px;
   }
 
-  .main-menu-characters {
-    left: clamp(4px, 3vw, 28px);
-    bottom: clamp(32px, 6vw, 58px);
-    transform: scale(0.72);
-    transform-origin: 0 100%;
-  }
-
   .main-menu-best-score,
   .main-menu-difficulty {
     padding: 7px 8px;
+  }
+
+  .menu-panel {
+    padding: clamp(14px, 4vw, 26px);
+  }
+
+  .menu-panel-card {
+    width: min(320px, 44vw);
   }
 }
 
@@ -1963,15 +1986,22 @@ button:active {
       radial-gradient(circle at 46% 40%, rgba(255, 229, 176, 0.12), transparent 34%);
   }
 
-  .main-menu-characters {
-    left: 50%;
-    bottom: 51%;
-    transform: translateX(-50%) scale(0.58);
-    transform-origin: 50% 100%;
+  .main-menu-cat {
+    left: 27%;
+    bottom: 48%;
   }
 
   .game-version {
     right: max(10px, env(safe-area-inset-right));
     bottom: max(7px, env(safe-area-inset-bottom));
+  }
+
+  .menu-panel {
+    place-items: end center;
+  }
+
+  .menu-panel-card {
+    width: min(330px, 88vw);
+    max-height: 62vh;
   }
 }

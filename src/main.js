@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.59.0";
+const GAME_VERSION = "v0.59.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-main-menu-refresh";
+const ASSET_VERSION = "20260626-menu-light-polish";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1581,7 +1581,6 @@ const hud = {
   menuMusicBox: document.querySelector("#menu-music-box"),
   menuSettings: document.querySelector("#menu-settings"),
   menuCredits: document.querySelector("#menu-credits"),
-  menuGabiSprite: document.querySelector("#menu-gabi-sprite"),
   menuCatSprite: document.querySelector("#menu-cat-sprite"),
   menuPetals: document.querySelector("#main-menu-petals"),
   difficultyEasy: document.querySelector("#difficulty-easy"),
@@ -1604,9 +1603,6 @@ configureMainMenuScene();
 updateBestScore();
 
 function configureMainMenuScene() {
-  if (hud.menuGabiSprite) {
-    hud.menuGabiSprite.style.backgroundImage = `url("./public/assets/character/main_char_sprite.png?v=${ASSET_VERSION}")`;
-  }
   if (hud.menuCatSprite) {
     hud.menuCatSprite.style.backgroundImage = `url("./public/assets/character/grey_cat.png?v=${ASSET_VERSION}")`;
   }
@@ -1619,7 +1615,7 @@ function configureMainMenuScene() {
     petal.style.setProperty("--petal-top", `${Phaser.Math.Between(-12, 88)}%`);
     petal.style.setProperty("--petal-start", `${Phaser.Math.Between(-18, 105)}%`);
     petal.style.setProperty("--petal-drift", `${Phaser.Math.Between(-220, 220)}px`);
-    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.055, 0.13).toFixed(3));
+    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.027, 0.065).toFixed(3));
     petal.style.setProperty("--petal-spin", `${Phaser.Math.Between(180, 820)}deg`);
     petal.style.setProperty("--petal-frame", String(Phaser.Math.Between(0, 2)));
     petal.style.setProperty("--petal-flip", Phaser.Math.Between(0, 1) ? "1" : "-1");
@@ -5325,7 +5321,7 @@ class PlayScene extends Phaser.Scene {
 
   updateLanternOverlay() {
     if (!this.lanternOverlay || !this.player || !this.lanternOverlayConfig) return;
-    const { alpha, radius, fringe, yOffset } = this.lanternOverlayConfig;
+    const { alpha } = this.lanternOverlayConfig;
     const camera = this.cameras.main;
     const graphics = this.lanternOverlay;
     const lights = this.getVisibleLanternLightCircles();
@@ -5342,18 +5338,6 @@ class PlayScene extends Phaser.Scene {
         if (fillAlpha <= 0.002) continue;
         graphics.fillStyle(0x000000, fillAlpha);
         graphics.fillRect(x, y, 4, 4);
-      }
-    }
-
-    if (state.hasLantern) {
-      const playerLight = lights.find((light) => light.kind === "player");
-      if (playerLight) {
-        for (let offset = 0; offset < fringe; offset += 5) {
-          const progress = 1 - offset / fringe;
-          const ringAlpha = Phaser.Math.Clamp(alpha * progress * progress * 0.48, 0, alpha);
-          graphics.lineStyle(5, 0x000000, ringAlpha);
-          graphics.strokeCircle(playerLight.x, playerLight.y, radius - offset);
-        }
       }
     }
   }
@@ -5417,7 +5401,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   getLanternDarknessLightFactor(screenX, screenY, lights) {
-    let factor = 1;
+    let lightStrength = 0;
     lights.forEach((light) => {
       const dx = screenX - light.x;
       const dy = screenY - light.y;
@@ -5425,9 +5409,9 @@ class PlayScene extends Phaser.Scene {
       if (distance >= light.radius) return;
       const clearRadius = Math.max(0, light.radius - light.fringe);
       const progress = Phaser.Math.Clamp((distance - clearRadius) / Math.max(1, light.fringe), 0, 1);
-      factor = Math.min(factor, progress * progress);
+      lightStrength += 1 - progress * progress;
     });
-    return factor;
+    return Phaser.Math.Clamp(1 - lightStrength, 0, 1);
   }
 
   createStartingHouse() {

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.59.2
+
+- Blended overlapping Level 2 lantern light circles into a single darkness mask.
+- Polished the new main menu by removing Gabi, shrinking petals, restoring button styling, and restyling submenu panels.
+- Enlarged the Level 6 flower cooldown icon.
+
+
 ## v0.59.0
 
 - Rebuilt the main menu around the new full-screen background art.
