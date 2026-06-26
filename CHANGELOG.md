@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.60.0
+
+- Replaced mobile swipe controls with an invisible left-side joystick.
+- Added right-side mobile tap zones for item actions and Shift attacks.
+
 ## v0.59.7
 
 - Made dash disabled by default for new players.

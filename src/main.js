@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.59.7";
+const GAME_VERSION = "v0.60.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -189,9 +189,9 @@ const HEART_SCALE = 0.26;
 const HEART_DROP_CHANCE = 0.28;
 const HEART_PICKUP_DELAY = 620;
 const MAX_HEART_DROPS_PER_LEVEL = 2;
-const MOBILE_SWIPE_DEADZONE = 18;
-const MOBILE_JUMP_SWIPE_THRESHOLD = 34;
-const MOBILE_JUMP_REARM_THRESHOLD = 26;
+const MOBILE_JOYSTICK_DEADZONE = 18;
+const MOBILE_JOYSTICK_JUMP_THRESHOLD = 32;
+const MOBILE_JOYSTICK_JUMP_REARM_Y = -10;
 const DOOR_DEPTH = 3;
 const DOOR_SCALE = 0.34;
 const ACORN_SCALE = 0.36;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-dash-favicon";
+const ASSET_VERSION = "20260626-mobile-joystick";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -6982,19 +6982,18 @@ class PlayScene extends Phaser.Scene {
   createMobileGestureInput() {
     this.mobileGesture = {
       enabled: isMobileTouchDevice(),
-      active: false,
-      pointerId: null,
-      startX: 0,
-      startY: 0,
-      jumpAnchorX: 0,
-      jumpAnchorY: 0,
-      jumpStrokeArmed: true,
+      joystickActive: false,
+      joystickPointerId: null,
+      joystickOriginX: 0,
+      joystickOriginY: 0,
       direction: 0,
+      jumpArmed: true,
       jumpQueued: false,
-      actionQueued: false
+      actionQueued: false,
+      birdAttackQueued: false
     };
     if (!this.mobileGesture.enabled) return;
-    this.input.addPointer(2);
+    this.input.addPointer(3);
     this.input.on("pointerdown", this.handleMobilePointerDown, this);
     this.input.on("pointermove", this.handleMobilePointerMove, this);
     this.input.on("pointerup", this.handleMobilePointerUp, this);
@@ -7004,67 +7003,72 @@ class PlayScene extends Phaser.Scene {
 
   handleMobilePointerDown(pointer) {
     if (!this.mobileGesture?.enabled) return;
-    if (this.mobileGesture.active && this.mobileGesture.pointerId !== pointer.id) {
-      this.mobileGesture.actionQueued = true;
+    if (this.isRightSideMobilePointer(pointer)) {
+      this.queueMobileRightSideTap(pointer);
       return;
     }
-    this.mobileGesture.active = true;
-    this.mobileGesture.pointerId = pointer.id;
-    this.mobileGesture.startX = pointer.x;
-    this.mobileGesture.startY = pointer.y;
-    this.mobileGesture.jumpAnchorX = pointer.x;
-    this.mobileGesture.jumpAnchorY = pointer.y;
-    this.mobileGesture.jumpStrokeArmed = true;
+    if (this.mobileGesture.joystickActive && this.mobileGesture.joystickPointerId !== pointer.id) {
+      return;
+    }
+    this.mobileGesture.joystickActive = true;
+    this.mobileGesture.joystickPointerId = pointer.id;
+    this.mobileGesture.joystickOriginX = pointer.x;
+    this.mobileGesture.joystickOriginY = pointer.y;
     this.mobileGesture.direction = 0;
+    this.mobileGesture.jumpArmed = true;
     this.mobileGesture.jumpQueued = false;
+    this.updateMobileJoystick(pointer);
   }
 
   handleMobilePointerMove(pointer) {
     if (!this.isActiveMobilePointer(pointer)) return;
-    this.updateMobileGesture(pointer);
+    this.updateMobileJoystick(pointer);
   }
 
   handleMobilePointerUp(pointer) {
     if (!this.isActiveMobilePointer(pointer)) return;
-    this.updateMobileGesture(pointer);
-    this.mobileGesture.active = false;
-    this.mobileGesture.pointerId = null;
+    this.updateMobileJoystick(pointer);
+    this.mobileGesture.joystickActive = false;
+    this.mobileGesture.joystickPointerId = null;
     this.mobileGesture.direction = 0;
+    this.mobileGesture.jumpArmed = true;
   }
 
-  updateMobileGesture(pointer) {
-    const dx = pointer.x - this.mobileGesture.startX;
-    const dy = pointer.y - this.mobileGesture.startY;
-    if (Math.abs(dx) > MOBILE_SWIPE_DEADZONE && Math.abs(dx) > Math.abs(dy) * 0.55) {
+  updateMobileJoystick(pointer) {
+    const dx = pointer.x - this.mobileGesture.joystickOriginX;
+    const dy = pointer.y - this.mobileGesture.joystickOriginY;
+    if (Math.abs(dx) > MOBILE_JOYSTICK_DEADZONE) {
       this.mobileGesture.direction = dx < 0 ? -1 : 1;
+    } else {
+      this.mobileGesture.direction = 0;
     }
-    const jumpDx = pointer.x - this.mobileGesture.jumpAnchorX;
-    const jumpDy = pointer.y - this.mobileGesture.jumpAnchorY;
-    if (!this.mobileGesture.jumpStrokeArmed && jumpDy > MOBILE_JUMP_REARM_THRESHOLD) {
-      this.mobileGesture.jumpStrokeArmed = true;
-      this.mobileGesture.jumpAnchorX = pointer.x;
-      this.mobileGesture.jumpAnchorY = pointer.y;
-      return;
+    if (!this.mobileGesture.jumpArmed && dy > MOBILE_JOYSTICK_JUMP_REARM_Y) {
+      this.mobileGesture.jumpArmed = true;
     }
-    if (
-      !this.mobileGesture.jumpQueued &&
-      this.mobileGesture.jumpStrokeArmed &&
-      jumpDy < -MOBILE_JUMP_SWIPE_THRESHOLD &&
-      Math.abs(jumpDy) > Math.abs(jumpDx) * 0.62
-    ) {
+    if (!this.mobileGesture.jumpQueued && this.mobileGesture.jumpArmed && dy < -MOBILE_JOYSTICK_JUMP_THRESHOLD) {
       this.mobileGesture.jumpQueued = true;
-      this.mobileGesture.jumpStrokeArmed = false;
-      this.mobileGesture.jumpAnchorX = pointer.x;
-      this.mobileGesture.jumpAnchorY = pointer.y;
+      this.mobileGesture.jumpArmed = false;
     }
   }
 
   isActiveMobilePointer(pointer) {
     return Boolean(
       this.mobileGesture?.enabled &&
-      this.mobileGesture.active &&
-      this.mobileGesture.pointerId === pointer.id
+      this.mobileGesture.joystickActive &&
+      this.mobileGesture.joystickPointerId === pointer.id
     );
+  }
+
+  isRightSideMobilePointer(pointer) {
+    return pointer.x >= VIEW_WIDTH / 2;
+  }
+
+  queueMobileRightSideTap(pointer) {
+    if (pointer.y < VIEW_HEIGHT / 2) {
+      this.mobileGesture.birdAttackQueued = true;
+    } else {
+      this.mobileGesture.actionQueued = true;
+    }
   }
 
   getMobileMoveDirection() {
@@ -7083,14 +7087,21 @@ class PlayScene extends Phaser.Scene {
     return true;
   }
 
+  consumeMobileBirdAttack() {
+    if (!this.mobileGesture?.enabled || !this.mobileGesture.birdAttackQueued) return false;
+    this.mobileGesture.birdAttackQueued = false;
+    return true;
+  }
+
   resetMobileGestureInput() {
     if (!this.mobileGesture) return;
-    this.mobileGesture.active = false;
-    this.mobileGesture.pointerId = null;
+    this.mobileGesture.joystickActive = false;
+    this.mobileGesture.joystickPointerId = null;
     this.mobileGesture.direction = 0;
     this.mobileGesture.jumpQueued = false;
-    this.mobileGesture.jumpStrokeArmed = true;
+    this.mobileGesture.jumpArmed = true;
     this.mobileGesture.actionQueued = false;
+    this.mobileGesture.birdAttackQueued = false;
   }
 
   setupPhysics() {
@@ -7295,7 +7306,7 @@ class PlayScene extends Phaser.Scene {
     const climbUp = this.cursors.up.isDown || this.keysInput.jumpW.isDown || jump;
     const climbDown = this.cursors.down.isDown || this.keysInput.down.isDown;
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
-    const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack);
+    const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack) || this.consumeMobileBirdAttack();
     const onFloor = this.player.body.blocked.down;
 
     if (this.isItemPromptActive()) {
