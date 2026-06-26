@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.62.0
+
+- Extended Levels 6 and 7 with longer garden routes, more platforms, enemies, coins, and light coverage.
+- Added a dual-item HUD stack so Gabi can carry two items at once.
+- Gave Level 7 both flower and lantern progression, with the flower available first and the lantern later.
+- Limited garden statues to one per platform.
+
 ## v0.61.1
 
 - Added the missing Level 7 wing pickup and quest entry.

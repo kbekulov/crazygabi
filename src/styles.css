@@ -166,6 +166,13 @@ button:active {
   gap: 12px;
 }
 
+.hud-equipped-icons {
+  position: relative;
+  flex: 0 0 clamp(82px, 13vw, 132px);
+  width: clamp(82px, 13vw, 132px);
+  height: clamp(82px, 13vw, 132px);
+}
+
 .hud-score {
   right: 18px;
   bottom: 18px;
@@ -405,12 +412,24 @@ button:active {
   image-rendering: pixelated;
 }
 
-.hud-equipped img {
+.hud-equipped-icons img {
+  position: absolute;
+  left: 0;
+  bottom: 0;
   width: clamp(76px, 12vw, 124px);
   height: clamp(76px, 12vw, 124px);
   object-fit: contain;
   image-rendering: crisp-edges;
   image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 #000);
+}
+
+.hud-equipped-icons img + img {
+  left: auto;
+  right: 0;
+  bottom: 0;
+  width: clamp(48px, 7vw, 76px);
+  height: clamp(48px, 7vw, 76px);
 }
 
 .hud-divider {

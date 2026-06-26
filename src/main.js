@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.61.1";
+const GAME_VERSION = "v0.62.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -363,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-level-7-polish";
+const ASSET_VERSION = "20260626-dual-items";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -468,8 +468,8 @@ const LEVEL_TWO_WIDTH_TILES = LEVEL_WIDTH_TILES * 2;
 const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
 const LEVEL_FIVE_WIDTH_TILES = 720;
-const LEVEL_SIX_WIDTH_TILES = 210;
-const LEVEL_SEVEN_WIDTH_TILES = 260;
+const LEVEL_SIX_WIDTH_TILES = 420;
+const LEVEL_SEVEN_WIDTH_TILES = 520;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -886,7 +886,7 @@ const LEVELS = [
   {
     name: "Level 6",
     rows: createLevelSix(),
-    timeLimit: 360,
+    timeLimit: 620,
     soundtrack: "bgm-lv6",
     enemySprite: "robot-lv1",
     actionAbility: "flower-petals",
@@ -925,13 +925,22 @@ const LEVELS = [
         { x: 142 * TILE, row: 3, density: 0.52, width: 7, allowStructures: false },
         { x: 157 * TILE, row: 9, density: 0.68, width: 9, allowStructures: true },
         { x: 183 * TILE, row: 6, density: 0.56, width: 7, allowStructures: false },
-        { x: 190 * TILE, row: 12, density: 0.58, width: 7, allowStructures: true }
+        { x: 190 * TILE, row: 12, density: 0.58, width: 7, allowStructures: true },
+        { x: 232 * TILE, row: 12, density: 0.56, width: 8, allowStructures: false },
+        { x: 258 * TILE, row: 9, density: 0.68, width: 9, allowStructures: true },
+        { x: 292 * TILE, row: 6, density: 0.54, width: 7, allowStructures: false },
+        { x: 320 * TILE, row: 12, density: 0.76, width: 10, allowStructures: true, core: true },
+        { x: 354 * TILE, row: 9, density: 0.58, width: 8, allowStructures: false },
+        { x: 390 * TILE, row: 12, density: 0.64, width: 9, allowStructures: true }
       ],
       fixedOrnaments: [
         { asset: "garden-statue-1", x: 47 * TILE, row: 12, scaleBoost: 0.92 },
         { asset: "garden-statue-1", x: 119 * TILE, row: 12, scaleBoost: 0.95 },
         { asset: "garden-statue-1", x: 157 * TILE, row: 9, scaleBoost: 0.9 },
-        { asset: "garden-statue-1", x: 190 * TILE, row: 12, scaleBoost: 0.92 }
+        { asset: "garden-statue-1", x: 190 * TILE, row: 12, scaleBoost: 0.92 },
+        { asset: "garden-statue-1", x: 258 * TILE, row: 9, scaleBoost: 0.9 },
+        { asset: "garden-statue-1", x: 320 * TILE, row: 12, scaleBoost: 0.94 },
+        { asset: "garden-statue-1", x: 390 * TILE, row: 12, scaleBoost: 0.9 }
       ]
     },
     lightRayAlpha: 1,
@@ -948,7 +957,12 @@ const LEVELS = [
       { x: 3820, y: -136, topWidth: 76, bottomWidth: 450, height: 1040, lean: 88, alpha: 0.37, thickness: 4, layerAlpha: 1.34, foreground: true, frontAlpha: 0.28, blinding: true, opacityMode: "steady" },
       { x: 4560, y: -110, topWidth: 44, bottomWidth: 235, height: 860, lean: -110, alpha: 0.28, thickness: 2, layerAlpha: 1.12, opacityMode: "pulse" },
       { x: 5480, y: -118, topWidth: 62, bottomWidth: 340, height: 950, lean: 120, alpha: 0.34, thickness: 3, layerAlpha: 1.25, foreground: true, frontAlpha: 0.22, opacityMode: "dim" },
-      { x: 6200, y: -130, topWidth: 54, bottomWidth: 300, height: 980, lean: -70, alpha: 0.32, thickness: 3, layerAlpha: 1.2, opacityMode: "steady" }
+      { x: 6200, y: -130, topWidth: 54, bottomWidth: 300, height: 980, lean: -70, alpha: 0.32, thickness: 3, layerAlpha: 1.2, opacityMode: "steady" },
+      { x: 7240, y: -118, topWidth: 72, bottomWidth: 420, height: 1040, lean: 135, alpha: 0.37, thickness: 4, layerAlpha: 1.34, foreground: true, frontAlpha: 0.26, blinding: true, opacityMode: "pulse" },
+      { x: 8420, y: -126, topWidth: 44, bottomWidth: 250, height: 880, lean: -92, alpha: 0.29, thickness: 2, layerAlpha: 1.14, opacityMode: "dim" },
+      { x: 9680, y: -132, topWidth: 66, bottomWidth: 380, height: 1000, lean: 74, alpha: 0.35, thickness: 3, layerAlpha: 1.28, foreground: true, frontAlpha: 0.22, opacityMode: "steady" },
+      { x: 11040, y: -108, topWidth: 52, bottomWidth: 295, height: 920, lean: -145, alpha: 0.31, thickness: 3, layerAlpha: 1.18, opacityMode: "pulse" },
+      { x: 12480, y: -138, topWidth: 82, bottomWidth: 470, height: 1080, lean: 100, alpha: 0.39, thickness: 4, layerAlpha: 1.36, foreground: true, frontAlpha: 0.27, blinding: true, opacityMode: "dim" }
     ],
     introTitle: "Level 6",
     introCopy: "Search the botanical rooftops, find the flower, and reach the exit before the garden closes in.",
@@ -957,10 +971,14 @@ const LEVELS = [
   {
     name: "Level 7",
     rows: createLevelSeven(),
-    timeLimit: 390,
+    timeLimit: 680,
     soundtrack: "bgm-lv7",
     enemySprite: "robot-shadow-ghost-lv2",
-    actionAbility: null,
+    actionAbility: "flower-petals",
+    birdSprite: "magpie-bird",
+    birdScale: 1.2,
+    birdSfx: MAGPIE_CALL_SFX_KEY,
+    petalScale: 0.72,
     startSpeech: "",
     showStartingHouse: false,
     showWater: true,
@@ -996,7 +1014,12 @@ const LEVELS = [
       { column: 116, floorRow: 11, asset: "garden-lantern-3", radius: 198 },
       { column: 150, floorRow: 14, asset: "garden-lantern-1", radius: 188 },
       { column: 188, floorRow: 10, asset: "garden-lantern-2", radius: 204 },
-      { column: 224, floorRow: 13, asset: "garden-lantern-3", radius: 190 }
+      { column: 224, floorRow: 13, asset: "garden-lantern-3", radius: 190 },
+      { column: 286, floorRow: 16, asset: "garden-lantern-1", radius: 192 },
+      { column: 334, floorRow: 10, asset: "garden-lantern-2", radius: 206 },
+      { column: 386, floorRow: 13, asset: "garden-lantern-3", radius: 198 },
+      { column: 438, floorRow: 8, asset: "garden-lantern-1", radius: 188 },
+      { column: 492, floorRow: 13, asset: "garden-lantern-2", radius: 210 }
     ],
     keyGarden: true,
     decorativeGardens: [
@@ -1006,7 +1029,12 @@ const LEVELS = [
       { row: 14, startColumn: 108, endColumn: 128, density: 0.74, featureRate: 0.28, bushScaleBoost: 1.04, featureScaleBoost: 0.9 },
       { row: 17, startColumn: 142, endColumn: 164, density: 0.78, featureRate: 0.24, bushScaleBoost: 1.02, featureScaleBoost: 0.88 },
       { row: 11, startColumn: 180, endColumn: 202, density: 0.82, featureRate: 0.3, bushScaleBoost: 1.08, featureScaleBoost: 0.92 },
-      { row: 20, startColumn: 214, endColumn: 239, density: 0.86, featureRate: 0.28, bushScaleBoost: 1.08, featureScaleBoost: 0.9 }
+      { row: 20, startColumn: 214, endColumn: 239, density: 0.86, featureRate: 0.28, bushScaleBoost: 1.08, featureScaleBoost: 0.9 },
+      { row: 17, startColumn: 270, endColumn: 292, density: 0.78, featureRate: 0.24, bushScaleBoost: 1.04, featureScaleBoost: 0.9 },
+      { row: 11, startColumn: 324, endColumn: 348, density: 0.84, featureRate: 0.3, bushScaleBoost: 1.08, featureScaleBoost: 0.92 },
+      { row: 14, startColumn: 374, endColumn: 398, density: 0.76, featureRate: 0.24, bushScaleBoost: 1.02, featureScaleBoost: 0.9 },
+      { row: 8, startColumn: 430, endColumn: 454, density: 0.72, featureRate: 0.26, bushScaleBoost: 1.02, featureScaleBoost: 0.88 },
+      { row: 20, startColumn: 476, endColumn: 510, density: 0.88, featureRate: 0.3, bushScaleBoost: 1.08, featureScaleBoost: 0.9 }
     ],
     lightRayAlpha: 1,
     lightColor: "#dcecff",
@@ -1022,11 +1050,16 @@ const LEVELS = [
       { x: 3890, y: -132, topWidth: 82, bottomWidth: 520, height: 1180, lean: -60, alpha: 0.43, thickness: 4, layerAlpha: 1.48, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "pulse", beamBoost: 2.38, color: "#f2f8ff" },
       { x: 4740, y: -108, topWidth: 50, bottomWidth: 306, height: 960, lean: 150, alpha: 0.34, thickness: 3, layerAlpha: 1.28, foreground: true, frontAlpha: 0.22, opacityMode: "steady", beamBoost: 2, color: "#dbeaff" },
       { x: 5920, y: -120, topWidth: 70, bottomWidth: 430, height: 1120, lean: -145, alpha: 0.4, thickness: 4, layerAlpha: 1.4, foreground: true, frontAlpha: 0.28, opacityMode: "dim", beamBoost: 2.26, color: "#edf5ff" },
-      { x: 7000, y: -118, topWidth: 48, bottomWidth: 280, height: 960, lean: 95, alpha: 0.32, thickness: 3, layerAlpha: 1.26, opacityMode: "pulse", beamBoost: 1.96, color: "#cfe4ff" }
+      { x: 7000, y: -118, topWidth: 48, bottomWidth: 280, height: 960, lean: 95, alpha: 0.32, thickness: 3, layerAlpha: 1.26, opacityMode: "pulse", beamBoost: 1.96, color: "#cfe4ff" },
+      { x: 8420, y: -122, topWidth: 76, bottomWidth: 460, height: 1120, lean: -125, alpha: 0.41, thickness: 4, layerAlpha: 1.42, foreground: true, frontAlpha: 0.3, blinding: true, opacityMode: "dim", beamBoost: 2.28, color: "#eff7ff" },
+      { x: 9840, y: -116, topWidth: 42, bottomWidth: 260, height: 930, lean: 112, alpha: 0.31, thickness: 2, layerAlpha: 1.18, opacityMode: "pulse", beamBoost: 1.94, color: "#d3e8ff" },
+      { x: 11280, y: -134, topWidth: 86, bottomWidth: 540, height: 1180, lean: -70, alpha: 0.44, thickness: 4, layerAlpha: 1.48, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "steady", beamBoost: 2.42, color: "#f4f9ff" },
+      { x: 12820, y: -108, topWidth: 52, bottomWidth: 310, height: 980, lean: 160, alpha: 0.34, thickness: 3, layerAlpha: 1.26, foreground: true, frontAlpha: 0.22, opacityMode: "pulse", beamBoost: 2.02, color: "#dbeeff" },
+      { x: 14600, y: -126, topWidth: 72, bottomWidth: 450, height: 1140, lean: -150, alpha: 0.4, thickness: 4, layerAlpha: 1.42, foreground: true, frontAlpha: 0.3, opacityMode: "dim", beamBoost: 2.3, color: "#edf6ff" }
     ],
     introTitle: "Level 7",
     introCopy: "Carry the lantern through the moonlit inner garden, find the hidden key, and leave before the blue dark closes around you.",
-    questTasks: ["lantern", "wing", "key", "coins", "enemies"]
+    questTasks: ["flower", "lantern", "wing", "petal", "key", "coins", "enemies"]
   }
 ];
 
@@ -1521,6 +1554,11 @@ function createLevelSix() {
   run(16, 101, 22);
   run(16, 136, 30);
   run(16, 178, 32);
+  run(16, 222, 28);
+  run(16, 262, 30);
+  run(16, 304, 26);
+  run(16, 342, 32);
+  run(16, 388, 32);
 
   run(13, 19, 8);
   run(13, 43, 11);
@@ -1528,23 +1566,41 @@ function createLevelSix() {
   run(13, 115, 10);
   run(13, 151, 13);
   run(13, 185, 10);
+  run(13, 226, 12);
+  run(13, 254, 12);
+  run(13, 286, 10);
+  run(13, 318, 13);
+  run(13, 354, 11);
+  run(13, 392, 11);
 
   run(10, 36, 9);
   run(10, 63, 11);
   run(10, 96, 10);
   run(10, 132, 12);
   run(10, 166, 10);
+  run(10, 236, 10);
+  run(10, 274, 12);
+  run(10, 310, 10);
+  run(10, 346, 12);
+  run(10, 382, 12);
 
   run(7, 54, 9);
   run(7, 84, 8);
   run(7, 120, 9);
   run(7, 153, 8);
   run(7, 178, 11);
+  run(7, 248, 9);
+  run(7, 292, 10);
+  run(7, 332, 9);
+  run(7, 370, 11);
 
   run(4, 70, 9);
   run(4, 106, 8);
   run(4, 139, 10);
   run(4, 172, 11);
+  run(4, 268, 9);
+  run(4, 314, 9);
+  run(4, 358, 10);
 
   [
     [14, 4, "p"],
@@ -1560,7 +1616,17 @@ function createLevelSix() {
     [15, 144, "g"],
     [15, 158, "m"],
     [15, 187, "g"],
-    [15, 198, "d"],
+    [15, 198, "g"],
+    [15, 232, "g"],
+    [15, 244, "m"],
+    [15, 270, "g"],
+    [15, 286, "m"],
+    [15, 314, "g"],
+    [15, 326, "m"],
+    [15, 352, "g"],
+    [15, 368, "m"],
+    [15, 396, "g"],
+    [15, 410, "d"],
     [12, 22, "g"],
     [12, 46, "m"],
     [12, 50, "g"],
@@ -1570,20 +1636,38 @@ function createLevelSix() {
     [12, 156, "m"],
     [12, 160, "g"],
     [12, 190, "g"],
+    [12, 230, "g"],
+    [12, 260, "m"],
+    [12, 290, "g"],
+    [12, 324, "g"],
+    [12, 360, "m"],
+    [12, 398, "g"],
     [9, 40, "g"],
     [9, 67, "g"],
     [9, 101, "m"],
     [9, 136, "g"],
     [9, 171, "m"],
+    [9, 240, "g"],
+    [9, 280, "g"],
+    [9, 316, "m"],
+    [9, 352, "g"],
+    [9, 388, "m"],
     [6, 58, "g"],
     [6, 88, "g"],
     [6, 125, "m"],
     [6, 157, "g"],
     [6, 183, "m"],
+    [6, 252, "g"],
+    [6, 298, "m"],
+    [6, 336, "g"],
+    [6, 376, "g"],
     [3, 74, "g"],
     [3, 110, "f"],
     [3, 144, "g"],
-    [3, 176, "g"]
+    [3, 176, "g"],
+    [3, 272, "g"],
+    [3, 318, "g"],
+    [3, 364, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1598,6 +1682,11 @@ function createLevelSeven() {
   run(20, 122, 32);
   run(20, 164, 34);
   run(20, 210, 50);
+  run(20, 270, 34);
+  run(20, 318, 32);
+  run(20, 366, 34);
+  run(20, 416, 32);
+  run(20, 474, 46);
 
   run(17, 16, 10);
   run(17, 46, 12);
@@ -1605,6 +1694,11 @@ function createLevelSeven() {
   run(17, 132, 12);
   run(17, 174, 14);
   run(17, 222, 13);
+  run(17, 282, 12);
+  run(17, 330, 14);
+  run(17, 382, 12);
+  run(17, 430, 14);
+  run(17, 488, 12);
 
   run(14, 34, 12);
   run(14, 66, 10);
@@ -1612,26 +1706,40 @@ function createLevelSeven() {
   run(14, 152, 12);
   run(14, 195, 13);
   run(14, 238, 12);
+  run(14, 292, 12);
+  run(14, 344, 12);
+  run(14, 392, 13);
+  run(14, 448, 12);
+  run(14, 500, 12);
 
   run(11, 55, 12);
   run(11, 92, 11);
   run(11, 128, 12);
   run(11, 176, 13);
   run(11, 218, 12);
+  run(11, 310, 13);
+  run(11, 358, 12);
+  run(11, 410, 13);
+  run(11, 466, 12);
 
   run(8, 82, 11);
   run(8, 118, 10);
   run(8, 160, 12);
   run(8, 202, 11);
   run(8, 232, 10);
+  run(8, 334, 11);
+  run(8, 386, 10);
+  run(8, 438, 12);
+  run(8, 486, 11);
 
   [
     [18, 4, "p"],
+    [19, 8, "f"],
     [19, 10, "g"],
-    [19, 18, "l"],
+    [19, 18, "g"],
     [19, 27, "g"],
     [19, 30, "j"],
-    [19, 46, "g"],
+    [19, 46, "l"],
     [19, 62, "m"],
     [19, 86, "g"],
     [19, 102, "m"],
@@ -1640,7 +1748,16 @@ function createLevelSeven() {
     [19, 174, "g"],
     [19, 190, "m"],
     [19, 222, "g"],
-    [19, 242, "d"],
+    [19, 286, "g"],
+    [19, 300, "m"],
+    [19, 326, "g"],
+    [19, 342, "m"],
+    [19, 382, "g"],
+    [19, 394, "m"],
+    [19, 430, "g"],
+    [19, 442, "m"],
+    [19, 490, "g"],
+    [19, 506, "d"],
     [16, 20, "g"],
     [16, 50, "g"],
     [16, 56, "m"],
@@ -1649,6 +1766,11 @@ function createLevelSeven() {
     [16, 180, "g"],
     [16, 184, "m"],
     [16, 228, "g"],
+    [16, 288, "g"],
+    [16, 336, "m"],
+    [16, 388, "g"],
+    [16, 436, "g"],
+    [16, 494, "m"],
     [13, 39, "g"],
     [13, 70, "g"],
     [13, 114, "m"],
@@ -1657,16 +1779,29 @@ function createLevelSeven() {
     [13, 201, "m"],
     [13, 204, "g"],
     [13, 244, "g"],
+    [13, 298, "g"],
+    [13, 350, "g"],
+    [13, 398, "m"],
+    [13, 454, "g"],
+    [13, 506, "g"],
     [10, 61, "g"],
     [10, 98, "m"],
     [10, 134, "g"],
-    [10, 182, "k"],
+    [10, 182, "g"],
     [10, 224, "g"],
+    [10, 316, "g"],
+    [10, 364, "m"],
+    [10, 416, "k"],
+    [10, 472, "g"],
     [7, 88, "g"],
     [7, 124, "g"],
     [7, 166, "h"],
     [7, 208, "g"],
-    [7, 236, "g"]
+    [7, 236, "g"],
+    [7, 340, "g"],
+    [7, 392, "g"],
+    [7, 444, "h"],
+    [7, 492, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -1740,6 +1875,7 @@ const hud = {
   bossHealth: document.querySelector("#boss-health"),
   bossHealthFill: document.querySelector("#boss-health-fill"),
   equippedIcon: document.querySelector("#equipped-icon"),
+  equippedIconSecondary: document.querySelector("#equipped-icon-secondary"),
   equippedName: document.querySelector("#equipped-name"),
   itemActionKey: document.querySelector("#item-action-key"),
   birdCooldown: document.querySelector("#bird-cooldown"),
@@ -1903,22 +2039,36 @@ function updateHud() {
 }
 
 function updateEquippedHud() {
-  let itemName = "NONE";
-  let itemImage = "";
+  const items = [];
   if (state.hasAcornBasket) {
-    itemName = "ACORN";
-    itemImage = pixelatedEquippedImages.acorn || `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`;
-  } else if (state.hasLantern) {
-    itemName = "LANTERN";
-    itemImage = pixelatedEquippedImages.lantern || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`;
-  } else if (state.hasFlower) {
-    itemName = "FLOWER";
-    itemImage = pixelatedEquippedImages.flower || `./public/assets/environment/flower_item.png?v=${ASSET_VERSION}`;
+    items.push({
+      name: "ACORN",
+      image: pixelatedEquippedImages.acorn || `./public/assets/environment/falling_acorn.png?v=${ASSET_VERSION}`
+    });
   }
+  if (state.hasFlower) {
+    items.push({
+      name: "FLOWER",
+      image: pixelatedEquippedImages.flower || `./public/assets/environment/flower_item.png?v=${ASSET_VERSION}`
+    });
+  }
+  if (state.hasLantern) {
+    items.push({
+      name: "LANTERN",
+      image: pixelatedEquippedImages.lantern || `./public/assets/environment/lantern.png?v=${ASSET_VERSION}`
+    });
+  }
+  const [primary, secondary] = items;
+  const itemName = items.length ? items.map((item) => item.name).join(" + ") : "NONE";
   hud.equippedName.textContent = itemName;
-  hud.equippedIcon.src = itemImage;
-  hud.equippedIcon.alt = itemName === "NONE" ? "" : itemName;
-  hud.equippedIcon.hidden = !itemImage;
+  hud.equippedIcon.src = primary?.image || "";
+  hud.equippedIcon.alt = primary?.name || "";
+  hud.equippedIcon.hidden = !primary;
+  if (hud.equippedIconSecondary) {
+    hud.equippedIconSecondary.src = secondary?.image || "";
+    hud.equippedIconSecondary.alt = secondary?.name || "";
+    hud.equippedIconSecondary.hidden = !secondary;
+  }
   if (hud.itemActionKey) hud.itemActionKey.hidden = !state.hasAcornBasket;
 }
 
@@ -2770,6 +2920,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManExitX = 0;
     this.mysteriousManScriptAt = 0;
     this.catFollowPlayerAfterElevator = false;
+    this.gardenStatueRunKeys = new Set();
     this.clearDomSpeechBubbles();
     this.domSpeechBubbles = [];
     setBossHealthVisible(false);
@@ -4881,6 +5032,13 @@ class PlayScene extends Phaser.Scene {
 
   createGardenDecorSprite(asset, x, y, options = {}) {
     if (!asset || !this.textures.exists(asset.key)) return null;
+    if (asset.key.includes("statue")) {
+      this.gardenStatueRunKeys = this.gardenStatueRunKeys || new Set();
+      const run = this.getNearestPlatformRun?.(x, y);
+      const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(x / (TILE * 8))}`;
+      if (this.gardenStatueRunKeys.has(statueRunKey)) return null;
+      this.gardenStatueRunKeys.add(statueRunKey);
+    }
     const sprite = options.interactive
       ? this.gardenBushes.create(x, y, asset.key)
       : this.add.image(x, y, asset.key);
