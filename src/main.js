@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.61.0";
+const GAME_VERSION = "v0.61.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -144,7 +144,7 @@ const KEY_GARDEN_ASSETS = [
   { key: "garden-flowerpot-1", src: "./public/assets/environment/garden/flowerpot_1.png", scale: 0.3, weight: 0.72, type: "feature" },
   { key: "garden-fountain-1", src: "./public/assets/environment/garden/fountain_1.png", scale: 0.28, weight: 0.55, type: "feature" },
   { key: "garden-fountain-2", src: "./public/assets/environment/garden/fountain_2.png", scale: 0.28, weight: 0.55, type: "feature" },
-  { key: "garden-statue-1", src: "./public/assets/environment/garden/statue_1.png", scale: 0.34, weight: 0.58, type: "feature" },
+  { key: "garden-statue-1", src: "./public/assets/environment/garden/statue_1.png", scale: 0.51, weight: 0.58, type: "feature" },
   { key: "garden-tree-3", src: "./public/assets/environment/garden/tree_3.png", scale: 0.32, weight: 0.5, type: "feature" },
   { key: "garden-lantern-1", src: "./public/assets/environment/garden/lantern_1.png", scale: 0.34, weight: 0.85, type: "lantern" },
   { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85, type: "lantern" },
@@ -363,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-level-7-night-garden";
+const ASSET_VERSION = "20260626-level-7-polish";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1026,7 +1026,7 @@ const LEVELS = [
     ],
     introTitle: "Level 7",
     introCopy: "Carry the lantern through the moonlit inner garden, find the hidden key, and leave before the blue dark closes around you.",
-    questTasks: ["lantern", "key", "coins", "enemies"]
+    questTasks: ["lantern", "wing", "key", "coins", "enemies"]
   }
 ];
 
@@ -1630,6 +1630,7 @@ function createLevelSeven() {
     [19, 10, "g"],
     [19, 18, "l"],
     [19, 27, "g"],
+    [19, 30, "j"],
     [19, 46, "g"],
     [19, 62, "m"],
     [19, 86, "g"],
@@ -2785,10 +2786,10 @@ class PlayScene extends Phaser.Scene {
     this.createDiveIndicatorBirds();
     this.createDiveFieldLeaves();
     this.createLightRays();
+    this.createNightLanternLights();
     this.createKeyGardenIndicators();
     this.createDecorativeGardens();
     this.createPlayer();
-    this.createNightLanternLights();
     this.createLanternOverlay();
     this.createOldLadyNpc();
     this.createCatNpc();
@@ -3066,7 +3067,7 @@ class PlayScene extends Phaser.Scene {
         GIANT_HAND_IMPACT_SFX_KEYS.forEach((sfxKey) => audio(sfxKey, this.getSfxPath(sfxKey)));
       }
       if (level.birdSfx) audio(level.birdSfx, this.getSfxPath(level.birdSfx));
-      if (level.haystacks?.length || level.keyGarden) {
+      if (level.haystacks?.length || level.keyGarden || level.gardenDecor || level.decorativeGardens?.length) {
         audio(HAYSTACK_LAND_SFX_KEY, this.getSfxPath(HAYSTACK_LAND_SFX_KEY));
         audio(HAYSTACK_WALKIN_SFX_KEY, this.getSfxPath(HAYSTACK_WALKIN_SFX_KEY));
       }
@@ -4901,8 +4902,17 @@ class PlayScene extends Phaser.Scene {
       sprite.body.setSize(Math.max(36, sprite.width * 0.72), Math.max(24, sprite.height * 0.36));
       sprite.body.setOffset(sprite.width * 0.14, sprite.height * 0.56);
       sprite.setData("lastBurstAt", -Infinity);
+      sprite.setData("lastSoundAt", -Infinity);
     } else {
       this.platformVisuals?.add(sprite);
+    }
+    if (asset.type === "lantern" && this.level.nightLevel) {
+      this.createNightLanternLightForSprite(sprite, {
+        radius: options.lightRadius,
+        fringe: options.lightFringe,
+        yOffset: options.lightYOffset,
+        foreground: options.lightForeground
+      }, seed);
     }
     return sprite;
   }
@@ -5049,32 +5059,48 @@ class PlayScene extends Phaser.Scene {
       const assetKey = config.asset || (index % 2 ? "garden-lantern-2" : "garden-lantern-1");
       if (!this.textures.exists(assetKey)) return;
       const x = (config.column ?? 0) * TILE + TILE / 2;
-      const floorY = (config.floorRow ?? 0) * TILE;
-      const lantern = this.add.image(x, floorY + 2, assetKey);
+      const targetY = (config.floorRow ?? 0) * TILE;
+      const platformRun = [...(this.platformRuns || [])]
+        .filter((run) => x >= run.startX - TILE * 0.5 && x <= run.endX + TILE * 0.5)
+        .sort((a, b) => Math.abs(a.topY - targetY) - Math.abs(b.topY - targetY))[0];
+      const floorY = (platformRun?.topY ?? targetY) + 2;
+      const lantern = this.add.image(x, floorY, assetKey);
       lantern.setOrigin(0.5, 1);
       lantern.setScale((config.scale ?? 0.34) * Phaser.Math.Linear(0.92, 1.08, this.wallPlacementNoise(index + 13, config.column ?? 0)));
       lantern.setDepth(KEY_GARDEN_PROP_BACK_DEPTH);
       this.platformVisuals?.add(lantern);
-
-      const radius = config.radius ?? NIGHT_LANTERN_RADIUS;
-      const lanternHeight = (lantern.height || 0) * Math.abs(lantern.scaleY || 1);
-      const light = {
-        x,
-        y: floorY - (config.yOffset ?? 82) + lanternHeight * 0.75,
-        radius,
-        fringe: config.fringe ?? NIGHT_LANTERN_FRINGE,
-        foreground: index % 3 === 1,
-        phase: this.wallPlacementNoise(index + 31, index + 77) * Math.PI * 2
-      };
-      const glow = this.add.image(light.x, light.y, NIGHT_LANTERN_GLOW_KEY);
-      glow.setScale(radius / 128);
-      glow.setDepth(NIGHT_LANTERN_GLOW_DEPTH);
-      glow.setBlendMode(Phaser.BlendModes.ADD);
-      glow.setAlpha(0.46);
-      this.nightLanternLights.push({ ...light, lantern, glow });
+      this.createNightLanternLightForSprite(lantern, {
+        radius: config.radius,
+        fringe: config.fringe,
+        yOffset: config.yOffset,
+        foreground: index % 3 === 1
+      }, index);
     });
 
     this.playerLanternGlow = null;
+  }
+
+  createNightLanternLightForSprite(lantern, config = {}, index = 0) {
+    if (!this.level.nightLevel || !lantern?.active) return null;
+    this.ensureNightLanternGlowTexture();
+    this.nightLanternLights = this.nightLanternLights || [];
+    const radius = config.radius ?? NIGHT_LANTERN_RADIUS;
+    const lanternHeight = (lantern.height || 0) * Math.abs(lantern.scaleY || 1);
+    const light = {
+      x: lantern.x,
+      y: lantern.y - (config.yOffset ?? 82) + lanternHeight * 0.75,
+      radius,
+      fringe: config.fringe ?? NIGHT_LANTERN_FRINGE,
+      foreground: config.foreground ?? index % 3 === 1,
+      phase: this.wallPlacementNoise(index + 31, index + 77) * Math.PI * 2
+    };
+    const glow = this.add.image(light.x, light.y, NIGHT_LANTERN_GLOW_KEY);
+    glow.setScale(radius / 128);
+    glow.setDepth(NIGHT_LANTERN_GLOW_DEPTH);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    glow.setAlpha(0.46);
+    this.nightLanternLights.push({ ...light, lantern, glow });
+    return light;
   }
 
   ensureNightLanternGlowTexture() {
@@ -8475,10 +8501,13 @@ class PlayScene extends Phaser.Scene {
       0,
       0
     );
+    if (now - (bush.getData("lastSoundAt") || -Infinity) >= HAY_BURST_COOLDOWN_MS * 0.65) {
+      bush.setData("lastSoundAt", now);
+      this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.32);
+    }
     if (touchSpeed < HAY_BURST_MIN_TOUCH_SPEED * 0.55) return;
     if (now - (bush.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
     bush.setData("lastBurstAt", now);
-    this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.32);
     this.spawnGardenBurst(bush.x, bush.y - bush.displayHeight * 0.34);
     if (bush.getData("revealsKey") && !this.keyRevealed) {
       this.keySprite?.setData("gardenBushTouched", true);

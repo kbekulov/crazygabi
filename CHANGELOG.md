@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.61.1
+
+- Added the missing Level 7 wing pickup and quest entry.
+- Grounded Level 7 lanterns on platform tops and gave every night-garden lantern prop its own light.
+- Made garden bush sounds consistent and enlarged garden statues.
+
 ## v0.61.0
 
 - Added Level 7 as a night inner-garden route with moonlit beams, garden landmarks, lantern light, and its own music.
