@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.60.1";
+const GAME_VERSION = "v0.61.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -139,10 +139,16 @@ const KEY_GARDEN_ASSETS = [
   { key: "garden-bush-4", src: "./public/assets/environment/garden/bush_4.png", scale: 0.42, weight: 1.2, type: "bush" },
   { key: "garden-bush-5", src: "./public/assets/environment/garden/bush_5.png", scale: 0.28, weight: 0.9, type: "bush" },
   { key: "garden-bush-6", src: "./public/assets/environment/garden/bush_6.png", scale: 0.34, weight: 1.1, type: "bush" },
+  { key: "garden-bush-7", src: "./public/assets/environment/garden/bush_7.png", scale: 0.36, weight: 1.05, type: "bush" },
+  { key: "garden-bush-8", src: "./public/assets/environment/garden/bush_8.png", scale: 0.38, weight: 1.05, type: "bush" },
+  { key: "garden-flowerpot-1", src: "./public/assets/environment/garden/flowerpot_1.png", scale: 0.3, weight: 0.72, type: "feature" },
   { key: "garden-fountain-1", src: "./public/assets/environment/garden/fountain_1.png", scale: 0.28, weight: 0.55, type: "feature" },
   { key: "garden-fountain-2", src: "./public/assets/environment/garden/fountain_2.png", scale: 0.28, weight: 0.55, type: "feature" },
+  { key: "garden-statue-1", src: "./public/assets/environment/garden/statue_1.png", scale: 0.34, weight: 0.58, type: "feature" },
+  { key: "garden-tree-3", src: "./public/assets/environment/garden/tree_3.png", scale: 0.32, weight: 0.5, type: "feature" },
   { key: "garden-lantern-1", src: "./public/assets/environment/garden/lantern_1.png", scale: 0.34, weight: 0.85, type: "lantern" },
-  { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85, type: "lantern" }
+  { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85, type: "lantern" },
+  { key: "garden-lantern-3", src: "./public/assets/environment/garden/lantern_3.png", scale: 0.36, weight: 0.8, type: "lantern" }
 ];
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
@@ -357,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-episodes";
+const ASSET_VERSION = "20260626-level-7-night-garden";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -424,7 +430,8 @@ const MUSIC_TRACKS = [
   { key: "bgm-lv3", label: "Level 3 Theme", src: "./public/assets/sound/bgm_lv3.mp3" },
   { key: "bgm-lv5", label: "Level 5 Theme", src: "./public/assets/sound/bgm_lv5.mp3" },
   { key: "bgm-lv5-boss", label: "Level 5 Theme (Boss)", src: "./public/assets/sound/bgm_lv5_boss.mp3", volumeScale: 1.52 },
-  { key: "bgm-lv6", label: "Level 6 Theme", src: "./public/assets/sound/bgm_lv6.mp3" }
+  { key: "bgm-lv6", label: "Level 6 Theme", src: "./public/assets/sound/bgm_lv6.mp3" },
+  { key: "bgm-lv7", label: "Level 7 Theme", src: "./public/assets/sound/bgm_lv7.mp3" }
 ];
 const LOADING_RUNNERS = [
   {
@@ -462,6 +469,7 @@ const LEVEL_THREE_WIDTH_TILES = 220;
 const LEVEL_FOUR_WIDTH_TILES = 224;
 const LEVEL_FIVE_WIDTH_TILES = 720;
 const LEVEL_SIX_WIDTH_TILES = 210;
+const LEVEL_SEVEN_WIDTH_TILES = 260;
 const LEVEL_HEIGHT_TILES = 18;
 const LEVELS = [
   {
@@ -918,6 +926,12 @@ const LEVELS = [
         { x: 157 * TILE, row: 9, density: 0.68, width: 9, allowStructures: true },
         { x: 183 * TILE, row: 6, density: 0.56, width: 7, allowStructures: false },
         { x: 190 * TILE, row: 12, density: 0.58, width: 7, allowStructures: true }
+      ],
+      fixedOrnaments: [
+        { asset: "garden-statue-1", x: 47 * TILE, row: 12, scaleBoost: 0.92 },
+        { asset: "garden-statue-1", x: 119 * TILE, row: 12, scaleBoost: 0.95 },
+        { asset: "garden-statue-1", x: 157 * TILE, row: 9, scaleBoost: 0.9 },
+        { asset: "garden-statue-1", x: 190 * TILE, row: 12, scaleBoost: 0.92 }
       ]
     },
     lightRayAlpha: 1,
@@ -939,6 +953,80 @@ const LEVELS = [
     introTitle: "Level 6",
     introCopy: "Search the botanical rooftops, find the flower, and reach the exit before the garden closes in.",
     questTasks: ["wing", "flower", "petal", "coins", "enemies"]
+  },
+  {
+    name: "Level 7",
+    rows: createLevelSeven(),
+    timeLimit: 390,
+    soundtrack: "bgm-lv7",
+    enemySprite: "robot-shadow-ghost-lv2",
+    actionAbility: null,
+    startSpeech: "",
+    showStartingHouse: false,
+    showWater: true,
+    doorYOffset: -30,
+    parallax: "parallax-inner-garden-night",
+    platformTexture: "platform-underground",
+    fenceTexture: "platform-fence-underground",
+    wallTiles: {
+      backdropSheet: "level2-wall-backdrop",
+      backdropFrames: 30,
+      foreground: [
+        "underground-wall-1",
+        "underground-wall-2",
+        "underground-wall-3",
+        "underground-wall-4",
+        "underground-wall-5"
+      ]
+    },
+    lanternPlayerSheet: "gabi-lantern-sheet",
+    lanternAnimationPrefix: "gabi-lantern",
+    darkness: {
+      alpha: 0.96,
+      requiresLantern: false,
+      radius: 208,
+      fringe: 92,
+      yOffset: -18
+    },
+    nightLevel: true,
+    nightLanterns: [
+      { column: 20, floorRow: 16, asset: "garden-lantern-1", radius: 178 },
+      { column: 51, floorRow: 13, asset: "garden-lantern-2", radius: 190 },
+      { column: 83, floorRow: 15, asset: "garden-lantern-1", radius: 182 },
+      { column: 116, floorRow: 11, asset: "garden-lantern-3", radius: 198 },
+      { column: 150, floorRow: 14, asset: "garden-lantern-1", radius: 188 },
+      { column: 188, floorRow: 10, asset: "garden-lantern-2", radius: 204 },
+      { column: 224, floorRow: 13, asset: "garden-lantern-3", radius: 190 }
+    ],
+    keyGarden: true,
+    decorativeGardens: [
+      { row: 20, startColumn: 9, endColumn: 27, density: 0.6, featureRate: 0.28, bushScaleBoost: 0.96, featureScaleBoost: 0.88 },
+      { row: 17, startColumn: 43, endColumn: 60, density: 0.7, featureRate: 0.24, bushScaleBoost: 1.02, featureScaleBoost: 0.88 },
+      { row: 20, startColumn: 76, endColumn: 94, density: 0.66, featureRate: 0.22, bushScaleBoost: 0.98, featureScaleBoost: 0.86 },
+      { row: 14, startColumn: 108, endColumn: 128, density: 0.74, featureRate: 0.28, bushScaleBoost: 1.04, featureScaleBoost: 0.9 },
+      { row: 17, startColumn: 142, endColumn: 164, density: 0.78, featureRate: 0.24, bushScaleBoost: 1.02, featureScaleBoost: 0.88 },
+      { row: 11, startColumn: 180, endColumn: 202, density: 0.82, featureRate: 0.3, bushScaleBoost: 1.08, featureScaleBoost: 0.92 },
+      { row: 20, startColumn: 214, endColumn: 239, density: 0.86, featureRate: 0.28, bushScaleBoost: 1.08, featureScaleBoost: 0.9 }
+    ],
+    lightRayAlpha: 1,
+    lightColor: "#dcecff",
+    lightRays: [
+      { x: 155, y: -118, topWidth: 46, bottomWidth: 270, height: 980, lean: 120, alpha: 0.34, thickness: 3, layerAlpha: 1.34, foreground: true, frontAlpha: 0.25, opacityMode: "pulse", beamBoost: 2.05, color: "#dcecff" },
+      { x: 420, y: -128, topWidth: 30, bottomWidth: 180, height: 760, lean: -80, alpha: 0.22, thickness: 2, layerAlpha: 1.18, opacityMode: "dim", beamBoost: 1.72, color: "#c8e2ff" },
+      { x: 840, y: -132, topWidth: 62, bottomWidth: 380, height: 1060, lean: 95, alpha: 0.39, thickness: 4, layerAlpha: 1.42, foreground: true, frontAlpha: 0.3, blinding: true, opacityMode: "steady", beamBoost: 2.18, color: "#edf6ff" },
+      { x: 1240, y: -104, topWidth: 38, bottomWidth: 228, height: 840, lean: -160, alpha: 0.28, thickness: 2, layerAlpha: 1.22, opacityMode: "pulse", beamBoost: 1.86, color: "#d6eaff" },
+      { x: 1720, y: -136, topWidth: 76, bottomWidth: 470, height: 1120, lean: 170, alpha: 0.42, thickness: 4, layerAlpha: 1.46, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "dim", beamBoost: 2.32, color: "#eef7ff" },
+      { x: 2140, y: -114, topWidth: 34, bottomWidth: 210, height: 900, lean: 50, alpha: 0.3, thickness: 2, layerAlpha: 1.2, opacityMode: "steady", beamBoost: 1.92, color: "#c6ddff" },
+      { x: 2620, y: -126, topWidth: 58, bottomWidth: 340, height: 1040, lean: -115, alpha: 0.36, thickness: 3, layerAlpha: 1.34, foreground: true, frontAlpha: 0.24, opacityMode: "pulse", beamBoost: 2.12, color: "#e3f0ff" },
+      { x: 3180, y: -116, topWidth: 42, bottomWidth: 250, height: 860, lean: 130, alpha: 0.29, thickness: 2, layerAlpha: 1.2, opacityMode: "dim", beamBoost: 1.82, color: "#d2e7ff" },
+      { x: 3890, y: -132, topWidth: 82, bottomWidth: 520, height: 1180, lean: -60, alpha: 0.43, thickness: 4, layerAlpha: 1.48, foreground: true, frontAlpha: 0.34, blinding: true, opacityMode: "pulse", beamBoost: 2.38, color: "#f2f8ff" },
+      { x: 4740, y: -108, topWidth: 50, bottomWidth: 306, height: 960, lean: 150, alpha: 0.34, thickness: 3, layerAlpha: 1.28, foreground: true, frontAlpha: 0.22, opacityMode: "steady", beamBoost: 2, color: "#dbeaff" },
+      { x: 5920, y: -120, topWidth: 70, bottomWidth: 430, height: 1120, lean: -145, alpha: 0.4, thickness: 4, layerAlpha: 1.4, foreground: true, frontAlpha: 0.28, opacityMode: "dim", beamBoost: 2.26, color: "#edf5ff" },
+      { x: 7000, y: -118, topWidth: 48, bottomWidth: 280, height: 960, lean: 95, alpha: 0.32, thickness: 3, layerAlpha: 1.26, opacityMode: "pulse", beamBoost: 1.96, color: "#cfe4ff" }
+    ],
+    introTitle: "Level 7",
+    introCopy: "Carry the lantern through the moonlit inner garden, find the hidden key, and leave before the blue dark closes around you.",
+    questTasks: ["lantern", "key", "coins", "enemies"]
   }
 ];
 
@@ -1496,6 +1584,88 @@ function createLevelSix() {
     [3, 110, "f"],
     [3, 144, "g"],
     [3, 176, "g"]
+  ].forEach(([row, column, value]) => put(row, column, value));
+
+  return rows.map((row) => row.join(""));
+}
+
+function createLevelSeven() {
+  const { rows, put, run } = createLevelRows(22, LEVEL_SEVEN_WIDTH_TILES);
+
+  run(20, 0, 32);
+  run(20, 38, 30);
+  run(20, 78, 34);
+  run(20, 122, 32);
+  run(20, 164, 34);
+  run(20, 210, 50);
+
+  run(17, 16, 10);
+  run(17, 46, 12);
+  run(17, 88, 13);
+  run(17, 132, 12);
+  run(17, 174, 14);
+  run(17, 222, 13);
+
+  run(14, 34, 12);
+  run(14, 66, 10);
+  run(14, 108, 13);
+  run(14, 152, 12);
+  run(14, 195, 13);
+  run(14, 238, 12);
+
+  run(11, 55, 12);
+  run(11, 92, 11);
+  run(11, 128, 12);
+  run(11, 176, 13);
+  run(11, 218, 12);
+
+  run(8, 82, 11);
+  run(8, 118, 10);
+  run(8, 160, 12);
+  run(8, 202, 11);
+  run(8, 232, 10);
+
+  [
+    [18, 4, "p"],
+    [19, 10, "g"],
+    [19, 18, "l"],
+    [19, 27, "g"],
+    [19, 46, "g"],
+    [19, 62, "m"],
+    [19, 86, "g"],
+    [19, 102, "m"],
+    [19, 132, "g"],
+    [19, 148, "m"],
+    [19, 174, "g"],
+    [19, 190, "m"],
+    [19, 222, "g"],
+    [19, 242, "d"],
+    [16, 20, "g"],
+    [16, 50, "g"],
+    [16, 56, "m"],
+    [16, 92, "g"],
+    [16, 138, "g"],
+    [16, 180, "g"],
+    [16, 184, "m"],
+    [16, 228, "g"],
+    [13, 39, "g"],
+    [13, 70, "g"],
+    [13, 114, "m"],
+    [13, 118, "g"],
+    [13, 158, "g"],
+    [13, 201, "m"],
+    [13, 204, "g"],
+    [13, 244, "g"],
+    [10, 61, "g"],
+    [10, 98, "m"],
+    [10, 134, "g"],
+    [10, 182, "k"],
+    [10, 224, "g"],
+    [7, 88, "g"],
+    [7, 124, "g"],
+    [7, 166, "h"],
+    [7, 208, "g"],
+    [7, 236, "g"]
   ].forEach(([row, column, value]) => put(row, column, value));
 
   return rows.map((row) => row.join(""));
@@ -2845,6 +3015,7 @@ class PlayScene extends Phaser.Scene {
       if (level.parallax === "parallax-cathedral") image("parallax-cathedral", "./public/assets/environment/paralax_cathedral.png");
       if (level.parallax === "parallax-park") image("parallax-park", "./public/assets/environment/paralax_park.png");
       if (level.parallax === "parallax-garden") image("parallax-garden", "./public/assets/environment/paralax_garden.png");
+      if (level.parallax === "parallax-inner-garden-night") image("parallax-inner-garden-night", "./public/assets/environment/paralax_inner_garden_night.png");
       if (level.frontParallax === "parallax-park-frontlayer") {
         image("parallax-park-frontlayer", "./public/assets/environment/paralax_park_frontlayer.png");
       }
@@ -2877,7 +3048,7 @@ class PlayScene extends Phaser.Scene {
         image("flower-item", "./public/assets/environment/flower_item.png");
         sheet("flower-petal", "./public/assets/environment/flower_petal.png", FLOWER_PETAL_FRAME_WIDTH, FLOWER_PETAL_FRAME_HEIGHT);
       }
-      if (level.gardenDecor) this.queueGardenAssets(image);
+      if (level.gardenDecor || level.decorativeGardens?.length || level.keyGarden) this.queueGardenAssets(image);
       if (level.lanternPlayerSheet || this.levelHasCell(level, "l")) image("lantern", "./public/assets/environment/lantern.png");
       (level.storyFrames || []).forEach((frame) => {
         if (frame?.key && frame?.src) storyImage(frame.key, frame.src);
@@ -3128,21 +3299,7 @@ class PlayScene extends Phaser.Scene {
   }
 
   queueGardenAssets(image) {
-    const base = "./public/assets/environment/garden";
-    [
-      "arc_1",
-      "bench_1",
-      "bush_1",
-      "bush_2",
-      "bush_3",
-      "bush_4",
-      "bush_5",
-      "bush_6",
-      "fountain_1",
-      "fountain_2",
-      "lantern_1",
-      "lantern_2"
-    ].forEach((name) => image(`garden-${name}`, `${base}/${name}.png`));
+    KEY_GARDEN_ASSETS.forEach((asset) => image(asset.key, asset.src));
   }
 
   getHazardPath(key = "falling-acorn") {
@@ -4699,14 +4856,14 @@ class PlayScene extends Phaser.Scene {
   getAllowedGardenAssetsForLevel() {
     return KEY_GARDEN_ASSETS.filter((asset) => {
       if (!this.textures.exists(asset.key)) return false;
-      if (state.levelIndex === 0 || state.levelIndex === 3 || state.levelIndex === 5) return true;
+      if (state.levelIndex === 0 || state.levelIndex === 3 || state.levelIndex === 5 || state.levelIndex === 6) return true;
       if (state.levelIndex === 1 || state.levelIndex === 2) return asset.type === "bush" || asset.type === "lantern";
       return asset.type === "bush";
     });
   }
 
   shouldHideKeyInGardenBushes() {
-    return state.levelIndex >= 0 && state.levelIndex <= 2;
+    return (state.levelIndex >= 0 && state.levelIndex <= 2) || state.levelIndex === 6;
   }
 
   pickGardenAsset(assets, noise = 0) {
@@ -5274,8 +5431,15 @@ class PlayScene extends Phaser.Scene {
     };
   }
 
-  lightRayRgba(alpha) {
-    return `rgba(255, 239, 198, ${Phaser.Math.Clamp(alpha, 0, 1)})`;
+  lightRayRgba(alpha, color = this.level?.lightColor || "#ffefc6") {
+    const hex = String(color || "#ffefc6").replace("#", "");
+    const normalized = hex.length === 3
+      ? hex.split("").map((value) => value + value).join("")
+      : hex.padEnd(6, "0").slice(0, 6);
+    const red = Number.parseInt(normalized.slice(0, 2), 16);
+    const green = Number.parseInt(normalized.slice(2, 4), 16);
+    const blue = Number.parseInt(normalized.slice(4, 6), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${Phaser.Math.Clamp(alpha, 0, 1)})`;
   }
 
   createWaterBelow() {
@@ -6654,6 +6818,19 @@ class PlayScene extends Phaser.Scene {
           scaleBoost: asset?.type === "lantern" ? 0.78 : 0.86
         });
       }
+    });
+
+    (config.fixedOrnaments || []).forEach((ornament, index) => {
+      const asset = gardenAssets.find((candidate) => candidate.key === ornament.asset);
+      if (!asset) return;
+      const run = this.getNearestPlatformRun(ornament.x, ornament.row * TILE);
+      if (!run) return;
+      const x = Phaser.Math.Clamp(ornament.x, run.startX + 20, run.endX - 20);
+      this.createGardenDecorSprite(asset, x, run.topY + 2, {
+        seed: 9000 + index * 37,
+        interactive: false,
+        scaleBoost: ornament.scaleBoost ?? 0.92
+      });
     });
   }
 
@@ -12287,13 +12464,16 @@ function showMenuPanel(title, copy, panel = "") {
   setMenuPanelVisible(true);
 }
 
-function showLevelSelectPanel() {
-  showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.", "level-select");
-  const episodes = [
-    { title: "Episode 1", start: 0, end: 4 },
-    { title: "Episode 2", start: 5, end: 9 }
-  ];
-  episodes.forEach((episode) => {
+const LEVEL_EPISODES = [
+  { title: "Episode 1", start: 0, end: 4 },
+  { title: "Episode 2", start: 5, end: 9 }
+];
+
+function appendLevelEpisodeColumns(target) {
+  const episodesWrapper = document.createElement("div");
+  episodesWrapper.className = "level-select-episodes";
+
+  LEVEL_EPISODES.forEach((episode) => {
     const availableLevels = LEVELS
       .map((level, index) => ({ level, index }))
       .filter(({ index }) => index >= episode.start && index <= episode.end);
@@ -12312,8 +12492,15 @@ function showLevelSelectPanel() {
       levels.appendChild(button);
     });
     section.append(heading, levels);
-    hud.menuPanelContent.appendChild(section);
+    episodesWrapper.appendChild(section);
   });
+
+  target.appendChild(episodesWrapper);
+}
+
+function showLevelSelectPanel() {
+  showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.", "level-select");
+  appendLevelEpisodeColumns(hud.menuPanelContent);
 }
 
 function showMusicBoxPanel() {
@@ -12424,18 +12611,13 @@ function showCreditsPanel() {
   hud.menuPanelContent.appendChild(list);
 }
 
-LEVELS.forEach((level, index) => {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.textContent = level.name;
-  button.addEventListener("click", () => requestSelectedLevel(index));
-  hud.cheatLevels.appendChild(button);
-});
+appendLevelEpisodeColumns(hud.cheatLevels);
 
 const returnToMenuButton = document.createElement("button");
 returnToMenuButton.type = "button";
 returnToMenuButton.textContent = "Return to Menu";
 returnToMenuButton.addEventListener("click", returnToMainMenu);
+returnToMenuButton.className = "cheat-return-menu";
 hud.cheatLevels.appendChild(returnToMenuButton);
 hud.cheatLevels.after(createCheatSettingsControls());
 updateAudioSettingsPanel();

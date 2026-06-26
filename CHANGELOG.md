@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.61.0
+
+- Added Level 7 as a night inner-garden route with moonlit beams, garden landmarks, lantern light, and its own music.
+- Displayed episode level groups as columns in both level selection menus.
+- Expanded garden decoration variety with new bushes, props, lanterns, trees, and guaranteed Level 6 statues.
+
 ## v0.60.1
 
 - Grouped the level selection menu into Episode 1 and Episode 2 sections.

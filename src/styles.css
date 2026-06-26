@@ -1281,6 +1281,11 @@ button:active {
   justify-content: center;
 }
 
+.cheat-levels .level-select-episodes,
+.cheat-return-menu {
+  grid-column: 1 / -1;
+}
+
 .cheat-levels button,
 #cheat-close {
   min-width: 0;
@@ -1831,9 +1836,17 @@ button:active {
   width: 100%;
 }
 
+.level-select-episodes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(12px, 2.6vw, 22px);
+  width: 100%;
+}
+
 .level-select-episode {
   display: grid;
   gap: 8px;
+  align-content: start;
 }
 
 .level-select-episode h3 {
@@ -1841,7 +1854,7 @@ button:active {
   color: #fff200;
   font-size: clamp(0.9rem, 1.7vw, 1.1rem);
   line-height: 1;
-  text-align: left;
+  text-align: center;
   text-shadow: 2px 2px 0 #000;
 }
 
