@@ -1516,7 +1516,7 @@ button:active {
   .game-over-card,
   .item-card {
     max-height: calc(100% - 10px);
-    overflow-y: auto;
+    overflow: hidden;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
@@ -1814,7 +1814,12 @@ button:active {
   border: 0;
   box-shadow: none;
   text-align: center;
-  overflow-y: auto;
+  overflow: hidden;
+  scrollbar-width: none;
+}
+
+.menu-panel-card::-webkit-scrollbar {
+  display: none;
 }
 
 .menu-panel-card h2,
@@ -1847,6 +1852,20 @@ button:active {
   width: 100%;
 }
 
+#menu-panel-close {
+  justify-self: center;
+  min-width: 132px;
+  color: #f4dcb0;
+  background: rgba(244, 220, 176, 0.08);
+  border: 2px solid rgba(244, 220, 176, 0.52);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.65);
+  text-shadow: 2px 2px 0 #000;
+}
+
+#menu-panel-close:active {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.65);
+}
+
 .main-menu-best-score,
 .main-menu-difficulty {
   padding: 10px 12px;
@@ -1854,42 +1873,6 @@ button:active {
   border-radius: 6px;
   background: rgba(6, 5, 4, 0.44);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
-}
-
-.main-menu-characters {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-}
-
-.main-menu-cat {
-  position: absolute;
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  transform-origin: 50% 100%;
-  filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.72));
-}
-
-.main-menu-cat {
-  left: 30.4%;
-  bottom: 15.8%;
-  z-index: 1;
-  width: 24.79%;
-  aspect-ratio: 1;
-  background-size: 400% 300%;
-  background-position: 0 100%;
-  animation: main-menu-cat-idle 980ms steps(3) infinite;
-  transform: scaleX(-1) scale(0.8);
-}
-
-@keyframes main-menu-cat-idle {
-  from {
-    background-position: 0 100%;
-  }
-  to {
-    background-position: -300% 100%;
-  }
 }
 
 .main-menu-petals {
@@ -1904,12 +1887,12 @@ button:active {
   position: absolute;
   left: var(--petal-start);
   top: var(--petal-top);
-  width: 386px;
-  height: 386px;
+  width: 193px;
+  height: 193px;
   background-image: url("../public/assets/environment/flower_petal.png");
   background-repeat: no-repeat;
   background-size: 300% 100%;
-  background-position: calc(var(--petal-frame) * -386px) 0;
+  background-position: calc(var(--petal-frame) * -193px) 0;
   image-rendering: pixelated;
   opacity: 0;
   transform: translate3d(-20vw, 0, 0) scaleX(var(--petal-flip)) scale(var(--petal-scale)) rotate(0deg);
@@ -1984,11 +1967,6 @@ button:active {
     background:
       linear-gradient(0deg, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.44) 46%, rgba(0, 0, 0, 0.12) 100%),
       radial-gradient(circle at 46% 40%, rgba(255, 229, 176, 0.12), transparent 34%);
-  }
-
-  .main-menu-cat {
-    left: 27%;
-    bottom: 48%;
   }
 
   .game-version {

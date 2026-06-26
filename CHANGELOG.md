@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.59.3
+
+- Removed the cat from the main menu scene.
+- Made menu petals smaller and kept them pixelated.
+- Restyled submenu Back buttons as hollow buttons and hid panel scrollbars.
+- Raised the Level 6 exit door to match the other door placements.
+
 ## v0.59.2
 
 - Blended overlapping Level 2 lantern light circles into a single darkness mask.
