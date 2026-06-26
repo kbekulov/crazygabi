@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.59.6
+
+- Lowered the Level 6 exit door again.
+- Enlarged the main menu petals again.
+
 ## v0.59.5
 
 - Lowered the Level 6 exit door slightly.

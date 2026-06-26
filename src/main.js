@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.59.5";
+const GAME_VERSION = "v0.59.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-level6-door";
+const ASSET_VERSION = "20260626-level6-door-petals";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -921,7 +921,7 @@ const LEVELS = [
       ]
     },
     lightRayAlpha: 1,
-    doorYOffset: -38,
+    doorYOffset: -32,
     lightRays: [
       { x: 170, y: -100, topWidth: 48, bottomWidth: 260, height: 920, lean: 185, alpha: 0.32, thickness: 3, layerAlpha: 1.22, foreground: true, frontAlpha: 0.22, opacityMode: "pulse" },
       { x: 390, y: -120, topWidth: 36, bottomWidth: 188, height: 820, lean: 72, alpha: 0.22, thickness: 2, layerAlpha: 1.08, opacityMode: "dim" },
@@ -1612,7 +1612,7 @@ function configureMainMenuScene() {
     petal.style.setProperty("--petal-top", `${Phaser.Math.Between(-12, 88)}%`);
     petal.style.setProperty("--petal-start", `${Phaser.Math.Between(-18, 105)}%`);
     petal.style.setProperty("--petal-drift", `${Phaser.Math.Between(-220, 220)}px`);
-    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.02, 0.048).toFixed(3));
+    petal.style.setProperty("--petal-scale", Phaser.Math.FloatBetween(0.03, 0.072).toFixed(3));
     petal.style.setProperty("--petal-spin", `${Phaser.Math.Between(180, 820)}deg`);
     petal.style.setProperty("--petal-frame", String(Phaser.Math.Between(0, 2)));
     petal.style.setProperty("--petal-flip", Phaser.Math.Between(0, 1) ? "1" : "-1");
