@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.59.4";
+const GAME_VERSION = "v0.59.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-menu-petals";
+const ASSET_VERSION = "20260626-level6-door";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -921,7 +921,7 @@ const LEVELS = [
       ]
     },
     lightRayAlpha: 1,
-    doorYOffset: -44,
+    doorYOffset: -38,
     lightRays: [
       { x: 170, y: -100, topWidth: 48, bottomWidth: 260, height: 920, lean: 185, alpha: 0.32, thickness: 3, layerAlpha: 1.22, foreground: true, frontAlpha: 0.22, opacityMode: "pulse" },
       { x: 390, y: -120, topWidth: 36, bottomWidth: 188, height: 820, lean: 72, alpha: 0.22, thickness: 2, layerAlpha: 1.08, opacityMode: "dim" },
