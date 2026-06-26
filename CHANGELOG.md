@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.59.7
+
+- Made dash disabled by default for new players.
+- Shrank the Level 6 flower cooldown icon.
+- Added a cat favicon.
+
 ## v0.59.6
 
 - Lowered the Level 6 exit door again.

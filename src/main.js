@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.59.6";
+const GAME_VERSION = "v0.59.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-level6-door-petals";
+const ASSET_VERSION = "20260626-dash-favicon";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -372,7 +372,7 @@ const DIFFICULTY_HARD = "hard";
 const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true,
-  dash: true
+  dash: false
 };
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const DIFFICULTY_PROFILES = {
@@ -1901,7 +1901,7 @@ function getAudioSettings() {
     return {
       music: saved.music !== false,
       sfx: saved.sfx !== false,
-      dash: saved.dash !== false
+      dash: saved.dash === true
     };
   } catch (_error) {
     return { ...DEFAULT_AUDIO_SETTINGS };
@@ -1926,7 +1926,7 @@ function isSfxEnabled() {
 }
 
 function isDashEnabled() {
-  return state.audioSettings?.dash !== false;
+  return state.audioSettings?.dash === true;
 }
 
 function setAudioSetting(key, enabled) {
@@ -12337,7 +12337,9 @@ function updateAudioSettingsPanel() {
     .querySelectorAll(".settings-toggle-row")
     .forEach((row) => {
       const key = row.dataset.setting;
-      const enabled = state.audioSettings?.[key] !== false;
+      const enabled = key === "dash"
+        ? state.audioSettings?.dash === true
+        : state.audioSettings?.[key] !== false;
       const button = row.querySelector(".settings-toggle");
       if (!button) return;
       button.classList.toggle("is-active", enabled);
