@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.60.0";
+const GAME_VERSION = "v0.60.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -357,7 +357,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-mobile-joystick";
+const ASSET_VERSION = "20260626-episodes";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -12289,12 +12289,30 @@ function showMenuPanel(title, copy, panel = "") {
 
 function showLevelSelectPanel() {
   showMenuPanel("Select Level", "Choose a route and load only the assets needed for that level.", "level-select");
-  LEVELS.forEach((level, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = level.name;
-    button.addEventListener("click", () => requestSelectedLevel(index));
-    hud.menuPanelContent.appendChild(button);
+  const episodes = [
+    { title: "Episode 1", start: 0, end: 4 },
+    { title: "Episode 2", start: 5, end: 9 }
+  ];
+  episodes.forEach((episode) => {
+    const availableLevels = LEVELS
+      .map((level, index) => ({ level, index }))
+      .filter(({ index }) => index >= episode.start && index <= episode.end);
+    if (!availableLevels.length) return;
+    const section = document.createElement("section");
+    section.className = "level-select-episode";
+    const heading = document.createElement("h3");
+    heading.textContent = episode.title;
+    const levels = document.createElement("div");
+    levels.className = "level-select-buttons";
+    availableLevels.forEach(({ level, index }) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = level.name;
+      button.addEventListener("click", () => requestSelectedLevel(index));
+      levels.appendChild(button);
+    });
+    section.append(heading, levels);
+    hud.menuPanelContent.appendChild(section);
   });
 }
 

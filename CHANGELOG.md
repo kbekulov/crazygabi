@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.60.1
+
+- Grouped the level selection menu into Episode 1 and Episode 2 sections.
+
 ## v0.60.0
 
 - Replaced mobile swipe controls with an invisible left-side joystick.

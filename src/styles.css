@@ -1831,6 +1831,25 @@ button:active {
   width: 100%;
 }
 
+.level-select-episode {
+  display: grid;
+  gap: 8px;
+}
+
+.level-select-episode h3 {
+  margin: 4px 0 0;
+  color: #fff200;
+  font-size: clamp(0.9rem, 1.7vw, 1.1rem);
+  line-height: 1;
+  text-align: left;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.level-select-buttons {
+  display: grid;
+  gap: 9px;
+}
+
 .main-menu-layout {
   position: absolute;
   top: 50%;
