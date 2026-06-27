@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.1";
+const GAME_VERSION = "v0.62.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -363,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260627-level-7-polish";
+const ASSET_VERSION = "20260627-level-7-pathing";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1556,6 +1556,15 @@ function createLevelSix() {
   run(16, 304, 26);
   run(16, 342, 32);
   run(16, 388, 32);
+  run(15, 56, 4);
+  run(15, 94, 5);
+  run(15, 126, 6);
+  run(15, 169, 6);
+  run(15, 213, 6);
+  run(15, 253, 6);
+  run(15, 295, 6);
+  run(15, 333, 6);
+  run(15, 378, 7);
 
   run(13, 19, 8);
   run(13, 43, 11);
@@ -1684,6 +1693,16 @@ function createLevelSeven() {
   run(20, 366, 34);
   run(20, 416, 32);
   run(20, 474, 46);
+  run(19, 71, 5);
+  run(19, 115, 5);
+  run(19, 157, 5);
+  run(19, 201, 6);
+  run(19, 263, 5);
+  run(19, 307, 6);
+  run(19, 354, 7);
+  run(19, 404, 7);
+  run(19, 452, 7);
+  run(18, 463, 7);
 
   run(17, 16, 10);
   run(17, 46, 12);
@@ -6057,7 +6076,7 @@ class PlayScene extends Phaser.Scene {
         if (cell === "g" || cell === "c") {
           const gem = this.gems.create(x, y, "coin");
           gem.setScale(ITEM_SCALE);
-          gem.setDepth(ITEM_DEPTH);
+          gem.setDepth(this.getPickupItemDepth());
           gem.setCircle(58, 61, 58);
           state.totalGems += 1;
           this.tweens.add({ targets: gem, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: "Sine.inOut" });
@@ -6069,14 +6088,14 @@ class PlayScene extends Phaser.Scene {
         if (cell === "j") {
           const doubleJump = this.doubleJumps.create(x, y, "jump-item");
           doubleJump.setScale(ITEM_SCALE);
-          doubleJump.setDepth(ITEM_DEPTH);
+          doubleJump.setDepth(this.getPickupItemDepth());
           doubleJump.setCircle(60, 59, 60);
           this.tweens.add({ targets: doubleJump, y: y - 8, duration: 720, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "b") {
           const basket = this.acornBaskets.create(x, y, "acorn-basket");
           basket.setScale(BASKET_SCALE);
-          basket.setDepth(ITEM_DEPTH);
+          basket.setDepth(this.getPickupItemDepth());
           basket.setCircle(75, 64, 54);
           this.basketPoint = { x, y };
           this.tweens.add({ targets: basket, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
@@ -6084,14 +6103,14 @@ class PlayScene extends Phaser.Scene {
         if (cell === "l") {
           const lantern = this.lanterns.create(x, y, "lantern");
           lantern.setScale(LANTERN_SCALE);
-          lantern.setDepth(DARKNESS_DEPTH + 1);
+          lantern.setDepth(this.getPickupItemDepth(0.15));
           lantern.setCircle(70, 49, 55);
           this.tweens.add({ targets: lantern, y: y - 7, duration: 820, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "f") {
           const flower = this.flowers.create(x, y, "flower-item");
           flower.setScale(0.055);
-          flower.setDepth(ITEM_DEPTH);
+          flower.setDepth(this.getPickupItemDepth());
           flower.setCircle(430, 80, 80);
           this.flowerPoint = { x, y };
           this.tweens.add({ targets: flower, y: y - 8, angle: 5, duration: 920, yoyo: true, repeat: -1, ease: "Sine.inOut" });
@@ -6103,7 +6122,7 @@ class PlayScene extends Phaser.Scene {
           const hazardKey = this.level.fallingHazard || "falling-acorn";
           const acorn = this.acorns.create(x, -80, hazardKey);
           acorn.setScale(hazardKey === "falling-brick" ? BRICK_SCALE : ACORN_SCALE);
-          acorn.setDepth(ITEM_DEPTH);
+          acorn.setDepth(this.getPickupItemDepth());
           acorn.setCircle(70, 47, 52);
           acorn.body.allowGravity = false;
           acorn.body.immovable = false;
@@ -6150,6 +6169,10 @@ class PlayScene extends Phaser.Scene {
     this.createFinalElevator();
     this.createPlatformShadows();
     this.createGardenDecorations();
+  }
+
+  getPickupItemDepth(offset = 0) {
+    return (this.level?.darkness ? DARKNESS_DEPTH + 1.1 : ITEM_DEPTH) + offset;
   }
 
   createWallTileVisual(x, y, rowIndex, columnIndex) {
@@ -11984,7 +12007,7 @@ class PlayScene extends Phaser.Scene {
   configureHeartPickup(heart, { armedAt = this.time.now, bob = false } = {}) {
     if (!heart) return heart;
     heart.setScale(HEART_SCALE);
-    heart.setDepth(ITEM_DEPTH);
+    heart.setDepth(this.getPickupItemDepth());
     heart.setCircle(58, 61, 58);
     heart.body.allowGravity = false;
     heart.body.immovable = true;

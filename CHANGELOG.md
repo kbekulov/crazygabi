@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.2
+
+- Added fair connector platforms to the extended Level 6 and Level 7 routes.
+- Kept night-level pickups visible above the darkness layer.
+- Updated the flower cooldown UI art.
+
 ## v0.62.1
 
 - Removed bird references and bench props from Level 7.
