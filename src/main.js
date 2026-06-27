@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.0";
+const GAME_VERSION = "v0.62.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -363,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260626-dual-items";
+const ASSET_VERSION = "20260627-level-7-polish";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -975,9 +975,6 @@ const LEVELS = [
     soundtrack: "bgm-lv7",
     enemySprite: "robot-shadow-ghost-lv2",
     actionAbility: "flower-petals",
-    birdSprite: "magpie-bird",
-    birdScale: 1.2,
-    birdSfx: MAGPIE_CALL_SFX_KEY,
     petalScale: 0.72,
     startSpeech: "",
     showStartingHouse: false,
@@ -3139,7 +3136,8 @@ class PlayScene extends Phaser.Scene {
         sheet("mr-magpie", "./public/assets/character/mr_magpie.png", MR_MAGPIE_FRAME_WIDTH, MR_MAGPIE_FRAME_HEIGHT);
         image("mr-magpie-jump", "./public/assets/character/mr_magpie_jump.png");
       }
-      if (level.finalElevator || this.isCommandAttackLevel(level) || level.ambientBirds) {
+      const needsBirdSprite = level.finalElevator || level.ambientBirds || (this.isCommandAttackLevel(level) && level.actionAbility !== "flower-petals");
+      if (needsBirdSprite) {
         const birdSprite = this.getBirdSpriteKey(level);
         sheet(birdSprite, this.getBirdSpritePath(birdSprite), BIRD_FRAME_WIDTH, BIRD_FRAME_HEIGHT);
       }
@@ -5008,6 +5006,7 @@ class PlayScene extends Phaser.Scene {
   getAllowedGardenAssetsForLevel() {
     return KEY_GARDEN_ASSETS.filter((asset) => {
       if (!this.textures.exists(asset.key)) return false;
+      if (state.levelIndex === 6 && asset.key === "garden-bench-1") return false;
       if (state.levelIndex === 0 || state.levelIndex === 3 || state.levelIndex === 5 || state.levelIndex === 6) return true;
       if (state.levelIndex === 1 || state.levelIndex === 2) return asset.type === "bush" || asset.type === "lantern";
       return asset.type === "bush";
@@ -8659,11 +8658,11 @@ class PlayScene extends Phaser.Scene {
       0,
       0
     );
+    if (touchSpeed < HAY_BURST_MIN_TOUCH_SPEED * 0.55) return;
     if (now - (bush.getData("lastSoundAt") || -Infinity) >= HAY_BURST_COOLDOWN_MS * 0.65) {
       bush.setData("lastSoundAt", now);
       this.playLevelSfx(HAYSTACK_WALKIN_SFX_KEY, 0.32);
     }
-    if (touchSpeed < HAY_BURST_MIN_TOUCH_SPEED * 0.55) return;
     if (now - (bush.getData("lastBurstAt") || -Infinity) < HAY_BURST_COOLDOWN_MS) return;
     bush.setData("lastBurstAt", now);
     this.spawnGardenBurst(bush.x, bush.y - bush.displayHeight * 0.34);

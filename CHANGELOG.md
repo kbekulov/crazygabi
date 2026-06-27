@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.62.1
+
+- Removed bird references and bench props from Level 7.
+- Made garden bush sound effects play only while Gabi is moving through bushes.
+
 ## v0.62.0
 
 - Extended Levels 6 and 7 with longer garden routes, more platforms, enemies, coins, and light coverage.
