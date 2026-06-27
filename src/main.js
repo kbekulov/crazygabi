@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.2";
+const GAME_VERSION = "v0.62.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -363,7 +363,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260627-level-7-pathing";
+const ASSET_VERSION = "20260627-admin-settings";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -378,8 +378,11 @@ const DIFFICULTY_HARD = "hard";
 const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true,
-  dash: false
+  dash: false,
+  admin: false
 };
+const ADMIN_PASSWORD = "0000";
+const ADMIN_HEART_REGEN_DELAY_MS = 2000;
 const EASY_DIFFICULTY_KEEP_INTERVAL = 3;
 const DIFFICULTY_PROFILES = {
   [DIFFICULTY_EASY]: {
@@ -1893,6 +1896,8 @@ const hud = {
   equippedIcon: document.querySelector("#equipped-icon"),
   equippedIconSecondary: document.querySelector("#equipped-icon-secondary"),
   equippedName: document.querySelector("#equipped-name"),
+  equippedPanel: document.querySelector("#hud-equipped"),
+  equippedCopy: document.querySelector("#equipped-copy"),
   itemActionKey: document.querySelector("#item-action-key"),
   birdCooldown: document.querySelector("#bird-cooldown"),
   gameRoot: document.querySelector("#game"),
@@ -2037,7 +2042,7 @@ function setMessage(title, copy, button = "Start") {
   hud.message.hidden = !gameAssetsReady;
 }
 
-function updateHud() {
+function updateHud(options = {}) {
   hud.score.textContent = String(state.score).padStart(6, "0");
   hud.gems.textContent = String(state.gems).padStart(2, "0");
   hud.lives.replaceChildren();
@@ -2046,6 +2051,9 @@ function updateHud() {
     const heart = document.createElement("img");
     heart.src = `./public/assets/environment/life-heart.png?v=${ASSET_VERSION}`;
     heart.alt = "";
+    if (options.regeneratedHeart && index === state.lives - 1) {
+      heart.classList.add("is-regenerated");
+    }
     hud.lives.appendChild(heart);
   }
   hud.time.textContent = Number.isFinite(state.timeLeft) ? String(state.timeLeft).padStart(3, "0") : "∞";
@@ -2075,7 +2083,10 @@ function updateEquippedHud() {
     });
   }
   const [primary, secondary] = items;
-  const itemName = items.length ? items.map((item) => item.name).join(" + ") : "NONE";
+  const hasEquippedItems = items.length > 0;
+  const itemName = hasEquippedItems ? items.map((item) => item.name).join(" + ") : "";
+  if (hud.equippedPanel) hud.equippedPanel.hidden = !hasEquippedItems;
+  if (hud.equippedCopy) hud.equippedCopy.hidden = !hasEquippedItems;
   hud.equippedName.textContent = itemName;
   hud.equippedIcon.src = primary?.image || "";
   hud.equippedIcon.alt = primary?.name || "";
@@ -2238,7 +2249,8 @@ function getAudioSettings() {
     return {
       music: saved.music !== false,
       sfx: saved.sfx !== false,
-      dash: saved.dash === true
+      dash: saved.dash === true,
+      admin: saved.admin === true
     };
   } catch (_error) {
     return { ...DEFAULT_AUDIO_SETTINGS };
@@ -2266,8 +2278,16 @@ function isDashEnabled() {
   return state.audioSettings?.dash === true;
 }
 
+function isAdminEnabled() {
+  return state.audioSettings?.admin === true;
+}
+
 function setAudioSetting(key, enabled) {
   if (!Object.hasOwn(DEFAULT_AUDIO_SETTINGS, key)) return;
+  if (key === "admin" && enabled && !confirmAdminPassword()) {
+    updateAudioSettingsPanel();
+    return;
+  }
   state.audioSettings = {
     ...DEFAULT_AUDIO_SETTINGS,
     ...(state.audioSettings || {}),
@@ -2278,6 +2298,11 @@ function setAudioSetting(key, enabled) {
   const scene = game.scene.getScene("PlayScene");
   if (!scene?.scene?.isActive()) return;
   scene.applyAudioSettings();
+}
+
+function confirmAdminPassword() {
+  const value = window.prompt("Enter admin password");
+  return value === ADMIN_PASSWORD;
 }
 
 function setDifficultySetting(value) {
@@ -2927,6 +2952,7 @@ class PlayScene extends Phaser.Scene {
     this.suitcaseBoxProjectiles = [];
     this.damageInvulnerableUntil = 0;
     this.damageFlickerTween = null;
+    this.adminHeartRegenTimers = [];
     this.elevatorSignBubble = null;
     this.elevatorSignPromptShown = false;
     this.mysteriousMan = null;
@@ -11643,6 +11669,7 @@ class PlayScene extends Phaser.Scene {
     this.cancelDiveCameraZoom();
     this.cancelBossRevealCamera({ restoreCamera: false });
     this.clearFinalElevatorCredits();
+    this.clearAdminHeartRegenTimers();
     this.birdFlocks?.forEach((bird) => bird?.destroy?.());
     this.birdFlocks = [];
     this.birdFlockGroups = [];
@@ -12385,7 +12412,13 @@ class PlayScene extends Phaser.Scene {
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
     state.lives -= 1;
-    updateHud();
+    if (isAdminEnabled() && state.lives <= 0) {
+      state.lives = 1;
+      updateHud({ regeneratedHeart: true });
+    } else {
+      updateHud();
+      this.queueAdminHeartRegeneration();
+    }
     this.cameras.main.shake(shouldRespawn ? 180 : 120, shouldRespawn ? 0.012 : 0.006);
     if (state.lives <= 0) {
       this.showGameOverScreen({
@@ -12417,6 +12450,22 @@ class PlayScene extends Phaser.Scene {
       this.resetCatNpc();
       this.createDiveIndicatorBirds();
     }
+  }
+
+  queueAdminHeartRegeneration() {
+    if (!isAdminEnabled() || !state.running || state.lives >= MAX_LIVES) return;
+    const timer = this.time.delayedCall(ADMIN_HEART_REGEN_DELAY_MS, () => {
+      this.adminHeartRegenTimers = (this.adminHeartRegenTimers || []).filter((entry) => entry !== timer);
+      if (!isAdminEnabled() || !state.running || state.lives >= MAX_LIVES) return;
+      state.lives = Math.min(MAX_LIVES, state.lives + 1);
+      updateHud({ regeneratedHeart: true });
+    });
+    this.adminHeartRegenTimers.push(timer);
+  }
+
+  clearAdminHeartRegenTimers() {
+    this.adminHeartRegenTimers?.forEach((timer) => timer?.remove?.(false));
+    this.adminHeartRegenTimers = [];
   }
 
   flickerPlayerDamage() {
@@ -12762,8 +12811,8 @@ function updateAudioSettingsPanel() {
     .querySelectorAll(".settings-toggle-row")
     .forEach((row) => {
       const key = row.dataset.setting;
-      const enabled = key === "dash"
-        ? state.audioSettings?.dash === true
+      const enabled = key === "dash" || key === "admin"
+        ? state.audioSettings?.[key] === true
         : state.audioSettings?.[key] !== false;
       const button = row.querySelector(".settings-toggle");
       if (!button) return;
@@ -12773,13 +12822,23 @@ function updateAudioSettingsPanel() {
     });
 }
 
+function createSettingsToggleGrid(toggles) {
+  const grid = document.createElement("div");
+  grid.className = "settings-toggle-grid";
+  toggles.forEach((toggle) => {
+    grid.appendChild(createSettingsToggle(toggle.key, toggle.label, toggle.description));
+  });
+  return grid;
+}
+
 function showSettingsPanel() {
   showMenuPanel("Settings", "Choose which audio layers and movement assists should be active. Your preferences are saved in this browser.", "settings");
-  hud.menuPanelContent.append(
-    createSettingsToggle("music", "Music", "Menu themes, level soundtracks, music box tracks, and ambient loops."),
-    createSettingsToggle("sfx", "Sound Effects", "Pickups, attacks, dialogue sounds, impacts, and environmental effects."),
-    createSettingsToggle("dash", "Dash", "Double-tap left or right to dash when enabled.")
-  );
+  hud.menuPanelContent.appendChild(createSettingsToggleGrid([
+    { key: "music", label: "Music", description: "Menu themes, level soundtracks, music box tracks, and ambient loops." },
+    { key: "sfx", label: "Sound Effects", description: "Pickups, attacks, dialogue sounds, impacts, and environmental effects." },
+    { key: "dash", label: "Dash", description: "Double-tap left or right to dash when enabled." },
+    { key: "admin", label: "Admin", description: "Testing helper. Lost hearts regenerate after a short delay." }
+  ]));
   updateAudioSettingsPanel();
 }
 
@@ -12788,12 +12847,12 @@ function createCheatSettingsControls() {
   wrapper.className = "cheat-settings";
   const heading = document.createElement("h2");
   heading.textContent = "Settings";
-  wrapper.append(
-    heading,
-    createSettingsToggle("music", "Music", "Toggle all music layers."),
-    createSettingsToggle("sfx", "Sound Effects", "Toggle pickups, attacks, impacts, and ambience."),
-    createSettingsToggle("dash", "Dash", "Toggle double-tap dash movement.")
-  );
+  wrapper.append(heading, createSettingsToggleGrid([
+    { key: "music", label: "Music", description: "Toggle all music layers." },
+    { key: "sfx", label: "Sound Effects", description: "Toggle pickups, attacks, impacts, and ambience." },
+    { key: "dash", label: "Dash", description: "Toggle double-tap dash movement." },
+    { key: "admin", label: "Admin", description: "Password-protected heart regeneration for testing." }
+  ]));
   return wrapper;
 }
 

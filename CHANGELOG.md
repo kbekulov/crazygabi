@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.62.3
+
+- Added a password-protected Admin setting for delayed heart regeneration during testing.
+- Arranged settings toggles into two columns.
+- Hid the item HUD when Gabi is not carrying an item.
+- Matched flower attack cooldown icon sizing to the bird cooldown icon.
+
 ## v0.62.2
 
 - Added fair connector platforms to the extended Level 6 and Level 7 routes.

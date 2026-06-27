@@ -318,16 +318,11 @@ button:active {
 }
 
 .bird-cooldown[data-variant="flower"] .bird-cooldown-icon-empty {
-  background-image: url("../public/assets/environment/flower_cooldown_empty.png?v=20260625-flower-cooldown-assets");
+  background-image: url("../public/assets/environment/flower_cooldown_empty.png?v=20260627-admin-settings");
 }
 
 .bird-cooldown[data-variant="flower"] .bird-cooldown-icon-full {
-  background-image: url("../public/assets/environment/flower_cooldown_full.png?v=20260625-flower-cooldown-assets");
-}
-
-.bird-cooldown[data-variant="flower"] .bird-cooldown-icon {
-  width: clamp(32px, 3.4vw, 45px);
-  height: clamp(32px, 3.4vw, 45px);
+  background-image: url("../public/assets/environment/flower_cooldown_full.png?v=20260627-admin-settings");
 }
 
 .hud-keycap {
@@ -403,6 +398,10 @@ button:active {
 
 .hud-lives img + img {
   margin-left: clamp(-17px, -1.8vw, -9px);
+}
+
+.hud-lives img.is-regenerated {
+  animation: regeneratedHeartFade 520ms ease-out both;
 }
 
 .hud-counter img {
@@ -975,6 +974,13 @@ button:active {
   text-align: left;
 }
 
+.settings-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(16px, 3vw, 28px);
+  width: min(760px, 100%);
+}
+
 .settings-toggle-row:last-child {
   border-bottom: 0;
 }
@@ -1312,7 +1318,7 @@ button:active {
 }
 
 .cheat-settings {
-  width: min(520px, 92vw);
+  width: min(760px, 92vw);
   margin: 18px auto 0;
 }
 
@@ -1971,6 +1977,26 @@ button:active {
   }
 }
 
+@keyframes regeneratedHeartFade {
+  from {
+    opacity: 0;
+    transform: scale(0.55);
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+
+  45% {
+    opacity: 0.78;
+    transform: scale(1.24);
+    filter: drop-shadow(0 0 12px rgba(255, 245, 220, 0.92));
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 3px 0 #000);
+  }
+}
+
 .game-version {
   right: clamp(12px, 2vw, 22px);
   bottom: clamp(10px, 1.8vw, 18px);
@@ -2002,6 +2028,10 @@ button:active {
 
   .menu-panel-card {
     width: min(320px, 44vw);
+  }
+
+  .settings-toggle-grid {
+    grid-template-columns: 1fr;
   }
 }
 
