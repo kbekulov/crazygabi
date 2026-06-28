@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.3";
+const GAME_VERSION = "v0.62.4";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -103,8 +103,12 @@ const PLATFORM_Y_OFFSET = 22;
 const FENCE_Y_OFFSET = -40;
 const PLATFORM_DEPTH = 2;
 const FENCE_DEPTH = 1;
-const HANGING_CHAIN_DEPTH = FENCE_DEPTH + 0.28;
-const HANGING_CHAIN_ROOT_DEPTH = PLATFORM_DEPTH + 0.18;
+const FENCE_STREET_LIGHT_FRAME = 2;
+const FENCE_STREET_LIGHT_SOURCE_X = 677 - PLATFORM_FRAME_WIDTH * FENCE_STREET_LIGHT_FRAME;
+const FENCE_STREET_LIGHT_SOURCE_Y = 41;
+const FENCE_STREET_LIGHT_GLOW_DEPTH = FENCE_DEPTH + 0.18;
+const HANGING_CHAIN_DEPTH = PLATFORM_DEPTH + 0.34;
+const HANGING_CHAIN_ROOT_DEPTH = PLATFORM_DEPTH + 0.42;
 const HANGING_CHAIN_SCALE = 0.2;
 const HANGING_CHAIN_ROOT_PLATFORM_DROP = TILE * 0.58;
 const HANGING_CHAIN_ROOT_BOTTOM_ANCHOR = { x: 37, y: 65 };
@@ -127,6 +131,9 @@ const KEY_GARDEN_BURST_DEPTH = HAY_BURST_DEPTH + 0.08;
 const KEY_GARDEN_LIGHT_COUNT = [3, 6];
 const KEY_GARDEN_BUSH_FRONT_Y_OFFSET = 9;
 const KEY_GARDEN_PROP_BACK_DEPTH = 3.55;
+const KEY_GARDEN_EDGE_BIG_BUSH_SCALE = 0.36;
+const KEY_GARDEN_EDGE_BIG_BUSH_INSET = TILE * 1.6;
+const GARDEN_SOLITARY_REPEAT_DISTANCE = VIEW_WIDTH * 0.86;
 const GARDEN_BURST_PARTICLE_SCALE = 0.75;
 const KEY_REVEAL_PICKUP_DELAY = 2000;
 const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
@@ -363,7 +370,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260627-admin-settings";
+const ASSET_VERSION = "20260628-polish-pass";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2963,6 +2970,7 @@ class PlayScene extends Phaser.Scene {
     this.mysteriousManScriptAt = 0;
     this.catFollowPlayerAfterElevator = false;
     this.gardenStatueRunKeys = new Set();
+    this.gardenFeatureCooldowns = new Map();
     this.clearDomSpeechBubbles();
     this.domSpeechBubbles = [];
     setBossHealthVisible(false);
@@ -4750,10 +4758,10 @@ class PlayScene extends Phaser.Scene {
     const pngHead = rig.parts?.head;
     if (pngHead?.active) {
       const visualCenterX = pngHead.x + (0.5 - pngHead.originX) * pngHead.displayWidth;
-      const upperHeadY = pngHead.y + (0.36 - pngHead.originY) * pngHead.displayHeight;
+      const upperHeadY = pngHead.y + (0.2 - pngHead.originY) * pngHead.displayHeight;
       return {
-        x: camera.scrollX + rig.object.x + visualCenterX * containerScaleX,
-        y: camera.scrollY + rig.object.y + upperHeadY * containerScaleY
+        x: rig.object.x + visualCenterX * containerScaleX,
+        y: rig.object.y + upperHeadY * containerScaleY
       };
     }
     const scaleX = containerScaleX;
@@ -4761,13 +4769,13 @@ class PlayScene extends Phaser.Scene {
     const head = rig.parts?.head;
     if (head?.active) {
       return {
-        x: camera.scrollX + rig.object.x + head.x * scaleX,
-        y: camera.scrollY + rig.object.y + head.y * scaleY - 24
+        x: rig.object.x + head.x * scaleX,
+        y: rig.object.y + head.y * scaleY - 24
       };
     }
     return {
-      x: camera.scrollX + rig.object.x,
-      y: camera.scrollY + rig.object.y - 84
+      x: rig.object.x,
+      y: rig.object.y - 84
     };
   }
 
@@ -4912,6 +4920,7 @@ class PlayScene extends Phaser.Scene {
 
     const runs = this.findGardenPlatformRuns(point, keyRun);
     runs.forEach((run, clusterIndex) => {
+      if (state.levelIndex === 1 && clusterIndex > 0) return;
       const floorY = run.topY + 2;
       const runWidth = run.endX - run.startX;
       const centerNoise = this.wallPlacementNoise(Math.floor(floorY / TILE) + clusterIndex * 17, Math.floor(point.x / TILE) + 29);
@@ -5076,23 +5085,43 @@ class PlayScene extends Phaser.Scene {
 
   createGardenDecorSprite(asset, x, y, options = {}) {
     if (!asset || !this.textures.exists(asset.key)) return null;
-    if (asset.key.includes("statue")) {
+    let resolvedAsset = asset;
+    const run = this.getNearestPlatformRun?.(x, y);
+    if (resolvedAsset.type === "bush" && run) {
+      const nearEdge =
+        x - run.startX < KEY_GARDEN_EDGE_BIG_BUSH_INSET ||
+        run.endX - x < KEY_GARDEN_EDGE_BIG_BUSH_INSET;
+      if (nearEdge && resolvedAsset.scale >= KEY_GARDEN_EDGE_BIG_BUSH_SCALE) {
+        const smallestBush = KEY_GARDEN_ASSETS
+          .filter((candidate) => candidate.type === "bush" && this.textures.exists(candidate.key))
+          .sort((a, b) => a.scale - b.scale)[0];
+        if (smallestBush) resolvedAsset = smallestBush;
+      }
+    }
+    const isBulkGardenFeature = resolvedAsset.key === "garden-tree-3";
+    const isSolitaryGardenFeature = resolvedAsset.type === "feature" && !isBulkGardenFeature;
+    if (isSolitaryGardenFeature) {
+      this.gardenFeatureCooldowns = this.gardenFeatureCooldowns || new Map();
+      const lastX = this.gardenFeatureCooldowns.get(resolvedAsset.key);
+      if (Number.isFinite(lastX) && Math.abs(lastX - x) < GARDEN_SOLITARY_REPEAT_DISTANCE) return null;
+      this.gardenFeatureCooldowns.set(resolvedAsset.key, x);
+    }
+    if (resolvedAsset.key.includes("statue")) {
       this.gardenStatueRunKeys = this.gardenStatueRunKeys || new Set();
-      const run = this.getNearestPlatformRun?.(x, y);
       const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(x / (TILE * 8))}`;
       if (this.gardenStatueRunKeys.has(statueRunKey)) return null;
       this.gardenStatueRunKeys.add(statueRunKey);
     }
     const sprite = options.interactive
-      ? this.gardenBushes.create(x, y, asset.key)
-      : this.add.image(x, y, asset.key);
+      ? this.gardenBushes.create(x, y, resolvedAsset.key)
+      : this.add.image(x, y, resolvedAsset.key);
     const seed = options.seed ?? 0;
     const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(x / TILE) + seed + 23);
     const rawDepth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
-    const isGardenProp = asset.type === "lantern" || asset.type === "feature";
+    const isGardenProp = resolvedAsset.type === "lantern" || resolvedAsset.type === "feature";
     const depth = isGardenProp ? KEY_GARDEN_PROP_BACK_DEPTH : rawDepth;
-    const visualY = asset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
-    const scale = asset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
+    const visualY = resolvedAsset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
+    const scale = resolvedAsset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
     sprite.setOrigin(0.5, 1);
     sprite.setDepth(depth);
     sprite.setY(visualY);
@@ -5108,7 +5137,7 @@ class PlayScene extends Phaser.Scene {
     } else {
       this.platformVisuals?.add(sprite);
     }
-    if (asset.type === "lantern" && this.level.nightLevel) {
+    if (resolvedAsset.type === "lantern" && this.level.nightLevel) {
       this.createNightLanternLightForSprite(sprite, {
         radius: options.lightRadius,
         fringe: options.lightFringe,
@@ -5303,6 +5332,46 @@ class PlayScene extends Phaser.Scene {
     glow.setAlpha(0.46);
     this.nightLanternLights.push({ ...light, lantern, glow });
     return light;
+  }
+
+  createStreetLightGlow(x, y, index = 0) {
+    this.ensureNightLanternGlowTexture();
+    const glow = this.add.image(x, y, NIGHT_LANTERN_GLOW_KEY);
+    const radius = Phaser.Math.Linear(86, 124, this.wallPlacementNoise(index + 503, Math.floor(x / TILE) + 17));
+    glow.setScale(radius / 128);
+    glow.setDepth(FENCE_STREET_LIGHT_GLOW_DEPTH);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    glow.setAlpha(0.3);
+    this.tweens.add({
+      targets: glow,
+      alpha: 0.44,
+      scaleX: glow.scaleX * 1.08,
+      scaleY: glow.scaleY * 1.08,
+      duration: Phaser.Math.Between(1250, 1900),
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.inOut"
+    });
+    this.platformVisuals?.add(glow);
+    return glow;
+  }
+
+  createFenceStreetLightGlow({
+    x,
+    topY,
+    segmentWidth,
+    fenceTexture,
+    fenceFrame,
+    index = 0
+  } = {}) {
+    if (fenceTexture !== "platform-fence" || fenceFrame !== FENCE_STREET_LIGHT_FRAME) return null;
+    const lightX = x - segmentWidth / 2 + (FENCE_STREET_LIGHT_SOURCE_X / PLATFORM_FRAME_WIDTH) * segmentWidth;
+    const lightY =
+      topY +
+      FENCE_Y_OFFSET -
+      PLATFORM_SEGMENT_HEIGHT / 2 +
+      (FENCE_STREET_LIGHT_SOURCE_Y / PLATFORM_FRAME_HEIGHT) * PLATFORM_SEGMENT_HEIGHT;
+    return this.createStreetLightGlow(lightX, lightY, index);
   }
 
   ensureNightLanternGlowTexture() {
@@ -6362,6 +6431,40 @@ class PlayScene extends Phaser.Scene {
         this.addPlatformRun(start, columnIndex - start, rowIndex);
       }
     });
+
+    if (this.level.wallTiles) {
+      this.levelRows.forEach((row, rowIndex) => {
+        let columnIndex = 0;
+        while (columnIndex < row.length) {
+          const isWalkableWallTop =
+            row[columnIndex] === "w" &&
+            this.levelRows[rowIndex - 1]?.[columnIndex] !== "w" &&
+            this.levelRows[rowIndex - 1]?.[columnIndex] !== "#";
+          if (!isWalkableWallTop) {
+            columnIndex += 1;
+            continue;
+          }
+
+          const start = columnIndex;
+          while (
+            columnIndex < row.length &&
+            row[columnIndex] === "w" &&
+            this.levelRows[rowIndex - 1]?.[columnIndex] !== "w" &&
+            this.levelRows[rowIndex - 1]?.[columnIndex] !== "#"
+          ) {
+            columnIndex += 1;
+          }
+          this.platformRuns.push({
+            startX: start * TILE,
+            endX: columnIndex * TILE,
+            topY: rowIndex * TILE,
+            rowIndex,
+            wallCap: true
+          });
+          this.addPlatformRun(start, columnIndex - start, rowIndex);
+        }
+      });
+    }
   }
 
   snapSpawnPointToPlatform() {
@@ -6783,6 +6886,14 @@ class PlayScene extends Phaser.Scene {
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);
         this.platformVisuals.add(fence);
+        this.createFenceStreetLightGlow({
+          x,
+          topY,
+          segmentWidth,
+          fenceTexture,
+          fenceFrame,
+          index: rowIndex * 1000 + startColumn * 17 + index
+        });
       }
     }
   }
@@ -6820,6 +6931,15 @@ class PlayScene extends Phaser.Scene {
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);
         visuals.push({ sprite: fence, offsetX, offsetY: FENCE_Y_OFFSET - TILE / 2 });
+        const glow = this.createFenceStreetLightGlow({
+          x: centerX + offsetX,
+          topY,
+          segmentWidth,
+          fenceTexture,
+          fenceFrame,
+          index: rowIndex * 1000 + startColumn * 17 + index
+        });
+        if (glow) visuals.push({ sprite: glow, offsetX: glow.x - centerX, offsetY: glow.y - centerY });
       }
     }
 
@@ -6930,10 +7050,14 @@ class PlayScene extends Phaser.Scene {
     const x = elevator.body.x - Math.min(520, VIEW_WIDTH * 0.42);
     const startY = elevator.baseY - 250;
     const endY = elevator.topY + 310;
+    const elevatorSections = [
+      ...CREDITS_SECTIONS.filter(([category]) => category !== "Gameplay Testers"),
+      ...CREDITS_SECTIONS.filter(([category]) => category === "Gameplay Testers")
+    ];
     const availableHeight = Math.max(1, startY - endY);
-    const step = availableHeight / Math.max(1, CREDITS_SECTIONS.length - 1);
+    const step = availableHeight / Math.max(1, elevatorSections.length - 1);
 
-    this.finalElevatorCredits = CREDITS_SECTIONS.map(([category, names], index) => {
+    this.finalElevatorCredits = elevatorSections.map(([category, names], index) => {
       const y = startY - step * index;
       const container = this.add.container(x, y);
       const title = this.add.text(0, 0, category.toUpperCase(), {
@@ -8163,26 +8287,43 @@ class PlayScene extends Phaser.Scene {
 
   shouldUseGabiDiveJump(left = false, right = false) {
     if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
-    const direction = this.getDiveLaunchDirection(left, right);
+    const indicatorLaunch = this.getDiveIndicatorJumpLaunch();
+    const direction = this.getDiveLaunchDirection(left, right) || indicatorLaunch?.direction || 0;
     if (!direction) {
       this.pendingDiveLedge = null;
       return false;
     }
 
-    const diveLedge = this.getPlayerManualDiveLedge(direction);
+    const diveLedge = this.getPlayerManualDiveLedge(direction) || indicatorLaunch?.ledge || null;
     if (!this.isValidDiveLaunchDirection(diveLedge, direction)) {
       this.pendingDiveLedge = null;
       return false;
     }
 
     const currentSpeed = Math.abs(this.player.body.velocity.x || 0);
-    if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && left !== right) {
+    if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && (left !== right || indicatorLaunch)) {
       this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
     }
 
     this.setGabiFlip(direction < 0);
     this.pendingDiveLedge = diveLedge || null;
     return Boolean(diveLedge);
+  }
+
+  getDiveIndicatorJumpLaunch() {
+    if (!this.player?.body || !this.level.diveIndicators?.length) return null;
+    const indicator = this.level.diveIndicators.find((config) => {
+      const x = (config.column ?? 0) * TILE + TILE / 2;
+      const y = (config.row ?? 0) * TILE - (config.yOffset ?? 18);
+      return (
+        Math.abs(this.player.x - x) <= DIVE_INDICATOR_TRIGGER_DISTANCE * 0.72 &&
+        Math.abs(this.player.y - y) <= 180
+      );
+    });
+    if (!indicator) return null;
+    const direction = indicator.direction ?? 1;
+    const ledge = (this.level.manualDiveLedges || []).find((candidate) => this.matchesDiveLedgeSide(candidate, direction));
+    return ledge ? { direction, ledge } : null;
   }
 
   getDiveLaunchDirection(left = false, right = false) {
@@ -11913,7 +12054,7 @@ class PlayScene extends Phaser.Scene {
     const direction = this.player.flipX ? 1 : -1;
     const x = Phaser.Math.Clamp(this.player.x + direction * 118, (run?.startX ?? 0) + 44, (run?.endX ?? this.levelWidth) - 44);
     const y = (run ? run.topY - TILE / 2 : this.player.y) + (this.level.doorYOffset ?? -16);
-    const door = this.doors.create(x, y, "exit-door");
+    const door = this.doors.create(x, y + 8, "exit-door");
     door.setScale(DOOR_SCALE);
     door.setDepth(DOOR_DEPTH);
     door.refreshBody();
@@ -11923,11 +12064,11 @@ class PlayScene extends Phaser.Scene {
     this.tweens.add({
       targets: door,
       alpha: 1,
-      y: y - 8,
+      y,
       duration: 420,
       ease: "Sine.out",
       onComplete: () => {
-        if (door.active) door.y = y - 8;
+        if (door.active) door.y = y;
       }
     });
   }

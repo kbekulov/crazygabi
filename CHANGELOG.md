@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.62.4
+
+- Added glow to streetlight fence tiles.
+- Improved key-garden placement, bush sizing, and Level 2 lantern-area decoration rules.
+- Made Level 3 wall-supported walkable areas read as proper platforms.
+- Reordered Level 4 elevator credits so gameplay testers appear last at the top.
+- Tightened Level 5 dive triggering, boss reveal focus, and post-boss door placement.
+- Raised chain links above platform art while keeping them behind Gabi.
+
 ## v0.62.3
 
 - Added a password-protected Admin setting for delayed heart regeneration during testing.
