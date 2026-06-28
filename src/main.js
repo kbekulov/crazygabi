@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.5";
+const GAME_VERSION = "v0.62.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -134,7 +134,10 @@ const KEY_GARDEN_PROP_BACK_DEPTH = 3.55;
 const KEY_GARDEN_EDGE_BIG_BUSH_SCALE = 0.36;
 const KEY_GARDEN_EDGE_BIG_BUSH_INSET = TILE * 1.6;
 const GARDEN_SOLITARY_REPEAT_DISTANCE = VIEW_WIDTH * 0.86;
+const GARDEN_SOLITARY_CLASS_REPEAT_DISTANCE = VIEW_WIDTH * 1.05;
 const GARDEN_STATUE_PLATFORM_EDGE_INSET = TILE * 2.7;
+const GARDEN_DECOR_EDGE_PADDING = 8;
+const GARDEN_STATUE_HEADROOM_PADDING = TILE * 0.75;
 const GARDEN_BURST_PARTICLE_SCALE = 0.75;
 const KEY_REVEAL_PICKUP_DELAY = 2000;
 const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
@@ -377,7 +380,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-arched-bridge";
+const ASSET_VERSION = "20260628-garden-dive-focus";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -4724,6 +4727,9 @@ class PlayScene extends Phaser.Scene {
     camera.stopFollow();
 
     const keepCentered = () => {
+      const currentFocus = this.getDistantColossusHeadFocus();
+      focus.x = Phaser.Math.Linear(focus.x, currentFocus.x, 0.42);
+      focus.y = Phaser.Math.Linear(focus.y, currentFocus.y, 0.42);
       camera.setZoom(proxy.zoom);
       camera.centerOn(Math.round(focus.x), Math.round(focus.y));
     };
@@ -4765,28 +4771,65 @@ class PlayScene extends Phaser.Scene {
     this.bossRevealTweens.push(zoomIn);
   }
 
+  getWorldBoundsForObject(object) {
+    if (!object?.active || typeof object.getWorldTransformMatrix !== "function") return null;
+    const matrix = object.getWorldTransformMatrix();
+    const width = object.width || object.displayWidth || 1;
+    const height = object.height || object.displayHeight || 1;
+    const left = -width * (object.originX ?? 0.5);
+    const right = width * (1 - (object.originX ?? 0.5));
+    const top = -height * (object.originY ?? 0.5);
+    const bottom = height * (1 - (object.originY ?? 0.5));
+    const points = [
+      matrix.transformPoint(left, top),
+      matrix.transformPoint(right, top),
+      matrix.transformPoint(left, bottom),
+      matrix.transformPoint(right, bottom)
+    ];
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const bounds = {
+      left: Math.min(...xs),
+      right: Math.max(...xs),
+      top: Math.min(...ys),
+      bottom: Math.max(...ys)
+    };
+    bounds.width = bounds.right - bounds.left;
+    bounds.height = bounds.bottom - bounds.top;
+    bounds.centerX = bounds.left + bounds.width * 0.5;
+    bounds.centerY = bounds.top + bounds.height * 0.5;
+    return bounds;
+  }
+
   getDistantColossusHeadFocus() {
     const camera = this.cameras?.main;
     const rig = this.distantColossus;
     if (!camera || !rig?.object?.active) return { x: 0, y: 0 };
-    const containerScaleX = rig.object.scaleX || 1;
-    const containerScaleY = rig.object.scaleY || 1;
     const pngHead = rig.parts?.head;
     if (pngHead?.active) {
-      const visualCenterX = pngHead.x + (0.5 - pngHead.originX) * pngHead.displayWidth;
-      const upperHeadY = pngHead.y + (0.2 - pngHead.originY) * pngHead.displayHeight;
-      return {
-        x: rig.object.x + visualCenterX * containerScaleX,
-        y: rig.object.y + upperHeadY * containerScaleY
-      };
+      const bounds = this.getWorldBoundsForObject(pngHead);
+      if (bounds) {
+        return {
+          x: bounds.centerX,
+          y: bounds.top + bounds.height * 0.38
+        };
+      }
     }
-    const scaleX = containerScaleX;
-    const scaleY = containerScaleY;
-    const head = rig.parts?.head;
-    if (head?.active) {
+    const neck = rig.parts?.neck;
+    if (neck?.active) {
+      const bounds = this.getWorldBoundsForObject(neck);
+      if (bounds) {
+        return {
+          x: bounds.centerX,
+          y: bounds.top - bounds.height * 0.85
+        };
+      }
+    }
+    const containerBounds = this.getWorldBoundsForObject(rig.object);
+    if (containerBounds) {
       return {
-        x: rig.object.x + head.x * scaleX,
-        y: rig.object.y + head.y * scaleY - 24
+        x: containerBounds.centerX,
+        y: containerBounds.top + containerBounds.height * 0.18
       };
     }
     return {
@@ -5099,11 +5142,50 @@ class PlayScene extends Phaser.Scene {
     return pool[pool.length - 1];
   }
 
+  getGardenSolitaryClass(asset) {
+    if (!asset) return "";
+    if (asset.key.includes("fountain")) return "fountain";
+    if (asset.key.includes("statue")) return "statue";
+    if (asset.key.includes("arc")) return "arc";
+    if (asset.key.includes("bench")) return "bench";
+    if (asset.key.includes("flowerpot")) return "flowerpot";
+    return asset.key;
+  }
+
+  getGardenTextureSize(asset) {
+    if (!asset || !this.textures.exists(asset.key)) return { width: 1, height: 1 };
+    const source = this.textures.get(asset.key)?.getSourceImage?.();
+    return {
+      width: source?.width || 1,
+      height: source?.height || 1
+    };
+  }
+
+  getGardenDecorScale(asset, x, seed, scaleBoost = 1) {
+    return (
+      asset.scale *
+      scaleBoost *
+      Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83))
+    );
+  }
+
+  findNearestPlatformTopAbove(x, y) {
+    if (!this.platformRuns?.length) return null;
+    let nearest = null;
+    this.platformRuns.forEach((run) => {
+      if (x < run.startX - TILE * 0.35 || x > run.endX + TILE * 0.35) return;
+      if (run.topY >= y - TILE * 0.5) return;
+      if (nearest === null || run.topY > nearest) nearest = run.topY;
+    });
+    return nearest;
+  }
+
   createGardenDecorSprite(asset, x, y, options = {}) {
     if (!asset || !this.textures.exists(asset.key)) return null;
     let resolvedAsset = asset;
     const run = this.getNearestPlatformRun?.(x, y);
     let resolvedX = x;
+    const seed = options.seed ?? 0;
     if (resolvedAsset.type === "bush" && run) {
       const nearEdge =
         resolvedX - run.startX < KEY_GARDEN_EDGE_BIG_BUSH_INSET ||
@@ -5121,30 +5203,66 @@ class PlayScene extends Phaser.Scene {
       if (maxX <= minX) return null;
       resolvedX = Phaser.Math.Clamp(resolvedX, minX, maxX);
     }
+
+    let scale = this.getGardenDecorScale(resolvedAsset, resolvedX, seed, options.scaleBoost ?? 1);
+    let textureSize = this.getGardenTextureSize(resolvedAsset);
+    let displayWidth = textureSize.width * scale;
+    let displayHeight = textureSize.height * scale;
+    if (resolvedAsset.type === "bush" && run) {
+      const minX = run.startX + displayWidth * 0.5 + GARDEN_DECOR_EDGE_PADDING;
+      const maxX = run.endX - displayWidth * 0.5 - GARDEN_DECOR_EDGE_PADDING;
+      if (maxX <= minX) {
+        const smallestBush = KEY_GARDEN_ASSETS
+          .filter((candidate) => candidate.type === "bush" && this.textures.exists(candidate.key))
+          .sort((a, b) => a.scale - b.scale)[0];
+        if (!smallestBush || smallestBush.key === resolvedAsset.key) return null;
+        resolvedAsset = smallestBush;
+        scale = this.getGardenDecorScale(resolvedAsset, resolvedX, seed, options.scaleBoost ?? 1);
+        textureSize = this.getGardenTextureSize(resolvedAsset);
+        displayWidth = textureSize.width * scale;
+        displayHeight = textureSize.height * scale;
+      }
+      const finalMinX = run.startX + displayWidth * 0.5 + GARDEN_DECOR_EDGE_PADDING;
+      const finalMaxX = run.endX - displayWidth * 0.5 - GARDEN_DECOR_EDGE_PADDING;
+      if (finalMaxX <= finalMinX) return null;
+      resolvedX = Phaser.Math.Clamp(resolvedX, finalMinX, finalMaxX);
+      scale = this.getGardenDecorScale(resolvedAsset, resolvedX, seed, options.scaleBoost ?? 1);
+      textureSize = this.getGardenTextureSize(resolvedAsset);
+      displayHeight = textureSize.height * scale;
+    }
     const isBulkGardenFeature = resolvedAsset.key === "garden-tree-3";
     const isSolitaryGardenFeature = resolvedAsset.type === "feature" && !isBulkGardenFeature;
     if (isSolitaryGardenFeature) {
       this.gardenFeatureCooldowns = this.gardenFeatureCooldowns || new Map();
-      const lastX = this.gardenFeatureCooldowns.get(resolvedAsset.key);
-      if (Number.isFinite(lastX) && Math.abs(lastX - resolvedX) < GARDEN_SOLITARY_REPEAT_DISTANCE) return null;
-      this.gardenFeatureCooldowns.set(resolvedAsset.key, resolvedX);
+      const classKey = this.getGardenSolitaryClass(resolvedAsset);
+      const lastAssetX = this.gardenFeatureCooldowns.get(`asset:${resolvedAsset.key}`);
+      const lastClassX = this.gardenFeatureCooldowns.get(`class:${classKey}`);
+      if (Number.isFinite(lastAssetX) && Math.abs(lastAssetX - resolvedX) < GARDEN_SOLITARY_REPEAT_DISTANCE) return null;
+      if (
+        Number.isFinite(lastClassX) &&
+        Math.abs(lastClassX - resolvedX) < GARDEN_SOLITARY_CLASS_REPEAT_DISTANCE
+      ) {
+        return null;
+      }
+      this.gardenFeatureCooldowns.set(`asset:${resolvedAsset.key}`, resolvedX);
+      this.gardenFeatureCooldowns.set(`class:${classKey}`, resolvedX);
     }
     if (resolvedAsset.key.includes("statue")) {
       this.gardenStatueRunKeys = this.gardenStatueRunKeys || new Set();
       const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(resolvedX / (TILE * 8))}`;
       if (this.gardenStatueRunKeys.has(statueRunKey)) return null;
+      const nearestAbove = this.findNearestPlatformTopAbove(resolvedX, y);
+      if (nearestAbove !== null && y - displayHeight < nearestAbove + GARDEN_STATUE_HEADROOM_PADDING) return null;
       this.gardenStatueRunKeys.add(statueRunKey);
     }
-    const sprite = options.interactive
-      ? this.gardenBushes.create(resolvedX, y, resolvedAsset.key)
-      : this.add.image(resolvedX, y, resolvedAsset.key);
-    const seed = options.seed ?? 0;
     const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(resolvedX / TILE) + seed + 23);
     const rawDepth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
     const isGardenProp = resolvedAsset.type === "lantern" || resolvedAsset.type === "feature";
     const depth = isGardenProp ? KEY_GARDEN_PROP_BACK_DEPTH : rawDepth;
     const visualY = resolvedAsset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
-    const scale = resolvedAsset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(resolvedX / TILE) + 83));
+    const sprite = options.interactive
+      ? this.gardenBushes.create(resolvedX, y, resolvedAsset.key)
+      : this.add.image(resolvedX, y, resolvedAsset.key);
     sprite.setOrigin(0.5, 1);
     sprite.setDepth(depth);
     sprite.setY(visualY);
@@ -8372,7 +8490,10 @@ class PlayScene extends Phaser.Scene {
     }
 
     const currentSpeed = Math.abs(this.player.body.velocity.x || 0);
-    if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && (left !== right || indicatorLaunch)) {
+    if (indicatorLaunch) {
+      this.player.setAccelerationX(0);
+      this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
+    } else if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && left !== right) {
       this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
     }
 
@@ -8387,7 +8508,7 @@ class PlayScene extends Phaser.Scene {
       const x = (config.column ?? 0) * TILE + TILE / 2;
       const y = (config.row ?? 0) * TILE - (config.yOffset ?? 18);
       return (
-        Math.abs(this.player.x - x) <= DIVE_INDICATOR_TRIGGER_DISTANCE * 0.72 &&
+        Math.abs(this.player.x - x) <= DIVE_INDICATOR_TRIGGER_DISTANCE &&
         Math.abs(this.player.y - y) <= 180
       );
     });

@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.62.6
+
+- Kept garden bushes within platform bounds.
+- Reduced repeated garden feature crowding and skipped statues without enough overhead space.
+- Forced Level 5 dive-perch jumps to launch forward even from stillness.
+- Focused the Level 5 boss reveal zoom on the colossus head using live sprite bounds.
+
 ## v0.62.5
 
 - Replaced the Level 6 middle floating connector with an arched bridge.
