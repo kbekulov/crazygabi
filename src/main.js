@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.6";
+const GAME_VERSION = "v0.62.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -380,7 +380,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-garden-dive-focus";
+const ASSET_VERSION = "20260628-level6-bridge-garden-props";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -851,15 +851,6 @@ const LEVELS = [
     },
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
-    bridges: [
-      {
-        key: "bridge-1",
-        src: "./public/assets/environment/bridge_1.png",
-        startColumn: 207,
-        endColumn: 225,
-        endRow: 16
-      }
-    ],
     ambientLeaves: {
       sprite: "autumn-leaf-1",
       minDelay: 240,
@@ -930,6 +921,22 @@ const LEVELS = [
     parallax: "parallax-garden",
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
+    bridges: [
+      {
+        key: "bridge-1",
+        src: "./public/assets/environment/bridge_1.png",
+        startColumn: 23,
+        endColumn: 31,
+        endRow: 16
+      },
+      {
+        key: "bridge-1",
+        src: "./public/assets/environment/bridge_1.png",
+        startColumn: 207,
+        endColumn: 225,
+        endRow: 16
+      }
+    ],
     ambientLeaves: {
       sprite: "flower-petal",
       animation: "flower-petal-float",
@@ -5152,6 +5159,11 @@ class PlayScene extends Phaser.Scene {
     return asset.key;
   }
 
+  isGardenStructuredProp(asset) {
+    if (!asset) return false;
+    return asset.key.includes("statue") || asset.key.includes("bench") || asset.key.includes("fountain");
+  }
+
   getGardenTextureSize(asset) {
     if (!asset || !this.textures.exists(asset.key)) return { width: 1, height: 1 };
     const source = this.textures.get(asset.key)?.getSourceImage?.();
@@ -5180,6 +5192,11 @@ class PlayScene extends Phaser.Scene {
     return nearest;
   }
 
+  hasVerticalDecorationClearance(x, floorY, displayHeight, padding = GARDEN_STATUE_HEADROOM_PADDING) {
+    const nearestAbove = this.findNearestPlatformTopAbove(x, floorY);
+    return nearestAbove === null || floorY - displayHeight >= nearestAbove + padding;
+  }
+
   createGardenDecorSprite(asset, x, y, options = {}) {
     if (!asset || !this.textures.exists(asset.key)) return null;
     let resolvedAsset = asset;
@@ -5197,7 +5214,7 @@ class PlayScene extends Phaser.Scene {
         if (smallestBush) resolvedAsset = smallestBush;
       }
     }
-    if (resolvedAsset.key.includes("statue") && run) {
+    if (this.isGardenStructuredProp(resolvedAsset) && run) {
       const minX = run.startX + GARDEN_STATUE_PLATFORM_EDGE_INSET;
       const maxX = run.endX - GARDEN_STATUE_PLATFORM_EDGE_INSET;
       if (maxX <= minX) return null;
@@ -5247,12 +5264,12 @@ class PlayScene extends Phaser.Scene {
       this.gardenFeatureCooldowns.set(`asset:${resolvedAsset.key}`, resolvedX);
       this.gardenFeatureCooldowns.set(`class:${classKey}`, resolvedX);
     }
-    if (resolvedAsset.key.includes("statue")) {
+    if (this.isGardenStructuredProp(resolvedAsset)) {
       this.gardenStatueRunKeys = this.gardenStatueRunKeys || new Set();
-      const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(resolvedX / (TILE * 8))}`;
+      const structuredClass = this.getGardenSolitaryClass(resolvedAsset);
+      const statueRunKey = `${structuredClass}:${run?.id || `${Math.round(y / TILE)}:${Math.round(resolvedX / (TILE * 8))}`}`;
       if (this.gardenStatueRunKeys.has(statueRunKey)) return null;
-      const nearestAbove = this.findNearestPlatformTopAbove(resolvedX, y);
-      if (nearestAbove !== null && y - displayHeight < nearestAbove + GARDEN_STATUE_HEADROOM_PADDING) return null;
+      if (!this.hasVerticalDecorationClearance(resolvedX, y, displayHeight)) return null;
       this.gardenStatueRunKeys.add(statueRunKey);
     }
     const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(resolvedX / TILE) + seed + 23);
@@ -5513,6 +5530,16 @@ class PlayScene extends Phaser.Scene {
       PLATFORM_SEGMENT_HEIGHT / 2 +
       (FENCE_STREET_LIGHT_SOURCE_Y / PLATFORM_FRAME_HEIGHT) * PLATFORM_SEGMENT_HEIGHT;
     return this.createStreetLightGlow(lightX, lightY, index);
+  }
+
+  canPlaceFenceStreetLight({ x, topY, segmentWidth, runStart, runEnd } = {}) {
+    if (!Number.isFinite(x) || !Number.isFinite(topY)) return false;
+    if (Number.isFinite(runStart) && Number.isFinite(runEnd)) {
+      const inset = TILE * 1.5;
+      if (x - segmentWidth * 0.5 < runStart + inset || x + segmentWidth * 0.5 > runEnd - inset) return false;
+    }
+    const streetLightHeight = Math.abs(FENCE_Y_OFFSET) + PLATFORM_SEGMENT_HEIGHT * 0.62;
+    return this.hasVerticalDecorationClearance(x, topY, streetLightHeight, TILE * 0.55);
   }
 
   ensureNightLanternGlowTexture() {
@@ -7070,7 +7097,15 @@ class PlayScene extends Phaser.Scene {
 
       if (Phaser.Math.Between(0, 100) < 68) {
         const fenceRoll = Phaser.Math.Between(0, 100);
-        const fenceFrame = fenceRoll < 6 ? 2 : Phaser.Math.Between(0, 1);
+        const wantsStreetLight = fenceRoll < 6;
+        const canPlaceStreetLight = this.canPlaceFenceStreetLight({
+          x,
+          topY,
+          segmentWidth,
+          runStart: worldStart,
+          runEnd: worldStart + worldWidth
+        });
+        const fenceFrame = wantsStreetLight && canPlaceStreetLight ? 2 : Phaser.Math.Between(0, 1);
         const fence = this.add.image(x, topY + FENCE_Y_OFFSET, fenceTexture, fenceFrame);
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);
@@ -7115,7 +7150,15 @@ class PlayScene extends Phaser.Scene {
       visuals.push({ sprite: platform, offsetX, offsetY: PLATFORM_Y_OFFSET - TILE / 2 });
 
       if (Phaser.Math.Between(0, 100) < 54) {
-        const fenceFrame = Phaser.Math.Between(0, 100) < 5 ? 2 : Phaser.Math.Between(0, 1);
+        const wantsStreetLight = Phaser.Math.Between(0, 100) < 5;
+        const canPlaceStreetLight = this.canPlaceFenceStreetLight({
+          x: centerX + offsetX,
+          topY,
+          segmentWidth,
+          runStart: worldStart,
+          runEnd: worldStart + worldWidth
+        });
+        const fenceFrame = wantsStreetLight && canPlaceStreetLight ? 2 : Phaser.Math.Between(0, 1);
         const fence = this.add.image(centerX + offsetX, topY + FENCE_Y_OFFSET, fenceTexture, fenceFrame);
         fence.setDisplaySize(segmentWidth, PLATFORM_SEGMENT_HEIGHT);
         fence.setDepth(FENCE_DEPTH);

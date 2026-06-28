@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.7
+
+- Moved the arched bridge setup into Level 6 and added an early connector bridge.
+- Applied structured garden prop spacing and overhead clearance to statues, benches, and fountains.
+- Prevented platform-fence streetlights from appearing in cramped edge or low-ceiling spots.
+
 ## v0.62.6
 
 - Kept garden bushes within platform bounds.
