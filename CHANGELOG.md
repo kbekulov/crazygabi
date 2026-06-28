@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.62.10
+
+- Reworked Level 6 bridge grounding so Gabi can run onto the bridge without a bump.
+- Added flat bridge lead-ins and a stronger continuous arched surface to prevent falling through.
+
 ## v0.62.9
 
 - Kept Level 6 to a single arched bridge in the intended middle section.
