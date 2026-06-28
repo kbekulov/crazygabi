@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.62.12
+
+- Replaced Level 6 bridge grounding with a dedicated traversal state to stop vertical flickering.
+- Forced rightward launch input when jumping neutrally from the Level 5 dive trigger.
+
 ## v0.62.11
 
 - Rebuilt the Level 6 bridge as a sensor-style arched surface instead of a hidden flat collider.

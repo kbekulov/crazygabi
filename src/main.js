@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.11";
+const GAME_VERSION = "v0.62.12";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -165,8 +165,10 @@ const ARCH_BRIDGE_DEPTH = 5.35;
 const ARCH_BRIDGE_STAND_BOTTOM_RATIO = 140 / 220;
 const ARCH_BRIDGE_STAND_TOP_RATIO = 84 / 220;
 const ARCH_BRIDGE_SUPPORT_MARGIN = 34;
-const ARCH_BRIDGE_SUPPORT_SNAP = 128;
+const ARCH_BRIDGE_ENTER_SNAP = 18;
+const ARCH_BRIDGE_LANDING_SNAP = 42;
 const ARCH_BRIDGE_ENTRY_FLAT_LENGTH = TILE * 1.35;
+const DIVE_FORCED_INPUT_MS = 2400;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
@@ -380,7 +382,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-bridge-sensor-surface";
+const ASSET_VERSION = "20260628-bridge-traverse-state";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2885,6 +2887,7 @@ class PlayScene extends Phaser.Scene {
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
     this.archedBridges = [];
+    this.bridgeRide = null;
     this.finalElevator = null;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
@@ -2943,6 +2946,8 @@ class PlayScene extends Phaser.Scene {
     this.diveCameraZoomProxy = null;
     this.diveCameraFocus = null;
     this.pendingDiveLedge = null;
+    this.forcedDiveDirection = 0;
+    this.forcedDiveDirectionUntil = 0;
     this.scriptedHaystackDive = null;
     this.heartDropsCreated = 0;
     this.basketPromptActive = false;
@@ -6700,46 +6705,66 @@ class PlayScene extends Phaser.Scene {
     return bridge.endStandingY - rise;
   }
 
-  applyPlayerBridgeSurface() {
-    if (!this.player?.body?.enable || !this.archedBridges?.length || this.chainClimb) {
-      this.player?.setData?.("bridgeGrounded", false);
-      return false;
+  findBridgeUnderPlayer() {
+    if (!this.player?.body || !this.archedBridges?.length) return null;
+    const centerX = this.player.body.x + this.player.body.width * 0.5;
+    return this.archedBridges.find(
+      (bridge) =>
+        centerX >= bridge.startX - ARCH_BRIDGE_SUPPORT_MARGIN &&
+        centerX <= bridge.endX + ARCH_BRIDGE_SUPPORT_MARGIN
+    ) || null;
+  }
+
+  stopPlayerBridgeRide({ keepGravity = true } = {}) {
+    if (!this.bridgeRide || !this.player?.body) {
+      this.bridgeRide = null;
+      return;
     }
+    this.bridgeRide = null;
+    if (keepGravity) this.player.body.allowGravity = true;
+    this.player.setData("bridgeGrounded", false);
+  }
+
+  placePlayerOnBridge(bridge) {
+    if (!this.player?.body || !bridge) return false;
     const body = this.player.body;
     const centerX = body.x + body.width * 0.5;
-    const bridge = this.archedBridges.find(
-      (candidate) =>
-        centerX >= candidate.startX - ARCH_BRIDGE_SUPPORT_MARGIN &&
-        centerX <= candidate.endX + ARCH_BRIDGE_SUPPORT_MARGIN
-    );
-    if (!bridge) {
-      this.player.setData("bridgeGrounded", false);
-      return false;
-    }
-
     const surfaceY = this.getBridgeSurfaceY(bridge, centerX);
-    const bottom = body.y + body.height;
-    const previousBottom = this.player.getData("bridgeLastBottom") ?? bottom;
-    const wasBridgeGrounded = Boolean(this.player.getData("bridgeGrounded"));
-    const movingDownOrFlat = body.velocity.y >= -220;
-    const crossingSurface = previousBottom <= surfaceY + ARCH_BRIDGE_SUPPORT_MARGIN && bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP;
-    const closeEnough =
-      bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP &&
-      bottom <= surfaceY + ARCH_BRIDGE_SUPPORT_SNAP * 0.7;
-    const enteringFromPlatform = body.blocked.down || body.touching.down;
-    if (!movingDownOrFlat || (!wasBridgeGrounded && !crossingSurface && !closeEnough && !enteringFromPlatform)) {
-      this.player.setData("bridgeGrounded", false);
-      this.player.setData("bridgeLastBottom", bottom);
-      return false;
-    }
-
-    this.player.y += surfaceY - bottom;
+    this.player.y += surfaceY - (body.y + body.height);
     body.updateFromGameObject();
     body.setVelocityY(0);
+    body.allowGravity = false;
     this.player.setData("bridgeGrounded", true);
     this.player.setData("bridgeSurfaceY", surfaceY);
-    this.player.setData("bridgeLastBottom", body.y + body.height);
     return true;
+  }
+
+  updatePlayerBridgeRide() {
+    if (!this.player?.body?.enable || !this.archedBridges?.length || this.chainClimb || this.gabiDash?.active) {
+      this.stopPlayerBridgeRide();
+      return false;
+    }
+
+    const body = this.player.body;
+    const bridge = this.findBridgeUnderPlayer();
+    if (this.bridgeRide) {
+      if (!bridge || bridge.id !== this.bridgeRide.id || body.velocity.y < -40) {
+        this.stopPlayerBridgeRide();
+        return false;
+      }
+      return this.placePlayerOnBridge(bridge);
+    }
+
+    if (!bridge || body.velocity.y < -60) return false;
+    const surfaceY = this.getBridgeSurfaceY(bridge, body.x + body.width * 0.5);
+    const bottom = body.y + body.height;
+    const enteringFromPlatform = body.blocked.down || body.touching.down;
+    const fallingOntoBridge = body.velocity.y >= 0 && bottom >= surfaceY - ARCH_BRIDGE_LANDING_SNAP && bottom <= surfaceY + ARCH_BRIDGE_ENTER_SNAP;
+    const walkingOntoBridge = enteringFromPlatform && Math.abs(bottom - surfaceY) <= ARCH_BRIDGE_ENTER_SNAP;
+    if (!fallingOntoBridge && !walkingOntoBridge) return false;
+
+    this.bridgeRide = { id: bridge.id };
+    return this.placePlayerOnBridge(bridge);
   }
 
   createHangingChains() {
@@ -8105,8 +8130,15 @@ class PlayScene extends Phaser.Scene {
     }
 
     const mobileDirection = this.getMobileMoveDirection();
-    const left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
-    const right = this.cursors.right.isDown || this.keysInput.right.isDown || mobileDirection > 0;
+    let left = this.cursors.left.isDown || this.keysInput.left.isDown || mobileDirection < 0;
+    let right = this.cursors.right.isDown || this.keysInput.right.isDown || mobileDirection > 0;
+    if (this.forcedDiveDirection && time < this.forcedDiveDirectionUntil) {
+      left = this.forcedDiveDirection < 0;
+      right = this.forcedDiveDirection > 0;
+    } else if (this.forcedDiveDirection && time >= this.forcedDiveDirectionUntil) {
+      this.forcedDiveDirection = 0;
+      this.forcedDiveDirectionUntil = 0;
+    }
     const leftPressed = Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.keysInput.left);
     const rightPressed = Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.keysInput.right);
     const jumpSpace = Phaser.Input.Keyboard.JustDown(this.keysInput.jump);
@@ -8118,7 +8150,7 @@ class PlayScene extends Phaser.Scene {
     const climbDown = this.cursors.down.isDown || this.keysInput.down.isDown;
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
     const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack) || this.consumeMobileBirdAttack();
-    const bridgeGrounded = this.applyPlayerBridgeSurface();
+    const bridgeGrounded = this.updatePlayerBridgeRide();
     const onFloor = this.player.body.blocked.down || bridgeGrounded;
 
     if (this.isItemPromptActive()) {
@@ -8171,8 +8203,9 @@ class PlayScene extends Phaser.Scene {
     if (jump && this.isGliding) {
       this.cancelGlideToFall();
     } else if (jump && onFloor) {
+      if (this.bridgeRide) this.stopPlayerBridgeRide();
       this.player.setVelocityY(-510);
-      if (this.shouldUseGabiDiveJump(left, right)) this.startGabiDive(time);
+      if (this.shouldUseGabiDiveJump(left, right, time)) this.startGabiDive(time);
     } else if (
       jump &&
       state.hasDoubleJump &&
@@ -8564,7 +8597,7 @@ class PlayScene extends Phaser.Scene {
       })[0] || null;
   }
 
-  shouldUseGabiDiveJump(left = false, right = false) {
+  shouldUseGabiDiveJump(left = false, right = false, time = 0) {
     if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
     const indicatorLaunch = this.getDiveIndicatorJumpLaunch();
     const direction = this.getDiveLaunchDirection(left, right) || indicatorLaunch?.direction || 0;
@@ -8581,6 +8614,7 @@ class PlayScene extends Phaser.Scene {
 
     const currentSpeed = Math.abs(this.player.body.velocity.x || 0);
     if (indicatorLaunch) {
+      if (left === right) this.startForcedDiveDirection(direction, time);
       this.player.setAccelerationX(0);
       this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
     } else if (currentSpeed < DIVE_JUMP_MIN_HORIZONTAL_SPEED && left !== right) {
@@ -8590,6 +8624,12 @@ class PlayScene extends Phaser.Scene {
     this.setGabiFlip(direction < 0);
     this.pendingDiveLedge = diveLedge || null;
     return Boolean(diveLedge);
+  }
+
+  startForcedDiveDirection(direction = 1, time = 0) {
+    if (!direction) return;
+    this.forcedDiveDirection = direction > 0 ? 1 : -1;
+    this.forcedDiveDirectionUntil = time + DIVE_FORCED_INPUT_MS;
   }
 
   getDiveIndicatorJumpLaunch() {
@@ -8999,6 +9039,8 @@ class PlayScene extends Phaser.Scene {
     this.gabiDiveUntil = 0;
     this.gabiDiveAngleDirection = 0;
     this.pendingDiveLedge = null;
+    this.forcedDiveDirection = 0;
+    this.forcedDiveDirectionUntil = 0;
     this.stopDiveWindSfx();
     this.clearDiveWindLines();
     this.diveWindStartedAt = 0;
@@ -9517,6 +9559,7 @@ class PlayScene extends Phaser.Scene {
   resetPlayerToSpawn() {
     this.stopScriptedHaystackDive();
     this.stopChainClimb();
+    this.stopPlayerBridgeRide();
     this.chainGrabDisabledUntil = 0;
     this.chainGrabDisabledChain = null;
     this.damageFlickerTween?.remove?.();
@@ -12834,6 +12877,7 @@ class PlayScene extends Phaser.Scene {
     this.damageInvulnerableUntil = now + DAMAGE_INVULNERABLE_MS;
     this.cancelBirdAttackCameraZoom();
     this.cancelDiveCameraZoom();
+    this.stopPlayerBridgeRide();
     state.lives -= 1;
     if (isAdminEnabled() && state.lives <= 0) {
       state.lives = 1;
