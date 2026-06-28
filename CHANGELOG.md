@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.63.0
+
+- Added a temporary Level 0 mechanics test route for bridge traversal.
+- Added a testing-only level select section gated by a development flag.
+- Kept campaign progression from entering hidden test levels.
+
 ## v0.62.12
 
 - Replaced Level 6 bridge grounding with a dedicated traversal state to stop vertical flickering.

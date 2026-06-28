@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.12";
+const GAME_VERSION = "v0.63.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -382,7 +382,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-bridge-traverse-state";
+const ASSET_VERSION = "20260628-level0-bridge-test";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -492,7 +492,9 @@ const LEVEL_FOUR_WIDTH_TILES = 224;
 const LEVEL_FIVE_WIDTH_TILES = 720;
 const LEVEL_SIX_WIDTH_TILES = 420;
 const LEVEL_SEVEN_WIDTH_TILES = 520;
+const LEVEL_ZERO_WIDTH_TILES = 48;
 const LEVEL_HEIGHT_TILES = 18;
+const TEST_LEVELS_ENABLED = true;
 const LEVELS = [
   {
     name: "Level 1",
@@ -1088,6 +1090,35 @@ const LEVELS = [
     introTitle: "Level 7",
     introCopy: "Carry the lantern through the moonlit inner garden, find the hidden key, and leave before the blue dark closes around you.",
     questTasks: ["flower", "lantern", "wing", "petal", "key", "coins", "enemies"]
+  },
+  {
+    name: "Level 0",
+    rows: createLevelZero(),
+    timeLimit: null,
+    soundtrack: null,
+    enemySprite: "robot-lv1",
+    actionAbility: null,
+    startSpeech: "",
+    showStartingHouse: false,
+    showWater: false,
+    doorYOffset: -30,
+    requiresKeyForDoor: false,
+    parallax: "parallax-garden",
+    platformTexture: "platform-strip",
+    fenceTexture: "platform-fence",
+    bridges: [
+      {
+        key: "bridge-1",
+        src: "./public/assets/environment/bridge_1.png",
+        startColumn: 9,
+        endColumn: 28,
+        endRow: 16
+      }
+    ],
+    introTitle: "Level 0",
+    introCopy: "Bridge mechanics test. Hold right and reach the door.",
+    questTasks: [],
+    testLevel: true
   }
 ];
 
@@ -1101,6 +1132,15 @@ function createLevelRows(height = LEVEL_HEIGHT_TILES, width = LEVEL_WIDTH_TILES)
   };
 
   return { rows, put, run };
+}
+
+function createLevelZero() {
+  const { rows, put, run } = createLevelRows(18, LEVEL_ZERO_WIDTH_TILES);
+  run(16, 0, 11);
+  run(16, 26, 15);
+  put(15, 4, "p");
+  put(15, 38, "d");
+  return rows;
 }
 
 function createLevelOne() {
@@ -6725,21 +6765,30 @@ class PlayScene extends Phaser.Scene {
     this.player.setData("bridgeGrounded", false);
   }
 
-  placePlayerOnBridge(bridge) {
+  placePlayerOnBridge(bridge, { delta = 0, inputDirection = 0 } = {}) {
     if (!this.player?.body || !bridge) return false;
     const body = this.player.body;
+    const movement = inputDirection * GABI_DASH_SPEED * 0.34 * (delta / 1000);
+    if (movement) {
+      this.player.x += movement;
+      body.updateFromGameObject();
+    }
     const centerX = body.x + body.width * 0.5;
+    if (centerX < bridge.startX - ARCH_BRIDGE_SUPPORT_MARGIN || centerX > bridge.endX + ARCH_BRIDGE_SUPPORT_MARGIN) {
+      this.stopPlayerBridgeRide();
+      return false;
+    }
     const surfaceY = this.getBridgeSurfaceY(bridge, centerX);
     this.player.y += surfaceY - (body.y + body.height);
     body.updateFromGameObject();
-    body.setVelocityY(0);
+    body.setVelocity(inputDirection * GABI_DASH_SPEED * 0.34, 0);
     body.allowGravity = false;
     this.player.setData("bridgeGrounded", true);
     this.player.setData("bridgeSurfaceY", surfaceY);
     return true;
   }
 
-  updatePlayerBridgeRide() {
+  updatePlayerBridgeRide({ delta = 0, left = false, right = false, jump = false } = {}) {
     if (!this.player?.body?.enable || !this.archedBridges?.length || this.chainClimb || this.gabiDash?.active) {
       this.stopPlayerBridgeRide();
       return false;
@@ -6747,12 +6796,13 @@ class PlayScene extends Phaser.Scene {
 
     const body = this.player.body;
     const bridge = this.findBridgeUnderPlayer();
+    const inputDirection = left === right ? 0 : right ? 1 : -1;
     if (this.bridgeRide) {
-      if (!bridge || bridge.id !== this.bridgeRide.id || body.velocity.y < -40) {
+      if (jump || !bridge || bridge.id !== this.bridgeRide.id || body.velocity.y < -40) {
         this.stopPlayerBridgeRide();
         return false;
       }
-      return this.placePlayerOnBridge(bridge);
+      return this.placePlayerOnBridge(bridge, { delta, inputDirection });
     }
 
     if (!bridge || body.velocity.y < -60) return false;
@@ -6764,7 +6814,7 @@ class PlayScene extends Phaser.Scene {
     if (!fallingOntoBridge && !walkingOntoBridge) return false;
 
     this.bridgeRide = { id: bridge.id };
-    return this.placePlayerOnBridge(bridge);
+    return this.placePlayerOnBridge(bridge, { delta, inputDirection });
   }
 
   createHangingChains() {
@@ -8150,7 +8200,7 @@ class PlayScene extends Phaser.Scene {
     const climbDown = this.cursors.down.isDown || this.keysInput.down.isDown;
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
     const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack) || this.consumeMobileBirdAttack();
-    const bridgeGrounded = this.updatePlayerBridgeRide();
+    const bridgeGrounded = this.updatePlayerBridgeRide({ delta, left, right, jump });
     const onFloor = this.player.body.blocked.down || bridgeGrounded;
 
     if (this.isItemPromptActive()) {
@@ -8176,7 +8226,10 @@ class PlayScene extends Phaser.Scene {
       return;
     }
 
-    if (left) {
+    if (bridgeGrounded) {
+      this.player.setAccelerationX(0);
+      if (left !== right) this.setGabiFlip(left);
+    } else if (left) {
       this.player.setAccelerationX(-1250);
       this.setGabiFlip(true);
     } else if (right) {
@@ -12969,8 +13022,9 @@ class PlayScene extends Phaser.Scene {
     awardScore(state.levelGems === state.totalGems ? 1000 : 350);
     if (Number.isFinite(state.timeLeft)) awardScore(state.timeLeft * 10);
     updateHud();
-    if (state.levelIndex < LEVELS.length - 1) {
-      this.advanceToNextLevel();
+    const nextLevelIndex = this.getNextCampaignLevelIndex();
+    if (nextLevelIndex !== null) {
+      this.advanceToNextLevel(nextLevelIndex);
       return;
     }
 
@@ -12980,8 +13034,16 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
-  advanceToNextLevel() {
-    this.requestLevelStart(state.levelIndex + 1, { resetScore: false });
+  getNextCampaignLevelIndex() {
+    for (let index = state.levelIndex + 1; index < LEVELS.length; index += 1) {
+      if (!LEVELS[index]?.testLevel) return index;
+    }
+    return null;
+  }
+
+  advanceToNextLevel(levelIndex = this.getNextCampaignLevelIndex()) {
+    if (levelIndex === null) return;
+    this.requestLevelStart(levelIndex, { resetScore: false });
   }
 
   showGameOverScreen({ copy } = {}) {
@@ -13194,6 +13256,16 @@ const LEVEL_EPISODES = [
   { title: "Episode 2", start: 5, end: 9 }
 ];
 
+function appendLevelButtons(levels, target) {
+  levels.forEach(({ level, index }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = level.name;
+    button.addEventListener("click", () => requestSelectedLevel(index));
+    target.appendChild(button);
+  });
+}
+
 function appendLevelEpisodeColumns(target) {
   const episodesWrapper = document.createElement("div");
   episodesWrapper.className = "level-select-episodes";
@@ -13201,7 +13273,7 @@ function appendLevelEpisodeColumns(target) {
   LEVEL_EPISODES.forEach((episode) => {
     const availableLevels = LEVELS
       .map((level, index) => ({ level, index }))
-      .filter(({ index }) => index >= episode.start && index <= episode.end);
+      .filter(({ level, index }) => !level.testLevel && index >= episode.start && index <= episode.end);
     if (!availableLevels.length) return;
     const section = document.createElement("section");
     section.className = "level-select-episode";
@@ -13209,16 +13281,27 @@ function appendLevelEpisodeColumns(target) {
     heading.textContent = episode.title;
     const levels = document.createElement("div");
     levels.className = "level-select-buttons";
-    availableLevels.forEach(({ level, index }) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = level.name;
-      button.addEventListener("click", () => requestSelectedLevel(index));
-      levels.appendChild(button);
-    });
+    appendLevelButtons(availableLevels, levels);
     section.append(heading, levels);
     episodesWrapper.appendChild(section);
   });
+
+  if (TEST_LEVELS_ENABLED) {
+    const testLevels = LEVELS
+      .map((level, index) => ({ level, index }))
+      .filter(({ level }) => level.testLevel);
+    if (testLevels.length) {
+      const section = document.createElement("section");
+      section.className = "level-select-episode level-select-test-episode";
+      const heading = document.createElement("h3");
+      heading.textContent = "Testing";
+      const levels = document.createElement("div");
+      levels.className = "level-select-buttons";
+      appendLevelButtons(testLevels, levels);
+      section.append(heading, levels);
+      episodesWrapper.appendChild(section);
+    }
+  }
 
   target.appendChild(episodesWrapper);
 }
