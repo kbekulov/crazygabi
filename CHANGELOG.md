@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.3
+
+- Reworked the in-game 0/Esc menu into level and settings columns so it fits better on screen.
+
 ## v0.63.2
 
 - Fixed bridge landings after jumps so Gabi returns to the walking path instead of the railings.

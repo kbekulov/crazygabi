@@ -1299,16 +1299,38 @@ button:active {
   font-size: clamp(2.1rem, 7vw, 4.6rem);
 }
 
+.cheat-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(320px, 1.05fr);
+  gap: clamp(18px, 3.2vw, 36px);
+  align-items: start;
+  width: min(980px, 94vw);
+}
+
+.cheat-column {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+}
+
+.cheat-column h2 {
+  margin: 0;
+  color: #fff200;
+  font-size: clamp(1rem, 2.2vw, 1.35rem);
+  line-height: 1;
+  text-shadow: 2px 2px 0 #000;
+}
+
 .cheat-levels {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 190px));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
-  justify-content: center;
 }
 
 .cheat-levels .level-select-episodes,
 .cheat-return-menu {
-  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .cheat-levels button,
@@ -1318,12 +1340,12 @@ button:active {
 }
 
 .cheat-settings {
-  width: min(760px, 92vw);
-  margin: 18px auto 0;
+  width: 100%;
+  margin: 0;
 }
 
 .cheat-settings h2 {
-  margin: 0 0 4px;
+  margin: 0;
   color: #fff200;
   font-size: clamp(1rem, 3vw, 1.35rem);
   line-height: 1;
@@ -1496,6 +1518,17 @@ button:active {
 
   .cheat-levels {
     grid-template-columns: minmax(0, 220px);
+  }
+
+  .cheat-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    width: min(520px, 94vw);
+  }
+
+  .cheat-settings .settings-toggle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
   }
 
   .story-panels {
@@ -2033,6 +2066,15 @@ button:active {
   .settings-toggle-grid {
     grid-template-columns: 1fr;
   }
+
+  .cheat-body {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(520px, 92vw);
+  }
+
+  .cheat-settings .settings-toggle-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) and (orientation: portrait), (hover: none) and (pointer: coarse) and (orientation: portrait) {
@@ -2062,5 +2104,10 @@ button:active {
   .menu-panel-card {
     width: min(330px, 88vw);
     max-height: 62vh;
+  }
+
+  .cheat-body,
+  .cheat-settings .settings-toggle-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

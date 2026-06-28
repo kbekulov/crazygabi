@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.2";
+const GAME_VERSION = "v0.63.3";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-bridge-landing-actions";
+const ASSET_VERSION = "20260628-cheat-menu-columns";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1989,6 +1989,7 @@ const hud = {
   menuPanelClose: document.querySelector("#menu-panel-close"),
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
+  cheatSettingsColumn: document.querySelector("#cheat-settings-column"),
   cheatClose: document.querySelector("#cheat-close")
 };
 
@@ -13461,7 +13462,7 @@ returnToMenuButton.textContent = "Return to Menu";
 returnToMenuButton.addEventListener("click", returnToMainMenu);
 returnToMenuButton.className = "cheat-return-menu";
 hud.cheatLevels.appendChild(returnToMenuButton);
-hud.cheatLevels.after(createCheatSettingsControls());
+hud.cheatSettingsColumn.appendChild(createCheatSettingsControls());
 updateAudioSettingsPanel();
 
 window.addEventListener("keydown", (event) => {

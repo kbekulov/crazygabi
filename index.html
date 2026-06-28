@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crazy Gabi v0.63.2</title>
-    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260628-bridge-landing-actions" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260628-bridge-landing-actions" />
+    <title>Crazy Gabi v0.63.3</title>
+    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260628-cheat-menu-columns" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260628-cheat-menu-columns" />
   </head>
   <body>
     <main id="shell">
@@ -70,7 +70,7 @@
           <p id="loading-text">Preparing assets...</p>
         </div>
         <div id="main-menu" class="main-menu">
-          <img class="main-menu-bg" src="./public/assets/menu/main_menu_bg_1.png?v=20260627-admin-settings" alt="" />
+          <img class="main-menu-bg" src="./public/assets/menu/main_menu_bg_1.png?v=20260628-cheat-menu-columns" alt="" />
           <div id="main-menu-petals" class="main-menu-petals" aria-hidden="true"></div>
           <div class="main-menu-layout">
             <div class="main-menu-actions">
@@ -137,13 +137,19 @@
         <div id="cheat-menu" class="panel cheat-panel" hidden>
           <h1>Level Select</h1>
           <p>Jump directly to a level for testing.</p>
-          <div id="cheat-levels" class="cheat-levels"></div>
+          <div class="cheat-body">
+            <section class="cheat-column cheat-level-column">
+              <h2>Levels</h2>
+              <div id="cheat-levels" class="cheat-levels"></div>
+            </section>
+            <section id="cheat-settings-column" class="cheat-column cheat-settings-column"></section>
+          </div>
           <button id="cheat-close" type="button">Close</button>
         </div>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js" crossorigin="anonymous"></script>
-    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260627-admin-settings"></script>
-    <script type="module" src="./src/main.js?v=20260627-admin-settings"></script>
+    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260628-cheat-menu-columns"></script>
+    <script type="module" src="./src/main.js?v=20260628-cheat-menu-columns"></script>
   </body>
 </html>
