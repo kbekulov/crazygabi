@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.7";
+const GAME_VERSION = "v0.62.8";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -162,11 +162,10 @@ const KEY_GARDEN_ASSETS = [
   { key: "garden-lantern-3", src: "./public/assets/environment/garden/lantern_3.png", scale: 0.36, weight: 0.8, type: "lantern" }
 ];
 const ARCH_BRIDGE_DEPTH = 5.35;
-const ARCH_BRIDGE_SOURCE_WIDTH = 918;
-const ARCH_BRIDGE_SOURCE_HEIGHT = 220;
-const ARCH_BRIDGE_STAND_BOTTOM_Y = 140;
-const ARCH_BRIDGE_STAND_TOP_Y = 84;
-const ARCH_BRIDGE_COLLISION_SEGMENTS = 22;
+const ARCH_BRIDGE_STAND_BOTTOM_RATIO = 140 / 220;
+const ARCH_BRIDGE_STAND_TOP_RATIO = 84 / 220;
+const ARCH_BRIDGE_SUPPORT_MARGIN = 18;
+const ARCH_BRIDGE_SUPPORT_SNAP = 38;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
@@ -380,7 +379,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-level6-bridge-garden-props";
+const ASSET_VERSION = "20260628-smooth-bridge-surface";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2891,6 +2890,7 @@ class PlayScene extends Phaser.Scene {
     this.platforms = this.physics.add.staticGroup();
     this.movingPlatforms = this.physics.add.group({ allowGravity: false, immovable: true });
     this.movingPlatformRuns = [];
+    this.archedBridges = [];
     this.finalElevator = null;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
@@ -6660,10 +6660,15 @@ class PlayScene extends Phaser.Scene {
     const startX = (bridge.startColumn ?? 0) * TILE;
     const endX = (bridge.endColumn ?? bridge.startColumn + 1) * TILE;
     const worldWidth = Math.max(TILE, endX - startX);
-    const scale = bridge.scale ?? worldWidth / ARCH_BRIDGE_SOURCE_WIDTH;
-    const worldHeight = ARCH_BRIDGE_SOURCE_HEIGHT * scale;
+    const source = this.textures.get(bridge.key)?.getSourceImage?.();
+    const sourceWidth = source?.width || 1;
+    const sourceHeight = source?.height || 1;
+    const scale = bridge.scale ?? worldWidth / sourceWidth;
+    const worldHeight = sourceHeight * scale;
+    const standBottomY = bridge.standBottomY ?? sourceHeight * ARCH_BRIDGE_STAND_BOTTOM_RATIO;
+    const standTopY = bridge.standTopY ?? sourceHeight * ARCH_BRIDGE_STAND_TOP_RATIO;
     const endStandingY = (bridge.endRow ?? 0) * TILE + (bridge.endYOffset ?? 0);
-    const bridgeTopY = endStandingY - ARCH_BRIDGE_STAND_BOTTOM_Y * scale;
+    const bridgeTopY = endStandingY - standBottomY * scale;
     const centerX = (startX + endX) / 2;
     const bridgeVisual = this.add.image(centerX, bridgeTopY + worldHeight, bridge.key);
     bridgeVisual.setOrigin(0.5, 1);
@@ -6671,29 +6676,65 @@ class PlayScene extends Phaser.Scene {
     bridgeVisual.setDepth(bridge.depth ?? ARCH_BRIDGE_DEPTH);
     this.platformVisuals.add(bridgeVisual);
 
-    const segmentCount = bridge.segments ?? ARCH_BRIDGE_COLLISION_SEGMENTS;
-    const segmentWidth = worldWidth / segmentCount;
-    const thickness = bridge.collisionThickness ?? 16;
-    const archRise = (ARCH_BRIDGE_STAND_BOTTOM_Y - ARCH_BRIDGE_STAND_TOP_Y) * scale;
-    for (let index = 0; index < segmentCount; index += 1) {
-      const progress = (index + 0.5) / segmentCount;
-      const centered = Math.abs(progress * 2 - 1);
-      const rise = archRise * (1 - Math.pow(centered, 1.62));
-      const surfaceY = endStandingY - rise;
-      const x = startX + segmentWidth * index + segmentWidth / 2;
-      const block = this.platforms.create(x, surfaceY + thickness / 2, "tile-ground");
-      block.setVisible(false);
-      block.setDisplaySize(segmentWidth + 3, thickness);
-      block.refreshBody();
-      this.platformRuns.push({
-        startX: startX + segmentWidth * index,
-        endX: startX + segmentWidth * (index + 1),
-        topY: surfaceY,
-        rowIndex: bridge.endRow ?? 0,
-        bridge: true,
-        id: `bridge-${bridgeIndex}-${index}`
-      });
+    const archRise = (standBottomY - standTopY) * scale;
+    const bridgeRun = {
+      startX,
+      endX,
+      topY: endStandingY,
+      rowIndex: bridge.endRow ?? 0,
+      bridge: true,
+      id: `bridge-${bridgeIndex}`,
+      endStandingY,
+      archRise,
+      curvePower: bridge.curvePower ?? 1.62
+    };
+    this.archedBridges.push(bridgeRun);
+    this.platformRuns.push(bridgeRun);
+  }
+
+  getBridgeSurfaceY(bridge, x) {
+    const progress = Phaser.Math.Clamp((x - bridge.startX) / Math.max(1, bridge.endX - bridge.startX), 0, 1);
+    const centered = Math.abs(progress * 2 - 1);
+    const rise = bridge.archRise * (1 - Math.pow(centered, bridge.curvePower ?? 1.62));
+    return bridge.endStandingY - rise;
+  }
+
+  applyPlayerBridgeSurface() {
+    if (!this.player?.body?.enable || !this.archedBridges?.length || this.chainClimb) {
+      this.player?.setData?.("bridgeGrounded", false);
+      return false;
     }
+    const body = this.player.body;
+    const centerX = body.x + body.width * 0.5;
+    const bridge = this.archedBridges.find(
+      (candidate) =>
+        centerX >= candidate.startX - ARCH_BRIDGE_SUPPORT_MARGIN &&
+        centerX <= candidate.endX + ARCH_BRIDGE_SUPPORT_MARGIN
+    );
+    if (!bridge) {
+      this.player.setData("bridgeGrounded", false);
+      return false;
+    }
+
+    const surfaceY = this.getBridgeSurfaceY(bridge, centerX);
+    const bottom = body.y + body.height;
+    const snapDistance = Math.abs(surfaceY - bottom);
+    const supportedFromSide = body.blocked.down && snapDistance <= ARCH_BRIDGE_SUPPORT_SNAP;
+    const landingFromAbove =
+      body.velocity.y >= -24 &&
+      bottom <= surfaceY + ARCH_BRIDGE_SUPPORT_MARGIN &&
+      bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP;
+    if (!supportedFromSide && !landingFromAbove) {
+      this.player.setData("bridgeGrounded", false);
+      return false;
+    }
+
+    this.player.y += surfaceY - bottom;
+    body.updateFromGameObject();
+    body.setVelocityY(0);
+    this.player.setData("bridgeGrounded", true);
+    this.player.setData("bridgeSurfaceY", surfaceY);
+    return true;
   }
 
   createHangingChains() {
@@ -8072,7 +8113,8 @@ class PlayScene extends Phaser.Scene {
     const climbDown = this.cursors.down.isDown || this.keysInput.down.isDown;
     const action = Phaser.Input.Keyboard.JustDown(this.keysInput.action) || this.consumeMobileAction();
     const birdAttack = Phaser.Input.Keyboard.JustDown(this.keysInput.birdAttack) || this.consumeMobileBirdAttack();
-    const onFloor = this.player.body.blocked.down;
+    const bridgeGrounded = this.applyPlayerBridgeSurface();
+    const onFloor = this.player.body.blocked.down || bridgeGrounded;
 
     if (this.isItemPromptActive()) {
       this.player.setAccelerationX(0);
@@ -8145,6 +8187,7 @@ class PlayScene extends Phaser.Scene {
     if (birdAttack) this.commandBirdAttack(time);
     if (action) this.performAction(time);
     this.constrainPlayerToActiveFinalElevator();
+    if (!this.chainClimb && !this.gabiDash?.active) this.applyPlayerBridgeSurface();
     this.updateDiveWindLines(time);
     this.updateDiveCameraZoom();
 

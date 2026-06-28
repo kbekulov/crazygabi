@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.8
+
+- Updated bridge rendering math for the higher-resolution bridge asset.
+- Replaced segmented bridge stepping with a smooth continuous arch surface for Gabi.
+- Made bridge entry match platform height so Gabi can run onto it without jumping.
+
 ## v0.62.7
 
 - Moved the arched bridge setup into Level 6 and added an early connector bridge.
