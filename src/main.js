@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.4";
+const GAME_VERSION = "v0.62.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -134,6 +134,7 @@ const KEY_GARDEN_PROP_BACK_DEPTH = 3.55;
 const KEY_GARDEN_EDGE_BIG_BUSH_SCALE = 0.36;
 const KEY_GARDEN_EDGE_BIG_BUSH_INSET = TILE * 1.6;
 const GARDEN_SOLITARY_REPEAT_DISTANCE = VIEW_WIDTH * 0.86;
+const GARDEN_STATUE_PLATFORM_EDGE_INSET = TILE * 2.7;
 const GARDEN_BURST_PARTICLE_SCALE = 0.75;
 const KEY_REVEAL_PICKUP_DELAY = 2000;
 const DECORATIVE_GARDEN_DEFAULT_DENSITY = 0.54;
@@ -157,6 +158,12 @@ const KEY_GARDEN_ASSETS = [
   { key: "garden-lantern-2", src: "./public/assets/environment/garden/lantern_2.png", scale: 0.38, weight: 0.85, type: "lantern" },
   { key: "garden-lantern-3", src: "./public/assets/environment/garden/lantern_3.png", scale: 0.36, weight: 0.8, type: "lantern" }
 ];
+const ARCH_BRIDGE_DEPTH = 5.35;
+const ARCH_BRIDGE_SOURCE_WIDTH = 918;
+const ARCH_BRIDGE_SOURCE_HEIGHT = 220;
+const ARCH_BRIDGE_STAND_BOTTOM_Y = 140;
+const ARCH_BRIDGE_STAND_TOP_Y = 84;
+const ARCH_BRIDGE_COLLISION_SEGMENTS = 22;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
 const HAY_BURST_MIN_TOUCH_SPEED = 44;
@@ -370,7 +377,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-polish-pass";
+const ASSET_VERSION = "20260628-arched-bridge";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -841,6 +848,15 @@ const LEVELS = [
     },
     platformTexture: "platform-strip",
     fenceTexture: "platform-fence",
+    bridges: [
+      {
+        key: "bridge-1",
+        src: "./public/assets/environment/bridge_1.png",
+        startColumn: 207,
+        endColumn: 225,
+        endRow: 16
+      }
+    ],
     ambientLeaves: {
       sprite: "autumn-leaf-1",
       minDelay: 240,
@@ -1570,7 +1586,6 @@ function createLevelSix() {
   run(15, 94, 5);
   run(15, 126, 6);
   run(15, 169, 6);
-  run(15, 213, 6);
   run(15, 253, 6);
   run(15, 295, 6);
   run(15, 333, 6);
@@ -3224,6 +3239,7 @@ class PlayScene extends Phaser.Scene {
       }
       if (level.showWater !== false) image("water-below", "./public/assets/environment/water_below.png");
       if (level.haystacks?.length) image("haystack", "./public/assets/environment/haystack.png");
+      (level.bridges || []).forEach((bridge) => image(bridge.key, bridge.src));
       if (level.showStartingHouse || level.constructionBillboard) {
         image("starting-house", "./public/assets/environment/starting_house.png");
         image("starting-billboard", "./public/assets/environment/starting_billboard.png");
@@ -5087,10 +5103,11 @@ class PlayScene extends Phaser.Scene {
     if (!asset || !this.textures.exists(asset.key)) return null;
     let resolvedAsset = asset;
     const run = this.getNearestPlatformRun?.(x, y);
+    let resolvedX = x;
     if (resolvedAsset.type === "bush" && run) {
       const nearEdge =
-        x - run.startX < KEY_GARDEN_EDGE_BIG_BUSH_INSET ||
-        run.endX - x < KEY_GARDEN_EDGE_BIG_BUSH_INSET;
+        resolvedX - run.startX < KEY_GARDEN_EDGE_BIG_BUSH_INSET ||
+        run.endX - resolvedX < KEY_GARDEN_EDGE_BIG_BUSH_INSET;
       if (nearEdge && resolvedAsset.scale >= KEY_GARDEN_EDGE_BIG_BUSH_SCALE) {
         const smallestBush = KEY_GARDEN_ASSETS
           .filter((candidate) => candidate.type === "bush" && this.textures.exists(candidate.key))
@@ -5098,30 +5115,36 @@ class PlayScene extends Phaser.Scene {
         if (smallestBush) resolvedAsset = smallestBush;
       }
     }
+    if (resolvedAsset.key.includes("statue") && run) {
+      const minX = run.startX + GARDEN_STATUE_PLATFORM_EDGE_INSET;
+      const maxX = run.endX - GARDEN_STATUE_PLATFORM_EDGE_INSET;
+      if (maxX <= minX) return null;
+      resolvedX = Phaser.Math.Clamp(resolvedX, minX, maxX);
+    }
     const isBulkGardenFeature = resolvedAsset.key === "garden-tree-3";
     const isSolitaryGardenFeature = resolvedAsset.type === "feature" && !isBulkGardenFeature;
     if (isSolitaryGardenFeature) {
       this.gardenFeatureCooldowns = this.gardenFeatureCooldowns || new Map();
       const lastX = this.gardenFeatureCooldowns.get(resolvedAsset.key);
-      if (Number.isFinite(lastX) && Math.abs(lastX - x) < GARDEN_SOLITARY_REPEAT_DISTANCE) return null;
-      this.gardenFeatureCooldowns.set(resolvedAsset.key, x);
+      if (Number.isFinite(lastX) && Math.abs(lastX - resolvedX) < GARDEN_SOLITARY_REPEAT_DISTANCE) return null;
+      this.gardenFeatureCooldowns.set(resolvedAsset.key, resolvedX);
     }
     if (resolvedAsset.key.includes("statue")) {
       this.gardenStatueRunKeys = this.gardenStatueRunKeys || new Set();
-      const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(x / (TILE * 8))}`;
+      const statueRunKey = run?.id || `${Math.round(y / TILE)}:${Math.round(resolvedX / (TILE * 8))}`;
       if (this.gardenStatueRunKeys.has(statueRunKey)) return null;
       this.gardenStatueRunKeys.add(statueRunKey);
     }
     const sprite = options.interactive
-      ? this.gardenBushes.create(x, y, resolvedAsset.key)
-      : this.add.image(x, y, resolvedAsset.key);
+      ? this.gardenBushes.create(resolvedX, y, resolvedAsset.key)
+      : this.add.image(resolvedX, y, resolvedAsset.key);
     const seed = options.seed ?? 0;
-    const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(x / TILE) + seed + 23);
+    const noise = this.wallPlacementNoise(Math.floor(y / TILE) + seed + 7, Math.floor(resolvedX / TILE) + seed + 23);
     const rawDepth = Phaser.Math.Linear(3.32, 4.86, noise) + (options.depthBias ?? 0);
     const isGardenProp = resolvedAsset.type === "lantern" || resolvedAsset.type === "feature";
     const depth = isGardenProp ? KEY_GARDEN_PROP_BACK_DEPTH : rawDepth;
     const visualY = resolvedAsset.type === "bush" && depth > 4 ? y + KEY_GARDEN_BUSH_FRONT_Y_OFFSET : y;
-    const scale = resolvedAsset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(x / TILE) + 83));
+    const scale = resolvedAsset.scale * (options.scaleBoost ?? 1) * Phaser.Math.Linear(0.9, 1.08, this.wallPlacementNoise(seed + 41, Math.floor(resolvedX / TILE) + 83));
     sprite.setOrigin(0.5, 1);
     sprite.setDepth(depth);
     sprite.setY(visualY);
@@ -6258,6 +6281,7 @@ class PlayScene extends Phaser.Scene {
       });
     });
     this.createPlatformVisuals();
+    this.createArchedBridges();
     this.snapSpawnPointToPlatform();
     this.createHangingChains();
     this.createMovingPlatforms();
@@ -6478,6 +6502,53 @@ class PlayScene extends Phaser.Scene {
       x: Phaser.Math.Clamp(spawnX, nearestRun.startX + TILE, nearestRun.endX - TILE),
       y: nearestRun.topY - TILE * 1.35
     };
+  }
+
+  createArchedBridges() {
+    const bridges = this.level.bridges || [];
+    if (!bridges.length) return;
+    bridges.forEach((bridge, bridgeIndex) => this.createArchedBridge(bridge, bridgeIndex));
+  }
+
+  createArchedBridge(bridge, bridgeIndex = 0) {
+    if (!bridge?.key || !this.textures.exists(bridge.key)) return;
+    const startX = (bridge.startColumn ?? 0) * TILE;
+    const endX = (bridge.endColumn ?? bridge.startColumn + 1) * TILE;
+    const worldWidth = Math.max(TILE, endX - startX);
+    const scale = bridge.scale ?? worldWidth / ARCH_BRIDGE_SOURCE_WIDTH;
+    const worldHeight = ARCH_BRIDGE_SOURCE_HEIGHT * scale;
+    const endStandingY = (bridge.endRow ?? 0) * TILE + (bridge.endYOffset ?? 0);
+    const bridgeTopY = endStandingY - ARCH_BRIDGE_STAND_BOTTOM_Y * scale;
+    const centerX = (startX + endX) / 2;
+    const bridgeVisual = this.add.image(centerX, bridgeTopY + worldHeight, bridge.key);
+    bridgeVisual.setOrigin(0.5, 1);
+    bridgeVisual.setDisplaySize(worldWidth, worldHeight);
+    bridgeVisual.setDepth(bridge.depth ?? ARCH_BRIDGE_DEPTH);
+    this.platformVisuals.add(bridgeVisual);
+
+    const segmentCount = bridge.segments ?? ARCH_BRIDGE_COLLISION_SEGMENTS;
+    const segmentWidth = worldWidth / segmentCount;
+    const thickness = bridge.collisionThickness ?? 16;
+    const archRise = (ARCH_BRIDGE_STAND_BOTTOM_Y - ARCH_BRIDGE_STAND_TOP_Y) * scale;
+    for (let index = 0; index < segmentCount; index += 1) {
+      const progress = (index + 0.5) / segmentCount;
+      const centered = Math.abs(progress * 2 - 1);
+      const rise = archRise * (1 - Math.pow(centered, 1.62));
+      const surfaceY = endStandingY - rise;
+      const x = startX + segmentWidth * index + segmentWidth / 2;
+      const block = this.platforms.create(x, surfaceY + thickness / 2, "tile-ground");
+      block.setVisible(false);
+      block.setDisplaySize(segmentWidth + 3, thickness);
+      block.refreshBody();
+      this.platformRuns.push({
+        startX: startX + segmentWidth * index,
+        endX: startX + segmentWidth * (index + 1),
+        topY: surfaceY,
+        rowIndex: bridge.endRow ?? 0,
+        bridge: true,
+        id: `bridge-${bridgeIndex}-${index}`
+      });
+    }
   }
 
   createHangingChains() {

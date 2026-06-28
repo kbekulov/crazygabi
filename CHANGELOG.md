@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.5
+
+- Replaced the Level 6 middle floating connector with an arched bridge.
+- Added segmented bridge collision so Gabi can run up and down the bridge curve.
+- Kept garden statues away from platform edges.
+
 ## v0.62.4
 
 - Added glow to streetlight fence tiles.
