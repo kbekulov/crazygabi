@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.62.10";
+const GAME_VERSION = "v0.62.11";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -164,9 +164,8 @@ const KEY_GARDEN_ASSETS = [
 const ARCH_BRIDGE_DEPTH = 5.35;
 const ARCH_BRIDGE_STAND_BOTTOM_RATIO = 140 / 220;
 const ARCH_BRIDGE_STAND_TOP_RATIO = 84 / 220;
-const ARCH_BRIDGE_SUPPORT_MARGIN = 28;
-const ARCH_BRIDGE_SUPPORT_SNAP = 96;
-const ARCH_BRIDGE_SUPPORT_THICKNESS = 18;
+const ARCH_BRIDGE_SUPPORT_MARGIN = 34;
+const ARCH_BRIDGE_SUPPORT_SNAP = 128;
 const ARCH_BRIDGE_ENTRY_FLAT_LENGTH = TILE * 1.35;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
@@ -381,7 +380,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-bridge-grounding";
+const ASSET_VERSION = "20260628-bridge-sensor-surface";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -6671,11 +6670,6 @@ class PlayScene extends Phaser.Scene {
     bridgeVisual.setDepth(bridge.depth ?? ARCH_BRIDGE_DEPTH);
     this.platformVisuals.add(bridgeVisual);
 
-    const support = this.platforms.create(centerX, endStandingY + ARCH_BRIDGE_SUPPORT_THICKNESS / 2, "tile-ground");
-    support.setVisible(false);
-    support.setDisplaySize(worldWidth + ARCH_BRIDGE_SUPPORT_MARGIN * 2, ARCH_BRIDGE_SUPPORT_THICKNESS);
-    support.refreshBody();
-
     const archRise = (standBottomY - standTopY) * scale;
     const bridgeRun = {
       startX,
@@ -6687,8 +6681,7 @@ class PlayScene extends Phaser.Scene {
       endStandingY,
       archRise,
       curvePower: bridge.curvePower ?? 1.62,
-      flatLeadIn: bridge.flatLeadIn ?? ARCH_BRIDGE_ENTRY_FLAT_LENGTH,
-      support
+      flatLeadIn: bridge.flatLeadIn ?? ARCH_BRIDGE_ENTRY_FLAT_LENGTH
     };
     this.archedBridges.push(bridgeRun);
     this.platformRuns.push(bridgeRun);
@@ -6730,8 +6723,10 @@ class PlayScene extends Phaser.Scene {
     const wasBridgeGrounded = Boolean(this.player.getData("bridgeGrounded"));
     const movingDownOrFlat = body.velocity.y >= -220;
     const crossingSurface = previousBottom <= surfaceY + ARCH_BRIDGE_SUPPORT_MARGIN && bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP;
-    const closeEnough = bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP && bottom <= surfaceY + ARCH_BRIDGE_SUPPORT_SNAP;
-    const enteringFromPlatform = (body.blocked.down || body.touching.down) && closeEnough;
+    const closeEnough =
+      bottom >= surfaceY - ARCH_BRIDGE_SUPPORT_SNAP &&
+      bottom <= surfaceY + ARCH_BRIDGE_SUPPORT_SNAP * 0.7;
+    const enteringFromPlatform = body.blocked.down || body.touching.down;
     if (!movingDownOrFlat || (!wasBridgeGrounded && !crossingSurface && !closeEnough && !enteringFromPlatform)) {
       this.player.setData("bridgeGrounded", false);
       this.player.setData("bridgeLastBottom", bottom);
@@ -8197,7 +8192,6 @@ class PlayScene extends Phaser.Scene {
     if (birdAttack) this.commandBirdAttack(time);
     if (action) this.performAction(time);
     this.constrainPlayerToActiveFinalElevator();
-    if (!this.chainClimb && !this.gabiDash?.active) this.applyPlayerBridgeSurface();
     this.updateDiveWindLines(time);
     this.updateDiveCameraZoom();
 

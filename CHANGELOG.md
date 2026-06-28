@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.62.11
+
+- Rebuilt the Level 6 bridge as a sensor-style arched surface instead of a hidden flat collider.
+- Removed the competing bridge support body that caused Gabi to bounce between bridge heights.
+
 ## v0.62.10
 
 - Reworked Level 6 bridge grounding so Gabi can run onto the bridge without a bump.
