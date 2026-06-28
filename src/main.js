@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.4";
+const GAME_VERSION = "v0.63.5";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-cheat-menu-actions";
+const ASSET_VERSION = "20260628-cheat-action-row";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1990,6 +1990,7 @@ const hud = {
   cheatMenu: document.querySelector("#cheat-menu"),
   cheatLevels: document.querySelector("#cheat-levels"),
   cheatSettingsColumn: document.querySelector("#cheat-settings-column"),
+  cheatActions: document.querySelector("#cheat-actions"),
   cheatClose: document.querySelector("#cheat-close")
 };
 
@@ -13461,7 +13462,7 @@ returnToMenuButton.type = "button";
 returnToMenuButton.textContent = "Return to Menu";
 returnToMenuButton.addEventListener("click", returnToMainMenu);
 returnToMenuButton.className = "cheat-return-menu";
-hud.cheatLevels.appendChild(returnToMenuButton);
+hud.cheatActions.prepend(returnToMenuButton);
 hud.cheatSettingsColumn.appendChild(createCheatSettingsControls());
 updateAudioSettingsPanel();
 

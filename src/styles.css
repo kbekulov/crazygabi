@@ -1328,21 +1328,25 @@ button:active {
   gap: 12px;
 }
 
-.cheat-levels .level-select-episodes,
-.cheat-return-menu {
+.cheat-levels .level-select-episodes {
   width: 100%;
 }
 
-.cheat-return-menu,
-#cheat-close {
-  justify-self: center;
-  width: min(190px, 100%);
+.cheat-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 190px));
+  gap: 12px;
+  justify-content: center;
+  width: min(420px, 100%);
+  margin-inline: auto;
 }
 
 .cheat-levels button,
+.cheat-actions button,
 #cheat-close {
   min-width: 0;
   padding-inline: 1rem;
+  width: 100%;
 }
 
 .cheat-settings {
@@ -2113,7 +2117,8 @@ button:active {
   }
 
   .cheat-body,
-  .cheat-settings .settings-toggle-grid {
+  .cheat-settings .settings-toggle-grid,
+  .cheat-actions {
     grid-template-columns: minmax(0, 1fr);
   }
 }

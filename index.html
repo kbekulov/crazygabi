@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crazy Gabi v0.63.4</title>
-    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260628-cheat-menu-actions" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260628-cheat-menu-actions" />
+    <title>Crazy Gabi v0.63.5</title>
+    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260628-cheat-action-row" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260628-cheat-action-row" />
   </head>
   <body>
     <main id="shell">
@@ -70,7 +70,7 @@
           <p id="loading-text">Preparing assets...</p>
         </div>
         <div id="main-menu" class="main-menu">
-          <img class="main-menu-bg" src="./public/assets/menu/main_menu_bg_1.png?v=20260628-cheat-menu-actions" alt="" />
+          <img class="main-menu-bg" src="./public/assets/menu/main_menu_bg_1.png?v=20260628-cheat-action-row" alt="" />
           <div id="main-menu-petals" class="main-menu-petals" aria-hidden="true"></div>
           <div class="main-menu-layout">
             <div class="main-menu-actions">
@@ -144,12 +144,14 @@
             </section>
             <section id="cheat-settings-column" class="cheat-column cheat-settings-column"></section>
           </div>
-          <button id="cheat-close" type="button">Close</button>
+          <div id="cheat-actions" class="cheat-actions">
+            <button id="cheat-close" type="button">Close</button>
+          </div>
         </div>
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js" crossorigin="anonymous"></script>
-    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260628-cheat-menu-actions"></script>
-    <script type="module" src="./src/main.js?v=20260628-cheat-menu-actions"></script>
+    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260628-cheat-action-row"></script>
+    <script type="module" src="./src/main.js?v=20260628-cheat-action-row"></script>
   </body>
 </html>

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.5
+
+- Moved the in-game menu action buttons into a shared centered row.
+
 ## v0.63.4
 
 - Centered and compacted the in-game menu action buttons.
