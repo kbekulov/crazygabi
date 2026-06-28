@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.1";
+const GAME_VERSION = "v0.63.2";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-bridge-platform-behavior";
+const ASSET_VERSION = "20260628-bridge-landing-actions";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -6788,7 +6788,7 @@ class PlayScene extends Phaser.Scene {
       return false;
     }
     const surfaceY = this.getBridgeSurfaceY(bridge, centerX);
-    const footOffset = this.bridgeRide?.footOffset ?? surfaceY - this.player.y;
+    const footOffset = this.bridgeRide?.footOffset ?? Math.max(0, body.height - spriteOffsetY);
     this.player.y = surfaceY - footOffset;
     body.x = this.player.x - spriteOffsetX;
     body.y = this.player.y - spriteOffsetY;
@@ -6831,7 +6831,7 @@ class PlayScene extends Phaser.Scene {
       id: bridge.id,
       spriteOffsetX: this.player.x - body.x,
       spriteOffsetY: this.player.y - body.y,
-      footOffset: surfaceY - this.player.y
+      footOffset: Math.max(0, body.height - (this.player.y - body.y))
     };
     return this.placePlayerOnBridge(bridge, { delta, inputDirection });
   }
@@ -8387,7 +8387,7 @@ class PlayScene extends Phaser.Scene {
     if (!this.isCommandAttackLevel()) return false;
     if (!state.hasBirdControl) return false;
     if (time - this.lastBirdAttackAt < BIRD_ATTACK_COOLDOWN) return false;
-    if (!this.player.body.blocked.down && !this.player.body.touching.down) return false;
+    if (!this.player.body.blocked.down && !this.player.body.touching.down && !this.player.getData("bridgeGrounded")) return false;
     const target = this.findNearestVisibleBirdAttackTarget();
 
     this.lastBirdAttackAt = time;

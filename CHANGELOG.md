@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.63.2
+
+- Fixed bridge landings after jumps so Gabi returns to the walking path instead of the railings.
+- Allowed Shift attacks while Gabi is standing on an arched bridge.
+
 ## v0.63.1
 
 - Adjusted bridge traversal so arched bridges keep normal run speed.
