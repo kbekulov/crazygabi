@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.63.1
+
+- Adjusted bridge traversal so arched bridges keep normal run speed.
+- Added bridge jumping support while preserving normal jump physics.
+- Stabilized bridge body and sprite sync during bridge landings.
+
 ## v0.63.0
 
 - Added a temporary Level 0 mechanics test route for bridge traversal.

@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.0";
+const GAME_VERSION = "v0.63.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -168,6 +168,8 @@ const ARCH_BRIDGE_SUPPORT_MARGIN = 34;
 const ARCH_BRIDGE_ENTER_SNAP = 18;
 const ARCH_BRIDGE_LANDING_SNAP = 42;
 const ARCH_BRIDGE_ENTRY_FLAT_LENGTH = TILE * 1.35;
+const ARCH_BRIDGE_RUN_SPEED = 260;
+const ARCH_BRIDGE_JUMP_REGRAB_DELAY_MS = 520;
 const DIVE_FORCED_INPUT_MS = 2400;
 const HAY_BURST_COLORS = [0xc99654, 0x7d5525, 0xe6bc75, 0xca9656, 0x8a5b2e, 0xb9894a];
 const GARDEN_BURST_COLORS = [0x2e9f5b, 0x6edb7a, 0x145a38, 0x5bc7ca, 0x2c84bd, 0xa0eec3, 0x275f87];
@@ -382,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-level0-bridge-test";
+const ASSET_VERSION = "20260628-bridge-platform-behavior";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2928,6 +2930,7 @@ class PlayScene extends Phaser.Scene {
     this.movingPlatformRuns = [];
     this.archedBridges = [];
     this.bridgeRide = null;
+    this.bridgeRegrabDisabledUntil = 0;
     this.finalElevator = null;
     this.finalElevatorActive = false;
     this.finalElevatorCompleted = false;
@@ -6760,28 +6763,38 @@ class PlayScene extends Phaser.Scene {
       this.bridgeRide = null;
       return;
     }
+    const { spriteOffsetX = this.player.x - this.player.body.x, spriteOffsetY = this.player.y - this.player.body.y } = this.bridgeRide;
+    const bodyX = this.player.x - spriteOffsetX;
+    const bodyY = this.player.y - spriteOffsetY;
+    this.player.body.reset(bodyX, bodyY);
+    this.player.setPosition(bodyX + spriteOffsetX, bodyY + spriteOffsetY);
     this.bridgeRide = null;
     if (keepGravity) this.player.body.allowGravity = true;
+    this.player.body.moves = true;
     this.player.setData("bridgeGrounded", false);
   }
 
   placePlayerOnBridge(bridge, { delta = 0, inputDirection = 0 } = {}) {
     if (!this.player?.body || !bridge) return false;
     const body = this.player.body;
-    const movement = inputDirection * GABI_DASH_SPEED * 0.34 * (delta / 1000);
-    if (movement) {
-      this.player.x += movement;
-      body.updateFromGameObject();
-    }
+    const spriteOffsetX = this.bridgeRide?.spriteOffsetX ?? this.player.x - body.x;
+    const spriteOffsetY = this.bridgeRide?.spriteOffsetY ?? this.player.y - body.y;
+    const movement = inputDirection * ARCH_BRIDGE_RUN_SPEED * (delta / 1000);
+    if (movement) this.player.x += movement;
+    body.x = this.player.x - spriteOffsetX;
     const centerX = body.x + body.width * 0.5;
     if (centerX < bridge.startX - ARCH_BRIDGE_SUPPORT_MARGIN || centerX > bridge.endX + ARCH_BRIDGE_SUPPORT_MARGIN) {
       this.stopPlayerBridgeRide();
       return false;
     }
     const surfaceY = this.getBridgeSurfaceY(bridge, centerX);
-    this.player.y += surfaceY - (body.y + body.height);
-    body.updateFromGameObject();
-    body.setVelocity(inputDirection * GABI_DASH_SPEED * 0.34, 0);
+    const footOffset = this.bridgeRide?.footOffset ?? surfaceY - this.player.y;
+    this.player.y = surfaceY - footOffset;
+    body.x = this.player.x - spriteOffsetX;
+    body.y = this.player.y - spriteOffsetY;
+    body.updateCenter();
+    body.setVelocity(0, 0);
+    body.moves = false;
     body.allowGravity = false;
     this.player.setData("bridgeGrounded", true);
     this.player.setData("bridgeSurfaceY", surfaceY);
@@ -6798,13 +6811,14 @@ class PlayScene extends Phaser.Scene {
     const bridge = this.findBridgeUnderPlayer();
     const inputDirection = left === right ? 0 : right ? 1 : -1;
     if (this.bridgeRide) {
-      if (jump || !bridge || bridge.id !== this.bridgeRide.id || body.velocity.y < -40) {
+      if (!bridge || bridge.id !== this.bridgeRide.id || body.velocity.y < -40) {
         this.stopPlayerBridgeRide();
         return false;
       }
       return this.placePlayerOnBridge(bridge, { delta, inputDirection });
     }
 
+    if ((this.time?.now || 0) < this.bridgeRegrabDisabledUntil) return false;
     if (!bridge || body.velocity.y < -60) return false;
     const surfaceY = this.getBridgeSurfaceY(bridge, body.x + body.width * 0.5);
     const bottom = body.y + body.height;
@@ -6813,7 +6827,12 @@ class PlayScene extends Phaser.Scene {
     const walkingOntoBridge = enteringFromPlatform && Math.abs(bottom - surfaceY) <= ARCH_BRIDGE_ENTER_SNAP;
     if (!fallingOntoBridge && !walkingOntoBridge) return false;
 
-    this.bridgeRide = { id: bridge.id };
+    this.bridgeRide = {
+      id: bridge.id,
+      spriteOffsetX: this.player.x - body.x,
+      spriteOffsetY: this.player.y - body.y,
+      footOffset: surfaceY - this.player.y
+    };
     return this.placePlayerOnBridge(bridge, { delta, inputDirection });
   }
 
@@ -8256,7 +8275,12 @@ class PlayScene extends Phaser.Scene {
     if (jump && this.isGliding) {
       this.cancelGlideToFall();
     } else if (jump && onFloor) {
-      if (this.bridgeRide) this.stopPlayerBridgeRide();
+      if (this.bridgeRide) {
+        const bridgeJumpDirection = left === right ? 0 : right ? 1 : -1;
+        this.bridgeRegrabDisabledUntil = time + ARCH_BRIDGE_JUMP_REGRAB_DELAY_MS;
+        this.stopPlayerBridgeRide();
+        if (bridgeJumpDirection) this.player.setVelocityX(bridgeJumpDirection * 260);
+      }
       this.player.setVelocityY(-510);
       if (this.shouldUseGabiDiveJump(left, right, time)) this.startGabiDive(time);
     } else if (
