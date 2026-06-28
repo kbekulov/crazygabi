@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.62.9
+
+- Kept Level 6 to a single arched bridge in the intended middle section.
+- Added invisible physical support under the bridge so Gabi cannot fall through it.
+- Improved smooth bridge grounding while preserving the arched walking surface.
+
 ## v0.62.8
 
 - Updated bridge rendering math for the higher-resolution bridge asset.
