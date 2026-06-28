@@ -1333,6 +1333,12 @@ button:active {
   width: 100%;
 }
 
+.cheat-return-menu,
+#cheat-close {
+  justify-self: center;
+  width: min(190px, 100%);
+}
+
 .cheat-levels button,
 #cheat-close {
   min-width: 0;

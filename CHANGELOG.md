@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.4
+
+- Centered and compacted the in-game menu action buttons.
+
 ## v0.63.3
 
 - Reworked the in-game 0/Esc menu into level and settings columns so it fits better on screen.

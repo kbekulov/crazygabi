@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.3";
+const GAME_VERSION = "v0.63.4";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-cheat-menu-columns";
+const ASSET_VERSION = "20260628-cheat-menu-actions";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
