@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.13";
+const GAME_VERSION = "v0.63.14";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -393,7 +393,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-thin-large-butterfly-trails";
+const ASSET_VERSION = "20260629-residue-butterfly-trails";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1073,7 +1073,7 @@ const LEVELS = [
       lightRadius: 112,
       lightFringe: 104,
       sparkleDelay: [42, 78],
-      sparkleBurst: [2, 4]
+      sparkleBurst: [1, 2]
     },
     keyGarden: true,
     decorativeGardens: [
@@ -12047,10 +12047,10 @@ class PlayScene extends Phaser.Scene {
     this.tweens.add({
       targets: sparkle,
       alpha: 0,
-      scale: scale * Phaser.Math.FloatBetween(1.12, 1.45),
-      x: sparkle.x - direction * Phaser.Math.FloatBetween(26, 68),
-      y: sparkle.y + Phaser.Math.FloatBetween(-2, 2.5),
-      duration: Phaser.Math.Between(600, 1000),
+      scale: scale * Phaser.Math.FloatBetween(1.04, 1.2),
+      x: sparkle.x + Phaser.Math.FloatBetween(-5, 5),
+      y: sparkle.y + Phaser.Math.FloatBetween(-3, 4),
+      duration: Phaser.Math.Between(720, 1120),
       ease: "Sine.easeOut",
       onComplete: () => sparkle.destroy()
     });

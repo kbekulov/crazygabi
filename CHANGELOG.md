@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.14
+
+- Changed Level 7 butterfly contrails to linger as path residue with fewer particles.
+
 ## v0.63.13
 
 - Made Level 7 butterfly contrails narrower while enlarging individual sparkle particles.
