@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.9
+
+- Strengthened Level 7 butterfly sparkle trails, added soft darkness-cutting light circles, reduced butterfly frequency, and let Shift attacks destroy them.
+
 ## v0.63.8
 
 - Added solitary blue butterflies to Level 7 as glowing hazards with animated sparkle trails.

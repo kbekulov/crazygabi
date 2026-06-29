@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.8";
+const GAME_VERSION = "v0.63.9";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -199,6 +199,7 @@ const BUTTERFLY_DEPTH = DARKNESS_DEPTH + 1.35;
 const BUTTERFLY_GLOW_DEPTH = DARKNESS_DEPTH + 1.12;
 const BUTTERFLY_SPARKLE_DEPTH = DARKNESS_DEPTH + 1.42;
 const BUTTERFLY_HIT_COOLDOWN_MS = 1300;
+const BUTTERFLY_ATTACK_SCORE = 180;
 const BUTTERFLY_BLUE_TINT = 0x86ccff;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
@@ -391,7 +392,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-level7-butterflies";
+const ASSET_VERSION = "20260629-butterfly-trails";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1062,13 +1063,16 @@ const LEVELS = [
       { column: 492, floorRow: 13, asset: "garden-lantern-2", radius: 210 }
     ],
     butterflies: {
-      maxActive: 4,
-      minDelay: 2600,
-      maxDelay: 5600,
+      maxActive: 2,
+      minDelay: 5200,
+      maxDelay: 11200,
       speedRange: [62, 106],
       verticalRange: [92, 382],
-      glowRadius: 52,
-      sparkleDelay: [90, 170]
+      glowRadius: 64,
+      lightRadius: 112,
+      lightFringe: 104,
+      sparkleDelay: [70, 120],
+      sparkleBurst: [3, 5]
     },
     keyGarden: true,
     decorativeGardens: [
@@ -6098,6 +6102,17 @@ class PlayScene extends Phaser.Scene {
         fringe
       });
     }
+    (this.butterflies?.getChildren?.() || []).forEach((butterfly) => {
+      if (!butterfly?.active) return;
+      const radius = butterfly.getData("lightRadius") || 100;
+      lights.push({
+        kind: "butterfly",
+        x: butterfly.x - camera.scrollX,
+        y: butterfly.y - camera.scrollY,
+        radius,
+        fringe: butterfly.getData("lightFringe") || Math.max(1, radius * 0.86)
+      });
+    });
     return lights;
   }
 
@@ -8624,6 +8639,10 @@ class PlayScene extends Phaser.Scene {
       if (!this.isGiantHandBirdAttackTarget(hand)) return;
       consider(hand);
     });
+    this.butterflies?.children.iterate((butterfly) => {
+      if (!this.isButterflyBirdAttackTarget(butterfly)) return;
+      consider(butterfly);
+    });
     return closest;
   }
 
@@ -8631,10 +8650,15 @@ class PlayScene extends Phaser.Scene {
     return Boolean(target?.active && target.getData("phase") === "landed" && !target.getData("done"));
   }
 
+  isButterflyBirdAttackTarget(target) {
+    return Boolean(target?.active && target.getData?.("birdAttackTargetType") === "butterfly" && !target.getData("dying"));
+  }
+
   isBirdAttackTargetVisible(target) {
     if (this.isGiantHandBirdAttackTarget(target)) {
       return this.isRectVisibleOnScreen(this.getGiantHandWorldHitbox(target, "acorn"));
     }
+    if (this.isButterflyBirdAttackTarget(target)) return this.isPointVisibleOnScreen(target.x, target.y);
     return this.isEnemyVisibleOnScreen(target);
   }
 
@@ -8644,6 +8668,12 @@ class PlayScene extends Phaser.Scene {
       return {
         x: hitbox.centerX,
         y: hitbox.centerY
+      };
+    }
+    if (this.isButterflyBirdAttackTarget(target)) {
+      return {
+        x: target.x,
+        y: target.y
       };
     }
     return {
@@ -10309,6 +10339,10 @@ class PlayScene extends Phaser.Scene {
       }
       if (this.isGiantHandBirdAttackTarget(target)) {
         this.damageGiantHand(target);
+      } else if (this.isButterflyBirdAttackTarget(target)) {
+        this.defeatButterfly(target);
+        awardScore(BUTTERFLY_ATTACK_SCORE);
+        scored = true;
       } else {
         this.defeatEnemy(target);
         awardScore(300);
@@ -10322,6 +10356,9 @@ class PlayScene extends Phaser.Scene {
     });
     this.giantHands?.children.iterate((hand) => {
       if (this.isGiantHandBirdAttackTarget(hand)) tryHit(hand);
+    });
+    this.butterflies?.children.iterate((butterfly) => {
+      if (this.isButterflyBirdAttackTarget(butterfly)) tryHit(butterfly);
     });
     if (scored) updateHud();
   }
@@ -11917,7 +11954,11 @@ class PlayScene extends Phaser.Scene {
       }
 
       if (time >= (butterfly.getData("nextSparkleAt") || 0)) {
-        this.spawnButterflySparkle(butterfly);
+        const burstRange = this.level?.butterflies?.sparkleBurst || [2, 4];
+        const burstCount = Phaser.Math.Between(burstRange[0], burstRange[1]);
+        for (let sparkleIndex = 0; sparkleIndex < burstCount; sparkleIndex += 1) {
+          this.spawnButterflySparkle(butterfly, sparkleIndex);
+        }
         const sparkleDelay = this.level?.butterflies?.sparkleDelay || [100, 190];
         butterfly.setData("nextSparkleAt", time + Phaser.Math.Between(sparkleDelay[0], sparkleDelay[1]));
       }
@@ -11974,6 +12015,9 @@ class PlayScene extends Phaser.Scene {
     butterfly.setData("nextSparkleAt", time + Phaser.Math.Between(40, 120));
     butterfly.setData("hitCooldownUntil", 0);
     butterfly.setData("glowRadius", glowRadius);
+    butterfly.setData("lightRadius", config.lightRadius ?? 100);
+    butterfly.setData("lightFringe", config.lightFringe ?? 88);
+    butterfly.setData("birdAttackTargetType", "butterfly");
 
     const glow = this.add.image(x, y, NIGHT_LANTERN_GLOW_KEY);
     glow.setTint(BUTTERFLY_BLUE_TINT);
@@ -11984,30 +12028,28 @@ class PlayScene extends Phaser.Scene {
     butterfly.setData("glow", glow);
   }
 
-  spawnButterflySparkle(butterfly) {
+  spawnButterflySparkle(butterfly, sparkleIndex = 0) {
     if (!butterfly?.active || !this.textures.exists("light-sparkle")) return;
     const direction = butterfly.getData("direction") || 1;
     const sparkle = this.add.image(
-      butterfly.x - direction * Phaser.Math.FloatBetween(10, 32) + Phaser.Math.FloatBetween(-5, 5),
-      butterfly.y + Phaser.Math.FloatBetween(-12, 12),
+      butterfly.x - direction * Phaser.Math.FloatBetween(12 + sparkleIndex * 4, 58 + sparkleIndex * 10) + Phaser.Math.FloatBetween(-10, 10),
+      butterfly.y + Phaser.Math.FloatBetween(-18, 18),
       "light-sparkle"
     );
-    const scale = Phaser.Math.FloatBetween(0.045, 0.105);
+    const scale = Phaser.Math.FloatBetween(0.055, 0.145);
     sparkle.setTint(BUTTERFLY_BLUE_TINT);
     sparkle.setScale(scale);
     sparkle.setDepth(BUTTERFLY_SPARKLE_DEPTH);
     sparkle.setBlendMode(Phaser.BlendModes.ADD);
-    sparkle.setAlpha(0);
+    sparkle.setAlpha(Phaser.Math.FloatBetween(0.24, 0.58));
     this.tweens.add({
       targets: sparkle,
-      alpha: Phaser.Math.FloatBetween(0.2, 0.42),
-      scale: scale * Phaser.Math.FloatBetween(1.08, 1.35),
-      x: sparkle.x - direction * Phaser.Math.FloatBetween(12, 26),
-      y: sparkle.y + Phaser.Math.FloatBetween(-5, 8),
-      duration: Phaser.Math.Between(300, 520),
-      yoyo: true,
-      hold: Phaser.Math.Between(20, 110),
-      ease: "Sine.inOut",
+      alpha: 0,
+      scale: scale * Phaser.Math.FloatBetween(1.1, 1.55),
+      x: sparkle.x - direction * Phaser.Math.FloatBetween(28, 72),
+      y: sparkle.y + Phaser.Math.FloatBetween(-10, 14),
+      duration: Phaser.Math.Between(720, 1180),
+      ease: "Sine.easeOut",
       onComplete: () => sparkle.destroy()
     });
   }
@@ -12026,6 +12068,47 @@ class PlayScene extends Phaser.Scene {
     butterflies.forEach((butterfly) => this.destroyButterfly(butterfly));
     this.butterflies?.clear?.(true, true);
     this.nextButterflyAt = 0;
+  }
+
+  defeatButterfly(butterfly) {
+    if (!butterfly?.active || butterfly.getData("dying")) return;
+    butterfly.setData("dying", true);
+    butterfly.body.enable = false;
+    butterfly.setVelocity(0, 0);
+    butterfly.anims?.stop();
+    const glow = butterfly.getData("glow");
+    this.playLevelSfx(KILL_SFX_KEY, KILL_SFX_VOLUME * 0.72);
+    for (let index = 0; index < 18; index += 1) {
+      this.spawnButterflySparkle(butterfly, index % 5);
+    }
+    const originX = butterfly.x;
+    this.tweens.add({
+      targets: butterfly,
+      x: { from: originX - 5, to: originX + 5 },
+      duration: 42,
+      yoyo: true,
+      repeat: 7,
+      ease: "Sine.inOut"
+    });
+    this.tweens.add({
+      targets: butterfly,
+      alpha: 0,
+      scaleX: butterfly.scaleX * 1.28,
+      scaleY: butterfly.scaleY * 1.28,
+      duration: 540,
+      ease: "Sine.easeIn",
+      onComplete: () => this.destroyButterfly(butterfly)
+    });
+    if (glow?.active) {
+      this.tweens.add({
+        targets: glow,
+        alpha: 0,
+        scaleX: glow.scaleX * 1.55,
+        scaleY: glow.scaleY * 1.55,
+        duration: 520,
+        ease: "Sine.easeIn"
+      });
+    }
   }
 
   hitButterfly(_player, butterfly) {
