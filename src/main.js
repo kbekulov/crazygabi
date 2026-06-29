@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.9";
+const GAME_VERSION = "v0.63.10";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -201,6 +201,7 @@ const BUTTERFLY_SPARKLE_DEPTH = DARKNESS_DEPTH + 1.42;
 const BUTTERFLY_HIT_COOLDOWN_MS = 1300;
 const BUTTERFLY_ATTACK_SCORE = 180;
 const BUTTERFLY_BLUE_TINT = 0x86ccff;
+const BUTTERFLY_TRAIL_TINTS = [0x86ccff, 0xb8e8ff, 0xffffff, 0x68bcff];
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
 const WATER_SPEED = 6;
@@ -392,7 +393,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-butterfly-trails";
+const ASSET_VERSION = "20260629-bold-butterfly-trails";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1071,8 +1072,8 @@ const LEVELS = [
       glowRadius: 64,
       lightRadius: 112,
       lightFringe: 104,
-      sparkleDelay: [70, 120],
-      sparkleBurst: [3, 5]
+      sparkleDelay: [34, 62],
+      sparkleBurst: [8, 12]
     },
     keyGarden: true,
     decorativeGardens: [
@@ -12031,24 +12032,25 @@ class PlayScene extends Phaser.Scene {
   spawnButterflySparkle(butterfly, sparkleIndex = 0) {
     if (!butterfly?.active || !this.textures.exists("light-sparkle")) return;
     const direction = butterfly.getData("direction") || 1;
+    const trailDistance = Phaser.Math.FloatBetween(18 + sparkleIndex * 8, 86 + sparkleIndex * 18);
     const sparkle = this.add.image(
-      butterfly.x - direction * Phaser.Math.FloatBetween(12 + sparkleIndex * 4, 58 + sparkleIndex * 10) + Phaser.Math.FloatBetween(-10, 10),
-      butterfly.y + Phaser.Math.FloatBetween(-18, 18),
+      butterfly.x - direction * trailDistance + Phaser.Math.FloatBetween(-14, 14),
+      butterfly.y + Phaser.Math.FloatBetween(-24, 24),
       "light-sparkle"
     );
-    const scale = Phaser.Math.FloatBetween(0.055, 0.145);
-    sparkle.setTint(BUTTERFLY_BLUE_TINT);
+    const scale = Phaser.Math.FloatBetween(0.12, 0.27);
+    sparkle.setTint(Phaser.Math.RND.pick(BUTTERFLY_TRAIL_TINTS));
     sparkle.setScale(scale);
     sparkle.setDepth(BUTTERFLY_SPARKLE_DEPTH);
     sparkle.setBlendMode(Phaser.BlendModes.ADD);
-    sparkle.setAlpha(Phaser.Math.FloatBetween(0.24, 0.58));
+    sparkle.setAlpha(Phaser.Math.FloatBetween(0.78, 1));
     this.tweens.add({
       targets: sparkle,
       alpha: 0,
-      scale: scale * Phaser.Math.FloatBetween(1.1, 1.55),
-      x: sparkle.x - direction * Phaser.Math.FloatBetween(28, 72),
-      y: sparkle.y + Phaser.Math.FloatBetween(-10, 14),
-      duration: Phaser.Math.Between(720, 1180),
+      scale: scale * Phaser.Math.FloatBetween(1.35, 2.2),
+      x: sparkle.x - direction * Phaser.Math.FloatBetween(52, 132),
+      y: sparkle.y + Phaser.Math.FloatBetween(-16, 20),
+      duration: Phaser.Math.Between(1180, 1960),
       ease: "Sine.easeOut",
       onComplete: () => sparkle.destroy()
     });
@@ -12078,7 +12080,7 @@ class PlayScene extends Phaser.Scene {
     butterfly.anims?.stop();
     const glow = butterfly.getData("glow");
     this.playLevelSfx(KILL_SFX_KEY, KILL_SFX_VOLUME * 0.72);
-    for (let index = 0; index < 18; index += 1) {
+    for (let index = 0; index < 30; index += 1) {
       this.spawnButterflySparkle(butterfly, index % 5);
     }
     const originX = butterfly.x;

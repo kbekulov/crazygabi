@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.10
+
+- Made Level 7 butterfly contrails much brighter, denser, and longer-lasting.
+
 ## v0.63.9
 
 - Strengthened Level 7 butterfly sparkle trails, added soft darkness-cutting light circles, reduced butterfly frequency, and let Shift attacks destroy them.
