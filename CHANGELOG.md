@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.13
+
+- Made Level 7 butterfly contrails narrower while enlarging individual sparkle particles.
+
 ## v0.63.12
 
 - Rebalanced Level 7 butterfly contrails to be longer, airier, and easier to read.

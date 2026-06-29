@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.12";
+const GAME_VERSION = "v0.63.13";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -393,7 +393,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-balanced-butterfly-trails";
+const ASSET_VERSION = "20260629-thin-large-butterfly-trails";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -12034,11 +12034,11 @@ class PlayScene extends Phaser.Scene {
     const direction = butterfly.getData("direction") || 1;
     const trailDistance = Phaser.Math.FloatBetween(10 + sparkleIndex * 4, 44 + sparkleIndex * 10);
     const sparkle = this.add.image(
-      butterfly.x - direction * trailDistance + Phaser.Math.FloatBetween(-4, 4),
-      butterfly.y + Phaser.Math.FloatBetween(-6, 6),
+      butterfly.x - direction * trailDistance + Phaser.Math.FloatBetween(-2, 2),
+      butterfly.y + Phaser.Math.FloatBetween(-3, 3),
       "light-sparkle"
     );
-    const scale = Phaser.Math.FloatBetween(0.07, 0.14);
+    const scale = Phaser.Math.FloatBetween(0.105, 0.21);
     sparkle.setTint(Phaser.Math.RND.pick(BUTTERFLY_TRAIL_TINTS));
     sparkle.setScale(scale);
     sparkle.setDepth(BUTTERFLY_SPARKLE_DEPTH);
@@ -12049,7 +12049,7 @@ class PlayScene extends Phaser.Scene {
       alpha: 0,
       scale: scale * Phaser.Math.FloatBetween(1.12, 1.45),
       x: sparkle.x - direction * Phaser.Math.FloatBetween(26, 68),
-      y: sparkle.y + Phaser.Math.FloatBetween(-4, 5),
+      y: sparkle.y + Phaser.Math.FloatBetween(-2, 2.5),
       duration: Phaser.Math.Between(600, 1000),
       ease: "Sine.easeOut",
       onComplete: () => sparkle.destroy()
