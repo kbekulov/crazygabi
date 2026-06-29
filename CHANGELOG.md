@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.8
+
+- Added solitary blue butterflies to Level 7 as glowing hazards with animated sparkle trails.
+
 ## v0.63.7
 
 - Added a persistent Story Mode setting that skips manga intro panels by default.

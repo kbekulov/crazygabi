@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.7";
+const GAME_VERSION = "v0.63.8";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -193,6 +193,13 @@ const NIGHT_LANTERN_RADIUS = 170;
 const NIGHT_LANTERN_FRINGE = 72;
 const NIGHT_LANTERN_GLOW_DEPTH = DARKNESS_DEPTH + 0.18;
 const NIGHT_LANTERN_SPARKLE_DEPTH = DARKNESS_DEPTH + 0.22;
+const BUTTERFLY_FRAME_SIZE = 340;
+const BUTTERFLY_SCALE_RANGE = [0.088, 0.112];
+const BUTTERFLY_DEPTH = DARKNESS_DEPTH + 1.35;
+const BUTTERFLY_GLOW_DEPTH = DARKNESS_DEPTH + 1.12;
+const BUTTERFLY_SPARKLE_DEPTH = DARKNESS_DEPTH + 1.42;
+const BUTTERFLY_HIT_COOLDOWN_MS = 1300;
+const BUTTERFLY_BLUE_TINT = 0x86ccff;
 const WATER_SCALE = 0.32;
 const WATER_OVERLAP = 0.25;
 const WATER_SPEED = 6;
@@ -384,7 +391,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-story-mode-toggle";
+const ASSET_VERSION = "20260629-level7-butterflies";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -1054,6 +1061,15 @@ const LEVELS = [
       { column: 438, floorRow: 8, asset: "garden-lantern-1", radius: 188 },
       { column: 492, floorRow: 13, asset: "garden-lantern-2", radius: 210 }
     ],
+    butterflies: {
+      maxActive: 4,
+      minDelay: 2600,
+      maxDelay: 5600,
+      speedRange: [62, 106],
+      verticalRange: [92, 382],
+      glowRadius: 52,
+      sparkleDelay: [90, 170]
+    },
     keyGarden: true,
     decorativeGardens: [
       { row: 20, startColumn: 9, endColumn: 27, density: 0.6, featureRate: 0.28, bushScaleBoost: 0.96, featureScaleBoost: 0.88 },
@@ -2961,6 +2977,7 @@ class PlayScene extends Phaser.Scene {
     this.acorns = this.physics.add.group({ allowGravity: false, immovable: true });
     this.thrownItems = this.physics.add.group({ allowGravity: true, immovable: false });
     this.giantHands = this.physics.add.group({ allowGravity: false, immovable: false });
+    this.butterflies = this.physics.add.group({ allowGravity: false, immovable: false });
     this.keys = this.physics.add.group({ allowGravity: false, immovable: true });
     this.doors = this.physics.add.staticGroup();
     this.haystacks = this.physics.add.group({ allowGravity: false, immovable: true });
@@ -3015,6 +3032,7 @@ class PlayScene extends Phaser.Scene {
     this.nightLanternLights = [];
     this.playerLanternGlow = null;
     this.nextNightLanternSparkleAt = 0;
+    this.nextButterflyAt = 0;
     this.nextBirdFlockAt = 0;
     this.ambientLeaves = [];
     this.nextAmbientLeafAt = 0;
@@ -3275,6 +3293,9 @@ class PlayScene extends Phaser.Scene {
         } else {
           sheet("autumn-leaf-1", "./public/assets/environment/autumn_leaf_1.png", AUTUMN_LEAF_FRAME_WIDTH, AUTUMN_LEAF_FRAME_HEIGHT);
         }
+      }
+      if (level.butterflies) {
+        sheet("butterfly-1", "./public/assets/environment/butterfly_1.png", BUTTERFLY_FRAME_SIZE, BUTTERFLY_FRAME_SIZE);
       }
       spineAsset(level.distantColossus);
       colossusPartAssets(level.distantColossus);
@@ -6349,6 +6370,14 @@ class PlayScene extends Phaser.Scene {
         repeat: -1
       });
     });
+    if (this.textures.exists("butterfly-1") && !this.anims.exists("butterfly-fly")) {
+      this.anims.create({
+        key: "butterfly-fly",
+        frames: this.anims.generateFrameNumbers("butterfly-1", { frames: [0, 1, 2] }),
+        frameRate: 12,
+        repeat: -1
+      });
+    }
     if (this.textures.exists("flower-petal") && !this.anims.exists("flower-petal-float")) {
       this.anims.create({
         key: "flower-petal-float",
@@ -8057,6 +8086,7 @@ class PlayScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.enemies, this.hitEnemy, null, this);
     this.physics.add.overlap(this.player, this.acorns, this.hitAcorn, null, this);
     this.physics.add.overlap(this.player, this.giantHands, this.hitGiantHand, null, this);
+    this.physics.add.overlap(this.player, this.butterflies, this.hitButterfly, null, this);
     this.physics.add.overlap(this.player, this.haystacks, this.landInHaystack, null, this);
     this.physics.add.overlap(this.player, this.gardenBushes, this.passThroughGardenBush, null, this);
     this.physics.add.overlap(this.player, this.doors, this.enterDoor, null, this);
@@ -8177,6 +8207,7 @@ class PlayScene extends Phaser.Scene {
     this.updateBossHealthBar(delta);
     this.updateLightRays(time);
     this.updateNightLanternLights(time);
+    this.updateButterflies(time, delta);
     this.updateWater(delta);
     this.updateHangingChains(time, delta);
     this.updateLanternOverlay();
@@ -11857,6 +11888,165 @@ class PlayScene extends Phaser.Scene {
     });
   }
 
+  updateButterflies(time = 0, delta = 0) {
+    const config = this.level?.butterflies;
+    if (!config || !this.butterflies || !state.running || state.won || this.isItemPromptActive()) return;
+    const camera = this.cameras.main;
+    const activeButterflies = this.butterflies.getChildren().filter((butterfly) => butterfly?.active);
+    const seconds = delta / 1000;
+
+    activeButterflies.forEach((butterfly) => {
+      const direction = butterfly.getData("direction") || 1;
+      const speed = butterfly.getData("speed") || 80;
+      const baseY = butterfly.getData("baseY") || butterfly.y;
+      const phase = butterfly.getData("phase") || 0;
+      const flutter = butterfly.getData("flutter") || 2.8;
+      const age = Math.max(0, (time - (butterfly.getData("startedAt") || time)) / 1000);
+      const wobble = Math.sin(age * flutter + phase) * 26 + Math.sin(age * 1.35 + phase * 0.43) * 12;
+      const drift = Math.cos(age * 0.72 + phase) * 18;
+      butterfly.setVelocity(direction * speed, (baseY + drift + wobble - butterfly.y) * 2.8);
+      butterfly.setRotation(Math.sin(age * flutter * 0.9 + phase) * 0.18);
+
+      const glow = butterfly.getData("glow");
+      if (glow?.active) {
+        const glowPulse = 1 + Math.sin(time * 0.004 + phase) * 0.06;
+        const glowScale = (butterfly.getData("glowRadius") || 52) / 128;
+        glow.setPosition(butterfly.x - direction * 7, butterfly.y + 1);
+        glow.setScale(glowScale * glowPulse);
+        glow.setAlpha(Phaser.Math.Clamp(0.2 + Math.sin(time * 0.002 + phase) * 0.035, 0.14, 0.26));
+      }
+
+      if (time >= (butterfly.getData("nextSparkleAt") || 0)) {
+        this.spawnButterflySparkle(butterfly);
+        const sparkleDelay = this.level?.butterflies?.sparkleDelay || [100, 190];
+        butterfly.setData("nextSparkleAt", time + Phaser.Math.Between(sparkleDelay[0], sparkleDelay[1]));
+      }
+
+      if (
+        butterfly.x < camera.scrollX - 170 ||
+        butterfly.x > camera.scrollX + VIEW_WIDTH + 170 ||
+        butterfly.y < camera.scrollY - 110 ||
+        butterfly.y > camera.scrollY + PLAY_HEIGHT + 110 ||
+        butterfly.x < -220 ||
+        butterfly.x > this.levelWidth + 220
+      ) {
+        this.destroyButterfly(butterfly);
+      } else if (seconds > 0) {
+        butterfly.setDepth(BUTTERFLY_DEPTH);
+      }
+    });
+
+    if (!this.textures.exists("butterfly-1") || !this.anims.exists("butterfly-fly")) return;
+    if (!this.nextButterflyAt) this.nextButterflyAt = time + Phaser.Math.Between(650, 1600);
+    if (time < this.nextButterflyAt || activeButterflies.length >= (config.maxActive ?? 4)) return;
+    this.spawnButterfly(time);
+    this.nextButterflyAt = time + Phaser.Math.Between(config.minDelay ?? 2600, config.maxDelay ?? 5600);
+  }
+
+  spawnButterfly(time = 0) {
+    const config = this.level?.butterflies;
+    if (!config || !this.butterflies || !this.textures.exists("butterfly-1")) return;
+    this.ensureNightLanternGlowTexture();
+    const camera = this.cameras.main;
+    const fromLeft = Phaser.Math.Between(0, 1) === 0;
+    const direction = fromLeft ? 1 : -1;
+    const x = camera.scrollX + (fromLeft ? -78 : VIEW_WIDTH + 78);
+    const visibleTop = Math.max(40, camera.scrollY + (config.verticalRange?.[0] ?? 92));
+    const visibleBottom = Math.min(this.levelHeight - 64, camera.scrollY + Math.min(config.verticalRange?.[1] ?? 382, PLAY_HEIGHT - 76));
+    const y = Phaser.Math.Between(Math.round(visibleTop), Math.round(Math.max(visibleTop + 30, visibleBottom)));
+    const butterfly = this.butterflies.create(x, y, "butterfly-1", Phaser.Math.Between(0, 2));
+    const scale = Phaser.Math.FloatBetween(BUTTERFLY_SCALE_RANGE[0], BUTTERFLY_SCALE_RANGE[1]);
+    const glowRadius = config.glowRadius ?? 52;
+    butterfly.setScale(scale);
+    butterfly.setDepth(BUTTERFLY_DEPTH);
+    butterfly.setAlpha(0.94);
+    butterfly.setFlipX(direction < 0);
+    butterfly.setCircle(128, 42, 42);
+    butterfly.body.setAllowGravity(false);
+    butterfly.setImmovable(false);
+    butterfly.play("butterfly-fly", true);
+    butterfly.setData("direction", direction);
+    butterfly.setData("speed", Phaser.Math.Between(config.speedRange?.[0] ?? 62, config.speedRange?.[1] ?? 106));
+    butterfly.setData("baseY", y);
+    butterfly.setData("phase", Phaser.Math.FloatBetween(0, Math.PI * 2));
+    butterfly.setData("flutter", Phaser.Math.FloatBetween(2.4, 3.9));
+    butterfly.setData("startedAt", time);
+    butterfly.setData("nextSparkleAt", time + Phaser.Math.Between(40, 120));
+    butterfly.setData("hitCooldownUntil", 0);
+    butterfly.setData("glowRadius", glowRadius);
+
+    const glow = this.add.image(x, y, NIGHT_LANTERN_GLOW_KEY);
+    glow.setTint(BUTTERFLY_BLUE_TINT);
+    glow.setScale(glowRadius / 128);
+    glow.setDepth(BUTTERFLY_GLOW_DEPTH);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
+    glow.setAlpha(0.2);
+    butterfly.setData("glow", glow);
+  }
+
+  spawnButterflySparkle(butterfly) {
+    if (!butterfly?.active || !this.textures.exists("light-sparkle")) return;
+    const direction = butterfly.getData("direction") || 1;
+    const sparkle = this.add.image(
+      butterfly.x - direction * Phaser.Math.FloatBetween(10, 32) + Phaser.Math.FloatBetween(-5, 5),
+      butterfly.y + Phaser.Math.FloatBetween(-12, 12),
+      "light-sparkle"
+    );
+    const scale = Phaser.Math.FloatBetween(0.045, 0.105);
+    sparkle.setTint(BUTTERFLY_BLUE_TINT);
+    sparkle.setScale(scale);
+    sparkle.setDepth(BUTTERFLY_SPARKLE_DEPTH);
+    sparkle.setBlendMode(Phaser.BlendModes.ADD);
+    sparkle.setAlpha(0);
+    this.tweens.add({
+      targets: sparkle,
+      alpha: Phaser.Math.FloatBetween(0.2, 0.42),
+      scale: scale * Phaser.Math.FloatBetween(1.08, 1.35),
+      x: sparkle.x - direction * Phaser.Math.FloatBetween(12, 26),
+      y: sparkle.y + Phaser.Math.FloatBetween(-5, 8),
+      duration: Phaser.Math.Between(300, 520),
+      yoyo: true,
+      hold: Phaser.Math.Between(20, 110),
+      ease: "Sine.inOut",
+      onComplete: () => sparkle.destroy()
+    });
+  }
+
+  destroyButterfly(butterfly) {
+    if (!butterfly) return;
+    const glow = butterfly.getData?.("glow");
+    this.tweens?.killTweensOf?.(butterfly);
+    this.tweens?.killTweensOf?.(glow);
+    glow?.destroy?.();
+    butterfly.destroy?.();
+  }
+
+  clearButterflies() {
+    const butterflies = this.butterflies?.getChildren?.() || [];
+    butterflies.forEach((butterfly) => this.destroyButterfly(butterfly));
+    this.butterflies?.clear?.(true, true);
+    this.nextButterflyAt = 0;
+  }
+
+  hitButterfly(_player, butterfly) {
+    if (!state.running || this.isItemPromptActive() || !butterfly?.active) return;
+    const now = this.time.now;
+    if (now < (this.damageInvulnerableUntil || 0) || now < (butterfly.getData("hitCooldownUntil") || 0)) return;
+    butterfly.setData("hitCooldownUntil", now + BUTTERFLY_HIT_COOLDOWN_MS);
+    this.tweens.add({
+      targets: butterfly,
+      alpha: 0.34,
+      duration: 80,
+      yoyo: true,
+      repeat: 3,
+      ease: "Sine.inOut",
+      onComplete: () => {
+        if (butterfly?.active) butterfly.setAlpha(0.94);
+      }
+    });
+    this.loseLife({ damageSource: "hazard" });
+  }
+
   updateLightSparkles(time = 0) {
     if (!this.resolvedLightRays?.length || time < this.nextLightSparkleAt) return;
     const sparkleCount = Phaser.Math.Between(20, 60);
@@ -12237,6 +12427,8 @@ class PlayScene extends Phaser.Scene {
     this.suitcaseBoxProjectiles = [];
     this.giantHands?.clear?.(true, true);
     this.giantHands = null;
+    this.clearButterflies();
+    this.butterflies = null;
     this.damageFlickerTween?.remove?.();
     this.damageFlickerTween = null;
     this.damageInvulnerableUntil = 0;
