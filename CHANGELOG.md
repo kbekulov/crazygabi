@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.11
+
+- Slimmed and shortened Level 7 butterfly contrails while keeping them bright.
+
 ## v0.63.10
 
 - Made Level 7 butterfly contrails much brighter, denser, and longer-lasting.
