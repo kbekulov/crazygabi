@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.6";
+const GAME_VERSION = "v0.63.7";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-hide-test-level";
+const ASSET_VERSION = "20260629-story-mode-toggle";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -400,7 +400,8 @@ const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true,
   dash: false,
-  admin: false
+  admin: false,
+  storyMode: false
 };
 const ADMIN_PASSWORD = "0000";
 const ADMIN_HEART_REGEN_DELAY_MS = 2000;
@@ -2321,7 +2322,8 @@ function getAudioSettings() {
       music: saved.music !== false,
       sfx: saved.sfx !== false,
       dash: saved.dash === true,
-      admin: saved.admin === true
+      admin: saved.admin === true,
+      storyMode: saved.storyMode === true
     };
   } catch (_error) {
     return { ...DEFAULT_AUDIO_SETTINGS };
@@ -2351,6 +2353,10 @@ function isDashEnabled() {
 
 function isAdminEnabled() {
   return state.audioSettings?.admin === true;
+}
+
+function isStoryModeEnabled() {
+  return state.audioSettings?.storyMode === true;
 }
 
 function setAudioSetting(key, enabled) {
@@ -3654,6 +3660,10 @@ class PlayScene extends Phaser.Scene {
     setStoryIntroVisible(false);
     hud.message.hidden = true;
     this.startMusic();
+    if (!isStoryModeEnabled()) {
+      this.beginGameplay(introToken);
+      return;
+    }
     try {
       const frames = this.getPreloadedStoryFrames();
       if (!this.isCurrentIntro(introToken)) return;
@@ -13387,9 +13397,9 @@ function updateAudioSettingsPanel() {
     .querySelectorAll(".settings-toggle-row")
     .forEach((row) => {
       const key = row.dataset.setting;
-      const enabled = key === "dash" || key === "admin"
-        ? state.audioSettings?.[key] === true
-        : state.audioSettings?.[key] !== false;
+      const enabled = Boolean(Object.hasOwn(state.audioSettings || {}, key)
+        ? state.audioSettings[key]
+        : DEFAULT_AUDIO_SETTINGS[key]);
       const button = row.querySelector(".settings-toggle");
       if (!button) return;
       button.classList.toggle("is-active", enabled);
@@ -13412,6 +13422,7 @@ function showSettingsPanel() {
   hud.menuPanelContent.appendChild(createSettingsToggleGrid([
     { key: "music", label: "Music", description: "Menu themes, level soundtracks, music box tracks, and ambient loops." },
     { key: "sfx", label: "Sound Effects", description: "Pickups, attacks, dialogue sounds, impacts, and environmental effects." },
+    { key: "storyMode", label: "Story Mode", description: "Show manga story panels before each level when enabled." },
     { key: "dash", label: "Dash", description: "Double-tap left or right to dash when enabled." },
     { key: "admin", label: "Admin", description: "Testing helper. Lost hearts regenerate after a short delay." }
   ]));
@@ -13426,6 +13437,7 @@ function createCheatSettingsControls() {
   wrapper.append(heading, createSettingsToggleGrid([
     { key: "music", label: "Music", description: "Toggle all music layers." },
     { key: "sfx", label: "Sound Effects", description: "Toggle pickups, attacks, impacts, and ambience." },
+    { key: "storyMode", label: "Story Mode", description: "Toggle level manga intros." },
     { key: "dash", label: "Dash", description: "Toggle double-tap dash movement." },
     { key: "admin", label: "Admin", description: "Password-protected heart regeneration for testing." }
   ]));

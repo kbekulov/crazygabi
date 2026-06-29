@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.7
+
+- Added a persistent Story Mode setting that skips manga intro panels by default.
+
 ## v0.63.6
 
 - Hid the temporary Level 0 bridge test route from level selection menus.
