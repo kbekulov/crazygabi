@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.63.6
+
+- Hid the temporary Level 0 bridge test route from level selection menus.
+
 ## v0.63.5
 
 - Moved the in-game menu action buttons into a shared centered row.

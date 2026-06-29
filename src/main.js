@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.5";
+const GAME_VERSION = "v0.63.6";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -384,7 +384,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260628-cheat-action-row";
+const ASSET_VERSION = "20260629-hide-test-level";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -496,7 +496,7 @@ const LEVEL_SIX_WIDTH_TILES = 420;
 const LEVEL_SEVEN_WIDTH_TILES = 520;
 const LEVEL_ZERO_WIDTH_TILES = 48;
 const LEVEL_HEIGHT_TILES = 18;
-const TEST_LEVELS_ENABLED = true;
+const TEST_LEVELS_ENABLED = false;
 const LEVELS = [
   {
     name: "Level 1",
