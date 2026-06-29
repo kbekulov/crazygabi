@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.63.14";
+const GAME_VERSION = "v0.64.0";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -393,7 +393,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260629-residue-butterfly-trails";
+const ASSET_VERSION = "20260630-quick-menu-difficulty";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -404,11 +404,13 @@ function getSpineRuntime() {
 const DIFFICULTY_COOKIE = "crazy-gabi-difficulty";
 const AUDIO_SETTINGS_COOKIE = "crazy-gabi-audio-settings";
 const DIFFICULTY_EASY = "easy";
+const DIFFICULTY_NORMAL = "normal";
 const DIFFICULTY_HARD = "hard";
 const DEFAULT_AUDIO_SETTINGS = {
   music: true,
   sfx: true,
   dash: false,
+  dashUserSet: false,
   admin: false,
   storyMode: false
 };
@@ -432,9 +434,12 @@ const DIFFICULTY_PROFILES = {
     giantHandTelegraphMs: 2250,
     giantHandNextDelay: [10500, 15500],
     suitcaseNextDelay: [8200, 13200],
-    respawnMinTime: 70
+    respawnMinTime: 70,
+    extraEnemyMultiplier: 1,
+    bossDamageMultiplier: 1,
+    giantHandHarmWidthMultiplier: 1
   },
-  [DIFFICULTY_HARD]: {
+  [DIFFICULTY_NORMAL]: {
     scoreMultiplier: 1,
     timeMultiplier: 0.9,
     hazardDelayMultiplier: 0.78,
@@ -450,7 +455,31 @@ const DIFFICULTY_PROFILES = {
     giantHandTelegraphMs: 1500,
     giantHandNextDelay: [5600, 8800],
     suitcaseNextDelay: [3900, 6800],
-    respawnMinTime: 35
+    respawnMinTime: 35,
+    extraEnemyMultiplier: 1,
+    bossDamageMultiplier: 1,
+    giantHandHarmWidthMultiplier: 1.1
+  },
+  [DIFFICULTY_HARD]: {
+    scoreMultiplier: 1,
+    timeMultiplier: 0.78,
+    hazardDelayMultiplier: 0.62,
+    hazardPaceMultiplier: 1.22,
+    quakeDelayMultiplier: 0.68,
+    quakeBurstMultiplier: 1.42,
+    enemyHeartDropChance: 0.08,
+    maxHeartDrops: 1,
+    giantHandHeartDropChance: 0.08,
+    suitcaseBoxHeartDropChance: 0.07,
+    suitcaseBoxEnemySpawnCount: [4, 7],
+    bossAttackGapMs: 1300,
+    giantHandTelegraphMs: 1250,
+    giantHandNextDelay: [4200, 6800],
+    suitcaseNextDelay: [3000, 5200],
+    respawnMinTime: 25,
+    extraEnemyMultiplier: 2,
+    bossDamageMultiplier: 0.5,
+    giantHandHarmWidthMultiplier: 1.3
   }
 };
 const LEVEL_LOAD_TIMEOUT_MS = 30000;
@@ -701,7 +730,7 @@ const LEVELS = [
       wallFaceColumn: 178
     },
     manualDiveLedges: [
-      { type: "final-elevator-top", side: "both", scriptedHaystackDive: true }
+      { type: "final-elevator-top", side: "left", scriptedHaystackDive: true }
     ],
     haystacks: [
       { x: 164 * TILE, floorRow: 145 }
@@ -1065,8 +1094,8 @@ const LEVELS = [
     ],
     butterflies: {
       maxActive: 2,
-      minDelay: 5200,
-      maxDelay: 11200,
+      minDelay: 3500,
+      maxDelay: 7500,
       speedRange: [62, 106],
       verticalRange: [92, 382],
       glowRadius: 64,
@@ -1949,7 +1978,7 @@ const state = {
   pendingLevelPrompt: null,
   questProgress: createQuestProgress(),
   audioSettings: { ...DEFAULT_AUDIO_SETTINGS },
-  difficulty: DIFFICULTY_HARD
+  difficulty: DIFFICULTY_NORMAL
 };
 
 const hud = {
@@ -2003,6 +2032,7 @@ const hud = {
   menuCredits: document.querySelector("#menu-credits"),
   menuPetals: document.querySelector("#main-menu-petals"),
   difficultyEasy: document.querySelector("#difficulty-easy"),
+  difficultyNormal: document.querySelector("#difficulty-normal"),
   difficultyHard: document.querySelector("#difficulty-hard"),
   menuPanel: document.querySelector("#menu-panel"),
   menuPanelTitle: document.querySelector("#menu-panel-title"),
@@ -2329,25 +2359,36 @@ function recordBestScore(score) {
 }
 
 function normalizeDifficulty(value) {
-  return value === DIFFICULTY_EASY ? DIFFICULTY_EASY : DIFFICULTY_HARD;
+  if (value === DIFFICULTY_EASY) return DIFFICULTY_EASY;
+  if (value === DIFFICULTY_HARD) return DIFFICULTY_HARD;
+  return DIFFICULTY_NORMAL;
 }
 
 function getDifficultySetting() {
   return normalizeDifficulty(getCookieValue(DIFFICULTY_COOKIE));
 }
 
+function getDefaultDashForDifficulty(difficulty = getDifficultySetting()) {
+  return normalizeDifficulty(difficulty) === DIFFICULTY_HARD;
+}
+
 function getAudioSettings() {
   try {
     const saved = JSON.parse(getCookieValue(AUDIO_SETTINGS_COOKIE) || "{}");
+    const dashUserSet = saved.dashUserSet === true;
     return {
       music: saved.music !== false,
       sfx: saved.sfx !== false,
-      dash: saved.dash === true,
+      dash: dashUserSet ? saved.dash === true : getDefaultDashForDifficulty(),
+      dashUserSet,
       admin: saved.admin === true,
       storyMode: saved.storyMode === true
     };
   } catch (_error) {
-    return { ...DEFAULT_AUDIO_SETTINGS };
+    return {
+      ...DEFAULT_AUDIO_SETTINGS,
+      dash: getDefaultDashForDifficulty()
+    };
   }
 }
 
@@ -2389,7 +2430,8 @@ function setAudioSetting(key, enabled) {
   state.audioSettings = {
     ...DEFAULT_AUDIO_SETTINGS,
     ...(state.audioSettings || {}),
-    [key]: Boolean(enabled)
+    [key]: Boolean(enabled),
+    ...(key === "dash" ? { dashUserSet: true } : {})
   };
   saveAudioSettings();
   updateAudioSettingsPanel();
@@ -2405,25 +2447,40 @@ function confirmAdminPassword() {
 
 function setDifficultySetting(value) {
   state.difficulty = normalizeDifficulty(value);
+  const dashWasUserSet = state.audioSettings?.dashUserSet === true;
   document.cookie = [
     `${DIFFICULTY_COOKIE}=${encodeURIComponent(state.difficulty)}`,
     "max-age=31536000",
     "path=/",
     "SameSite=Lax"
   ].join("; ");
+  if (!dashWasUserSet) {
+    state.audioSettings = {
+      ...DEFAULT_AUDIO_SETTINGS,
+      ...(state.audioSettings || {}),
+      dash: getDefaultDashForDifficulty(state.difficulty),
+      dashUserSet: false
+    };
+    saveAudioSettings();
+    updateAudioSettingsPanel();
+  }
   updateDifficultyToggle();
 }
 
 function updateDifficultyToggle() {
   const isEasy = state.difficulty === DIFFICULTY_EASY;
+  const isNormal = state.difficulty === DIFFICULTY_NORMAL;
+  const isHard = state.difficulty === DIFFICULTY_HARD;
   hud.difficultyEasy.classList.toggle("is-active", isEasy);
-  hud.difficultyHard.classList.toggle("is-active", !isEasy);
+  hud.difficultyNormal.classList.toggle("is-active", isNormal);
+  hud.difficultyHard.classList.toggle("is-active", isHard);
   hud.difficultyEasy.setAttribute("aria-pressed", String(isEasy));
-  hud.difficultyHard.setAttribute("aria-pressed", String(!isEasy));
+  hud.difficultyNormal.setAttribute("aria-pressed", String(isNormal));
+  hud.difficultyHard.setAttribute("aria-pressed", String(isHard));
 }
 
 function getDifficultyProfile() {
-  return DIFFICULTY_PROFILES[state.difficulty] || DIFFICULTY_PROFILES[DIFFICULTY_HARD];
+  return DIFFICULTY_PROFILES[state.difficulty] || DIFFICULTY_PROFILES[DIFFICULTY_NORMAL];
 }
 
 function getDifficultyScaledRange(range, multiplierKey, minimum = 1) {
@@ -4888,6 +4945,17 @@ class PlayScene extends Phaser.Scene {
     return bounds;
   }
 
+  getCameraWorldPointForDisplayPoint(x = 0, y = 0, object = null) {
+    const camera = this.cameras?.main;
+    if (!camera) return { x, y };
+    const scrollFactorX = object?.scrollFactorX ?? object?.parentContainer?.scrollFactorX ?? 1;
+    const scrollFactorY = object?.scrollFactorY ?? object?.parentContainer?.scrollFactorY ?? 1;
+    if ((scrollFactorX === 0 || scrollFactorY === 0) && typeof camera.getWorldPoint === "function") {
+      return camera.getWorldPoint(x, y);
+    }
+    return { x, y };
+  }
+
   getDistantColossusHeadFocus() {
     const camera = this.cameras?.main;
     const rig = this.distantColossus;
@@ -4896,33 +4964,37 @@ class PlayScene extends Phaser.Scene {
     if (pngHead?.active) {
       const bounds = this.getWorldBoundsForObject(pngHead);
       if (bounds) {
-        return {
-          x: bounds.centerX,
-          y: bounds.top + bounds.height * 0.38
-        };
+        return this.getCameraWorldPointForDisplayPoint(
+          bounds.centerX,
+          bounds.top + bounds.height * 0.38,
+          rig.object
+        );
       }
     }
     const neck = rig.parts?.neck;
     if (neck?.active) {
       const bounds = this.getWorldBoundsForObject(neck);
       if (bounds) {
-        return {
-          x: bounds.centerX,
-          y: bounds.top - bounds.height * 0.85
-        };
+        return this.getCameraWorldPointForDisplayPoint(
+          bounds.centerX,
+          bounds.top - bounds.height * 0.85,
+          rig.object
+        );
       }
     }
     const containerBounds = this.getWorldBoundsForObject(rig.object);
     if (containerBounds) {
-      return {
-        x: containerBounds.centerX,
-        y: containerBounds.top + containerBounds.height * 0.18
-      };
+      return this.getCameraWorldPointForDisplayPoint(
+        containerBounds.centerX,
+        containerBounds.top + containerBounds.height * 0.18,
+        rig.object
+      );
     }
-    return {
-      x: rig.object.x,
-      y: rig.object.y - 84
-    };
+    return this.getCameraWorldPointForDisplayPoint(
+      rig.object.x,
+      rig.object.y - 84,
+      rig.object
+    );
   }
 
   fadeFrontParallaxForBossReveal(visible = true) {
@@ -6478,7 +6550,12 @@ class PlayScene extends Phaser.Scene {
           this.tweens.add({ targets: flower, y: y - 8, angle: 5, duration: 920, yoyo: true, repeat: -1, ease: "Sine.inOut" });
         }
         if (cell === "m") {
-          this.createEnemyAt(x, y, columnIndex % 2 ? -1 : 1);
+          const direction = columnIndex % 2 ? -1 : 1;
+          this.createEnemyAt(x, y, direction);
+          if ((getDifficultyProfile().extraEnemyMultiplier ?? 1) >= 2) {
+            const offset = (columnIndex % 2 ? 1 : -1) * TILE * 0.82;
+            this.createEnemyAt(x + offset, y, -direction);
+          }
         }
         if (cell === "a") {
           const hazardKey = this.level.fallingHazard || "falling-acorn";
@@ -8751,20 +8828,21 @@ class PlayScene extends Phaser.Scene {
   shouldUseGabiDiveJump(left = false, right = false, time = 0) {
     if (!this.anims.exists("gabi-dive") || !this.player?.body) return false;
     const indicatorLaunch = this.getDiveIndicatorJumpLaunch();
-    const direction = this.getDiveLaunchDirection(left, right) || indicatorLaunch?.direction || 0;
+    const neutralManualLaunch = left === right ? this.getNeutralManualDiveJumpLaunch() : null;
+    const direction = this.getDiveLaunchDirection(left, right) || indicatorLaunch?.direction || neutralManualLaunch?.direction || 0;
     if (!direction) {
       this.pendingDiveLedge = null;
       return false;
     }
 
-    const diveLedge = this.getPlayerManualDiveLedge(direction) || indicatorLaunch?.ledge || null;
+    const diveLedge = this.getPlayerManualDiveLedge(direction) || indicatorLaunch?.ledge || neutralManualLaunch?.ledge || null;
     if (!this.isValidDiveLaunchDirection(diveLedge, direction)) {
       this.pendingDiveLedge = null;
       return false;
     }
 
     const currentSpeed = Math.abs(this.player.body.velocity.x || 0);
-    if (indicatorLaunch) {
+    if (indicatorLaunch || neutralManualLaunch) {
       if (left === right) this.startForcedDiveDirection(direction, time);
       this.player.setAccelerationX(0);
       this.player.setVelocityX(direction * DIVE_JUMP_FORCED_HORIZONTAL_SPEED);
@@ -8797,6 +8875,16 @@ class PlayScene extends Phaser.Scene {
     const direction = indicator.direction ?? 1;
     const ledge = (this.level.manualDiveLedges || []).find((candidate) => this.matchesDiveLedgeSide(candidate, direction));
     return ledge ? { direction, ledge } : null;
+  }
+
+  getNeutralManualDiveJumpLaunch() {
+    if (!this.player?.body || !this.level.manualDiveLedges?.length) return null;
+    const directions = [-1, 1];
+    for (const direction of directions) {
+      const ledge = this.getPlayerManualDiveLedge(direction);
+      if (this.isValidDiveLaunchDirection(ledge, direction)) return { direction, ledge };
+    }
+    return null;
   }
 
   getDiveLaunchDirection(left = false, right = false) {
@@ -12032,7 +12120,7 @@ class PlayScene extends Phaser.Scene {
   spawnButterflySparkle(butterfly, sparkleIndex = 0) {
     if (!butterfly?.active || !this.textures.exists("light-sparkle")) return;
     const direction = butterfly.getData("direction") || 1;
-    const trailDistance = Phaser.Math.FloatBetween(10 + sparkleIndex * 4, 44 + sparkleIndex * 10);
+    const trailDistance = Phaser.Math.FloatBetween(15 + sparkleIndex * 6, 66 + sparkleIndex * 15);
     const sparkle = this.add.image(
       butterfly.x - direction * trailDistance + Phaser.Math.FloatBetween(-2, 2),
       butterfly.y + Phaser.Math.FloatBetween(-3, 3),
@@ -12050,7 +12138,7 @@ class PlayScene extends Phaser.Scene {
       scale: scale * Phaser.Math.FloatBetween(1.04, 1.2),
       x: sparkle.x + Phaser.Math.FloatBetween(-5, 5),
       y: sparkle.y + Phaser.Math.FloatBetween(-3, 4),
-      duration: Phaser.Math.Between(720, 1120),
+      duration: Phaser.Math.Between(1080, 1680),
       ease: "Sine.easeOut",
       onComplete: () => sparkle.destroy()
     });
@@ -13091,7 +13179,7 @@ class PlayScene extends Phaser.Scene {
     if (now - (hand.getData("lastHitAt") || -Infinity) < GIANT_HAND_HIT_COOLDOWN_MS) return;
     hand.setData("lastHitAt", now);
     this.playLevelSfx(KILL_SFX_KEY, KILL_SFX_VOLUME);
-    this.damageBoss(GIANT_HAND_DAMAGE);
+    this.damageBoss(GIANT_HAND_DAMAGE * (getDifficultyProfile().bossDamageMultiplier ?? 1));
     const originX = hand.x;
     hand.setTint(0xff2f2f);
     this.tweens.add({
@@ -13130,7 +13218,7 @@ class PlayScene extends Phaser.Scene {
   getGiantHandHarmHitbox(hand) {
     const sourceWidth = Math.max(1, hand?.width || 1);
     const sourceHeight = Math.max(1, hand?.height || 1);
-    const width = sourceWidth * 0.144;
+    const width = sourceWidth * 0.144 * (getDifficultyProfile().giantHandHarmWidthMultiplier ?? 1);
     return {
       x: sourceWidth * 0.5 - width * 0.5,
       y: sourceHeight * 0.13,
@@ -13237,7 +13325,7 @@ class PlayScene extends Phaser.Scene {
     const now = this.time?.now || 0;
     if (!respawn && now < (this.damageInvulnerableUntil || 0)) return;
     const hardDamageRespawn = Boolean(damageSource) &&
-      state.difficulty === DIFFICULTY_HARD &&
+      state.difficulty !== DIFFICULTY_EASY &&
       !this.level?.bossHealthGate;
     const shouldRespawn = respawn || hardDamageRespawn;
     this.damageInvulnerableUntil = now + DAMAGE_INVULNERABLE_MS;
@@ -13506,6 +13594,7 @@ hud.menuMusicBox.addEventListener("click", () => showMusicBoxPanel());
 hud.menuSettings.addEventListener("click", () => showSettingsPanel());
 hud.menuCredits.addEventListener("click", () => showCreditsPanel());
 hud.difficultyEasy.addEventListener("click", () => setDifficultySetting(DIFFICULTY_EASY));
+hud.difficultyNormal.addEventListener("click", () => setDifficultySetting(DIFFICULTY_NORMAL));
 hud.difficultyHard.addEventListener("click", () => setDifficultySetting(DIFFICULTY_HARD));
 hud.menuPanelClose.addEventListener("click", () => {
   setMenuPanelVisible(false);

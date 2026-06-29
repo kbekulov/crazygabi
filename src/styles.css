@@ -788,13 +788,13 @@ button:active {
 
 .difficulty-toggle {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  width: min(260px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  width: min(300px, 100%);
 }
 
 .difficulty-toggle button {
-  padding: 0.58rem 0.78rem;
+  padding: 0.56rem 0.58rem;
   color: #f4dcb0;
   background: rgba(244, 220, 176, 0.08);
   border: 2px solid rgba(244, 220, 176, 0.52);
@@ -812,6 +812,12 @@ button:active {
   background: #56d46d;
   border-color: #56d46d;
   box-shadow: 0 5px 0 #237a32;
+}
+
+#difficulty-normal.is-active {
+  background: #f4dcb0;
+  border-color: #fff4d2;
+  box-shadow: 0 5px 0 #8d754e;
 }
 
 #difficulty-hard.is-active {
@@ -1904,6 +1910,36 @@ button:active {
   width: 100%;
 }
 
+.menu-panel[data-panel="settings"] .menu-panel-card {
+  width: min(820px, 88vw);
+  max-height: min(640px, 90vh);
+  gap: 10px;
+  padding: clamp(16px, 3vw, 28px);
+}
+
+.menu-panel[data-panel="settings"] .menu-panel-content {
+  min-height: 0;
+}
+
+.menu-panel[data-panel="settings"] .settings-toggle-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 clamp(12px, 2vw, 22px);
+  width: 100%;
+}
+
+.menu-panel[data-panel="settings"] .settings-toggle-row {
+  padding: 7px 0;
+}
+
+.menu-panel[data-panel="settings"] .menu-panel-card h2 {
+  font-size: clamp(1.4rem, 3.2vw, 2.25rem);
+}
+
+.menu-panel[data-panel="settings"] .menu-panel-card p {
+  font-size: clamp(0.78rem, 1.55vw, 0.98rem);
+  line-height: 1.25;
+}
+
 .level-select-episodes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2073,10 +2109,6 @@ button:active {
     width: min(320px, 44vw);
   }
 
-  .settings-toggle-grid {
-    grid-template-columns: 1fr;
-  }
-
   .cheat-body {
     grid-template-columns: minmax(0, 1fr);
     width: min(520px, 92vw);
@@ -2114,6 +2146,15 @@ button:active {
   .menu-panel-card {
     width: min(330px, 88vw);
     max-height: 62vh;
+  }
+
+  .menu-panel[data-panel="settings"] .menu-panel-card {
+    width: min(330px, 88vw);
+    max-height: 66vh;
+  }
+
+  .menu-panel[data-panel="settings"] .settings-toggle-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .cheat-body,

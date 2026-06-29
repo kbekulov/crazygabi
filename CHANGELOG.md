@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.64.0
+
+- Added Normal difficulty between Easy and Hard, with Hard now using denser enemies, fewer recovery drops, tougher boss pacing, and wider BU hand danger.
+- Made dash default off on Easy and Normal, and on for Hard unless the player changes it in settings.
+- Tuned Level 7 butterflies with longer contrails and more frequent appearances.
+- Renamed the in-game overlay to Quick Menu and improved the settings panel fit.
+- Improved scripted dive launching for Level 4 and BU reveal camera targeting.
+
 ## v0.63.14
 
 - Changed Level 7 butterfly contrails to linger as path residue with fewer particles.

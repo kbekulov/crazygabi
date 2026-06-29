@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Crazy Gabi v0.63.14</title>
-    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260629-residue-butterfly-trails" />
-    <link rel="stylesheet" href="./src/styles.css?v=20260629-residue-butterfly-trails" />
+    <title>Crazy Gabi v0.64.0</title>
+    <link rel="icon" type="image/png" href="./public/assets/menu/favicon.png?v=20260630-quick-menu-difficulty" />
+    <link rel="stylesheet" href="./src/styles.css?v=20260630-quick-menu-difficulty" />
   </head>
   <body>
     <main id="shell">
@@ -82,6 +82,7 @@
                 <span>Difficulty</span>
                 <div class="difficulty-toggle" role="group" aria-label="Difficulty">
                   <button id="difficulty-easy" type="button" data-difficulty="easy">Easy</button>
+                  <button id="difficulty-normal" type="button" data-difficulty="normal">Normal</button>
                   <button id="difficulty-hard" type="button" data-difficulty="hard">Hard</button>
                 </div>
               </div>
@@ -92,7 +93,7 @@
               <button id="menu-credits" type="button">Credits</button>
             </div>
           </div>
-          <div id="game-version" class="game-version">v0.62.3</div>
+          <div id="game-version" class="game-version">v0.64.0</div>
         </div>
         <div id="menu-panel" class="menu-panel" hidden>
           <div class="menu-panel-card">
@@ -135,8 +136,8 @@
           </div>
         </div>
         <div id="cheat-menu" class="panel cheat-panel" hidden>
-          <h1>Level Select</h1>
-          <p>Jump directly to a level for testing.</p>
+          <h1>Quick Menu</h1>
+          <p>Change routes, adjust settings, or return to the main menu.</p>
           <div class="cheat-body">
             <section class="cheat-column cheat-level-column">
               <h2>Levels</h2>
@@ -151,7 +152,7 @@
       </section>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js" crossorigin="anonymous"></script>
-    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260629-residue-butterfly-trails"></script>
-    <script type="module" src="./src/main.js?v=20260629-residue-butterfly-trails"></script>
+    <script src="./public/vendor/spine-phaser-v3.min.js?v=20260630-quick-menu-difficulty"></script>
+    <script type="module" src="./src/main.js?v=20260630-quick-menu-difficulty"></script>
   </body>
 </html>
