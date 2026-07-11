@@ -1851,11 +1851,16 @@ button:active {
   image-rendering: pixelated;
 }
 
+.main-menu.is-panel-backdrop .main-menu-layout {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .menu-panel {
   place-items: center end;
   padding: clamp(24px, 6vw, 74px);
   overflow: hidden;
-  background: #050505;
+  background: transparent;
 }
 
 .menu-panel::before,
@@ -1867,11 +1872,7 @@ button:active {
 }
 
 .menu-panel::before {
-  z-index: 0;
-  background-image: url("../public/assets/menu/main_menu_bg_1.png");
-  background-size: cover;
-  background-position: center;
-  image-rendering: pixelated;
+  display: none;
 }
 
 .menu-panel::after {

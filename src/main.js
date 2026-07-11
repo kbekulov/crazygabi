@@ -1,5 +1,5 @@
 const TILE = 32;
-const GAME_VERSION = "v0.64.0";
+const GAME_VERSION = "v0.64.1";
 const VIEW_WIDTH = 960;
 const VIEW_HEIGHT = 540;
 const PLAY_HEIGHT = VIEW_HEIGHT;
@@ -393,7 +393,7 @@ const ENEMY_NAMES = [
   "OCM Tiers Case Escalation",
   "KYC WUDB Onboarding Assistant"
 ];
-const ASSET_VERSION = "20260630-quick-menu-difficulty";
+const ASSET_VERSION = "20260711-menu-panel-backdrop";
 const STORY_ASSET_VERSION = ASSET_VERSION;
 
 function getSpineRuntime() {
@@ -2524,10 +2524,12 @@ function setCheatMenuVisible(visible) {
 
 function setMainMenuVisible(visible) {
   hud.mainMenu.hidden = !visible;
+  if (!visible) hud.mainMenu.classList.remove("is-panel-backdrop");
 }
 
 function setMenuPanelVisible(visible) {
   hud.menuPanel.hidden = !visible;
+  if (!visible) hud.mainMenu.classList.remove("is-panel-backdrop");
 }
 
 function setGameOverVisible(visible, details = {}) {
@@ -13649,7 +13651,8 @@ function showMenuPanel(title, copy, panel = "") {
   hud.menuPanelTitle.textContent = title;
   hud.menuPanelCopy.textContent = copy;
   hud.menuPanelContent.replaceChildren();
-  setMainMenuVisible(false);
+  setMainMenuVisible(true);
+  hud.mainMenu.classList.add("is-panel-backdrop");
   setMenuPanelVisible(true);
 }
 

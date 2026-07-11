@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.64.1
+
+- Kept the main menu background and petals alive behind submenu panels so the backdrop no longer reloads or changes brightness.
+
 ## v0.64.0
 
 - Added Normal difficulty between Easy and Hard, with Hard now using denser enemies, fewer recovery drops, tougher boss pacing, and wider BU hand danger.
